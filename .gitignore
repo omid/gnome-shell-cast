@@ -1,0 +1,5 @@
+/daemon/target/
+/node_modules/
+/build/
+*.zip
+*~

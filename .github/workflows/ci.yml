@@ -1,0 +1,39 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  extension-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install modules
+        run: npm install
+      - name: Lint
+        run: npx eslint extension/gnome-shell-cast@oxygenws.com
+
+  daemon:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GStreamer development libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daemon
+      - name: Format
+        run: cd daemon && cargo fmt --check
+      - name: Clippy
+        run: cd daemon && cargo clippy --all-targets -- -D warnings
+      - name: Build
+        run: cd daemon && cargo build
+      - name: Test
+        run: cd daemon && cargo test

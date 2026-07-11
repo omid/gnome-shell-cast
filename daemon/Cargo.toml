@@ -1,0 +1,22 @@
+[package]
+name = "gnome-shell-cast-daemon"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Casts the GNOME desktop (screen or window) to Chromecast devices; controlled over D-Bus by the gnome-shell-cast extension"
+
+[dependencies]
+anyhow = "1"
+ashpd = { version = "0.11", default-features = false, features = ["tokio"] }
+env_logger = "0.11"
+gstreamer = "0.23"
+log = "0.4"
+mdns-sd = "0.13"
+rust_cast = "0.19"
+tiny_http = "0.12"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "net", "process"] }
+zbus = { version = "5", default-features = false, features = ["tokio"] }
+
+[profile.release]
+lto = true
+strip = true

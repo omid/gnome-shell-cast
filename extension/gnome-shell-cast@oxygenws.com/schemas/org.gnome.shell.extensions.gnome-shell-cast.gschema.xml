@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist gettext-domain="gnome-shell-cast">
+  <schema id="org.gnome.shell.extensions.gnome-shell-cast"
+          path="/org/gnome/shell/extensions/gnome-shell-cast/">
+    <key name="resolution" type="s">
+      <choices>
+        <choice value="native"/>
+        <choice value="1080"/>
+        <choice value="720"/>
+      </choices>
+      <default>'native'</default>
+      <summary>Maximum stream resolution</summary>
+      <description>Scale the captured video down to this size before encoding. "native" keeps the captured size.</description>
+    </key>
+    <key name="fps" type="i">
+      <range min="10" max="60"/>
+      <default>30</default>
+      <summary>Stream framerate</summary>
+    </key>
+    <key name="bitrate-kbps" type="i">
+      <range min="1000" max="20000"/>
+      <default>6000</default>
+      <summary>Video bitrate in kbit/s</summary>
+    </key>
+  </schema>
+</schemalist>
