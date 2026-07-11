@@ -5,7 +5,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use gstreamer as gst;
 use gstreamer::prelude::*;
-use log::info;
+use log::{info, warn};
 use zbus::zvariant::OwnedValue;
 
 pub const PLAYLIST_NAME: &str = "stream.m3u8";
@@ -48,15 +48,28 @@ impl StreamSettings {
     }
 }
 
+/// AAC encoders in order of preference; which ones exist depends on the
+/// installed GStreamer plugin packages (gst-plugins-bad/ugly, gst-libav, ...).
+const AAC_ENCODERS: &[&str] = &["fdkaacenc", "avenc_aac", "voaacenc", "faac"];
+
+/// Returns the first AAC encoder element available in the GStreamer registry.
+pub fn find_aac_encoder() -> Option<&'static str> {
+    AAC_ENCODERS
+        .iter()
+        .copied()
+        .find(|name| gst::ElementFactory::find(name).is_some())
+}
+
 /// Builds the gst-launch description capturing the PipeWire node, encoding
-/// H.264 (+ AAC system audio when a monitor device is known) and writing a
-/// live HLS stream into `hls_dir`.
+/// H.264 (+ AAC system audio when a monitor device and encoder are known) and
+/// writing a live HLS stream into `hls_dir`. `audio` is the pulse monitor
+/// device to capture and the AAC encoder element to use.
 pub fn launch_description(
     fd: RawFd,
     node_id: u32,
     settings: &StreamSettings,
     hls_dir: &Path,
-    audio_monitor: Option<&str>,
+    audio: Option<(&str, &str)>,
 ) -> String {
     let dir = hls_dir.display();
     let fps = settings.fps;
@@ -80,11 +93,11 @@ pub fn launch_description(
         bitrate = settings.bitrate_kbps,
     );
 
-    if let Some(monitor) = audio_monitor {
+    if let Some((monitor, encoder)) = audio {
         desc.push_str(&format!(
             " pulsesrc device={monitor} provide-clock=false \
              ! queue ! audioconvert ! audioresample \
-             ! avenc_aac bitrate=128000 ! aacparse ! queue ! hls.audio"
+             ! {encoder} bitrate=128000 ! aacparse ! queue ! hls.audio"
         ));
     }
 
@@ -98,7 +111,18 @@ pub fn build(
     hls_dir: &Path,
     audio_monitor: Option<&str>,
 ) -> Result<gst::Pipeline> {
-    let desc = launch_description(fd, node_id, settings, hls_dir, audio_monitor);
+    let audio = audio_monitor.and_then(|monitor| match find_aac_encoder() {
+        Some(encoder) => Some((monitor, encoder)),
+        None => {
+            warn!(
+                "no AAC encoder found (install fdk-aac/gst-plugins-bad or gst-libav), \
+                 casting video only"
+            );
+            None
+        }
+    });
+
+    let desc = launch_description(fd, node_id, settings, hls_dir, audio);
     info!("pipeline: {desc}");
 
     let pipeline = gst::parse::launch(&desc)
@@ -171,9 +195,9 @@ mod tests {
             42,
             &StreamSettings::default(),
             &PathBuf::from("/run/x"),
-            Some("alsa_output.pci.monitor"),
+            Some(("alsa_output.pci.monitor", "fdkaacenc")),
         );
         assert!(desc.contains("pulsesrc device=alsa_output.pci.monitor"));
-        assert!(desc.contains("avenc_aac"));
+        assert!(desc.contains("fdkaacenc bitrate=128000"));
     }
 }
