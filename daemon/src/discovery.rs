@@ -10,7 +10,7 @@ use crate::{Event, SharedState};
 
 const SERVICE_TYPE: &str = "_googlecast._tcp.local.";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Device {
     /// mDNS fullname; opaque, stable identifier used over D-Bus.
     pub id: String,
@@ -59,14 +59,27 @@ pub fn start(state: Arc<SharedState>) -> Result<ServiceDaemon> {
                             addr,
                             port: info.get_port(),
                         };
-                        info!("found {} at {}:{}", device.name, device.addr, device.port);
-
-                        state
-                            .devices
-                            .lock()
-                            .unwrap()
-                            .insert(device.id.clone(), device);
-                        let _ = state.events.send(Event::DevicesChanged);
+                        // Chromecasts re-announce periodically; only log and
+                        // notify when the device is new or actually changed.
+                        let changed = {
+                            let mut devices = state.devices.lock().unwrap();
+                            match devices.get(&device.id) {
+                                Some(existing) if *existing == device => false,
+                                _ => {
+                                    devices.insert(device.id.clone(), device.clone());
+                                    true
+                                }
+                            }
+                        };
+                        if changed {
+                            info!("found {} at {}:{}", device.name, device.addr, device.port);
+                            let _ = state.events.send(Event::DevicesChanged);
+                        } else {
+                            debug!(
+                                "refreshed {} at {}:{}",
+                                device.name, device.addr, device.port
+                            );
+                        }
                     }
                     ServiceEvent::ServiceRemoved(_, fullname) => {
                         info!("lost {fullname}");

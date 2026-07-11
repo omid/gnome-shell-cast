@@ -194,6 +194,7 @@ async fn main() -> Result<()> {
         .interface::<_, ShellCast>(OBJECT_PATH)
         .await?;
     let signal_state = state.clone();
+    let (bus_dead_tx, mut bus_dead_rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         while let Some(event) = events_rx.recv().await {
             let result = match event {
@@ -205,6 +206,13 @@ async fn main() -> Result<()> {
             };
             if let Err(e) = result {
                 warn!("failed to emit signal: {e}");
+                // An I/O error means the bus connection is gone for good; a
+                // session daemon without its bus is useless, so shut down and
+                // let D-Bus activation start a fresh instance when needed.
+                if matches!(e, zbus::Error::InputOutput(_)) {
+                    let _ = bus_dead_tx.send(());
+                    break;
+                }
             }
         }
     });
@@ -212,7 +220,13 @@ async fn main() -> Result<()> {
     // Exit when idle so the D-Bus-activated daemon doesn't linger forever.
     let mut tick = tokio::time::interval(Duration::from_secs(30));
     loop {
-        tick.tick().await;
+        tokio::select! {
+            _ = tick.tick() => {}
+            _ = &mut bus_dead_rx => {
+                warn!("D-Bus connection lost, exiting");
+                break;
+            }
+        }
         let (current, _) = state.status();
         let idle_for = state.last_activity.lock().unwrap().elapsed();
         if (current == "idle" || current == "error") && idle_for > IDLE_EXIT {
