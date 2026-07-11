@@ -73,6 +73,21 @@ gnome-extensions enable gnome-shell-cast@oxygenws.com
 
 Preferences (resolution cap, framerate, bitrate) are under the ⚙ menu entry or `gnome-extensions prefs gnome-shell-cast@oxygenws.com`.
 
+## Publishing to extensions.gnome.org
+
+extensions.gnome.org only accepts pure-JS extension packages — compiled binaries are
+not allowed and every upload is human-reviewed — so **the Rust daemon is never part of
+the upload**. The two halves are delivered separately:
+
+1. `make ego-zip` lints and packs the extension into
+   `gnome-shell-cast@oxygenws.com.v<version>.zip` (JS, metadata, schema, icons only).
+2. Upload that zip manually at <https://extensions.gnome.org/upload/> and wait for review.
+   Bump `version` in `metadata.json` before each upload.
+3. Users who install the extension from extensions.gnome.org install the daemon
+   themselves with `make install-daemon` (or a distro package, once one exists).
+   Until the daemon is present, the extension shows a notification with the failing
+   D-Bus call when you try to use it.
+
 ## Troubleshooting
 
 ```sh
