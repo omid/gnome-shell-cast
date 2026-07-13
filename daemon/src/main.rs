@@ -2,17 +2,21 @@ mod capture;
 mod cast;
 mod discovery;
 mod http;
+mod mirror;
 mod pipeline;
 mod session;
 
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 
 use anyhow::Result;
 use log::{info, warn};
+// parking_lot's Mutex has no poisoning, so `lock()` returns the guard directly
+// with no `unwrap()`. We only ever hold these locks briefly and never across an
+// `.await`, which is exactly what it's good for.
+use parking_lot::Mutex;
 use tokio::sync::{mpsc, oneshot};
 use zbus::object_server::SignalEmitter;
 use zbus::zvariant::OwnedValue;
@@ -23,7 +27,7 @@ use crate::pipeline::StreamSettings;
 const BUS_NAME: &str = "org.gnome.ShellCast";
 const OBJECT_PATH: &str = "/org/gnome/ShellCast";
 /// The daemon exits after this long with no casting and no D-Bus calls.
-const IDLE_EXIT: Duration = Duration::from_secs(10 * 60);
+const IDLE_EXIT: Duration = Duration::from_mins(10);
 
 #[derive(Debug)]
 pub enum Event {
@@ -33,7 +37,7 @@ pub enum Event {
 
 pub struct SharedState {
     pub devices: Mutex<HashMap<String, Device>>,
-    /// (state, device_id); state is one of idle|connecting|casting|error.
+    /// (state, `device_id`); state is one of idle|connecting|casting|error.
     pub status: Mutex<(String, String)>,
     /// Dropping the sender stops the running cast session.
     pub active: Mutex<Option<oneshot::Sender<()>>>,
@@ -55,17 +59,17 @@ impl SharedState {
     }
 
     pub fn touch(&self) {
-        *self.last_activity.lock().unwrap() = Instant::now();
+        *self.last_activity.lock() = Instant::now();
     }
 
     pub fn set_status(&self, state: &str, device_id: &str) {
-        *self.status.lock().unwrap() = (state.to_string(), device_id.to_string());
+        *self.status.lock() = (state.to_string(), device_id.to_string());
         self.touch();
         let _ = self.events.send(Event::StateChanged);
     }
 
     pub fn status(&self) -> (String, String) {
-        self.status.lock().unwrap().clone()
+        self.status.lock().clone()
     }
 }
 
@@ -75,9 +79,9 @@ struct ShellCast {
 
 #[zbus::interface(name = "org.gnome.ShellCast1")]
 impl ShellCast {
-    async fn list_devices(&self) -> Vec<(String, String, String)> {
+    async fn list_devices(&self) -> Vec<(String, String, String, u32)> {
         self.state.touch();
-        let devices = self.state.devices.lock().unwrap();
+        let devices = self.state.devices.lock();
         let mut list: Vec<_> = devices
             .values()
             .map(|d| {
@@ -85,6 +89,7 @@ impl ShellCast {
                     d.id.clone(),
                     d.name.clone(),
                     format!("{}:{}", d.addr, d.port),
+                    d.ca,
                 )
             })
             .collect();
@@ -97,6 +102,12 @@ impl ShellCast {
         self.state.status()
     }
 
+    /// The daemon's own version, so the extension can detect a daemon that is
+    /// older (or newer) than the version it was built against.
+    async fn get_version(&self) -> String {
+        env!("CARGO_PKG_VERSION").to_string()
+    }
+
     async fn start_cast(
         &self,
         device_id: String,
@@ -105,23 +116,29 @@ impl ShellCast {
     ) -> zbus::fdo::Result<()> {
         self.state.touch();
 
-        let device = self
-            .state
-            .devices
-            .lock()
-            .unwrap()
-            .get(&device_id)
-            .cloned()
-            .ok_or_else(|| zbus::fdo::Error::Failed(format!("unknown device: {device_id}")))?;
-
         let source = match source {
             0 => capture::SourceKind::Screen,
             1 => capture::SourceKind::Window,
+            2 => capture::SourceKind::Audio,
             other => {
                 return Err(zbus::fdo::Error::InvalidArgs(format!(
                     "unknown source type: {other}"
-                )))
+                )));
             }
+        };
+
+        let device = {
+            let devices = self.state.devices.lock();
+            let device = devices
+                .get(&device_id)
+                .ok_or_else(|| zbus::fdo::Error::Failed(format!("unknown device: {device_id}")))?;
+            if !device.has_video() && source != capture::SourceKind::Audio {
+                return Err(zbus::fdo::Error::Failed(format!(
+                    "{} is audio-only and cannot receive screen casts",
+                    device.name
+                )));
+            }
+            device.clone()
         };
 
         let settings = StreamSettings::from_options(&options);
@@ -133,7 +150,7 @@ impl ShellCast {
         let (stop_tx, stop_rx) = oneshot::channel();
         // Dropping a previous sender (if any) makes that session's stop_rx
         // resolve, shutting the old cast down before the new one starts.
-        *self.state.active.lock().unwrap() = Some(stop_tx);
+        *self.state.active.lock() = Some(stop_tx);
         let generation = self.state.generation.fetch_add(1, Ordering::SeqCst) + 1;
 
         tokio::spawn(session::run(
@@ -149,7 +166,7 @@ impl ShellCast {
 
     async fn stop_cast(&self) {
         self.state.touch();
-        if let Some(stop) = self.state.active.lock().unwrap().take() {
+        if let Some(stop) = self.state.active.lock().take() {
             let _ = stop.send(());
         }
     }
@@ -173,9 +190,8 @@ async fn main() -> Result<()> {
     let (events_tx, mut events_rx) = mpsc::unbounded_channel();
     let state = Arc::new(SharedState::new(events_tx));
 
-    // mDNS discovery runs for the daemon's whole lifetime.
-    let _mdns = discovery::start(state.clone())?;
-
+    // Claim the bus name first so D-Bus activation always succeeds promptly at
+    // login; discovery is best-effort and must never delay or fail it.
     let connection = zbus::connection::Builder::session()?
         .name(BUS_NAME)?
         .serve_at(
@@ -187,6 +203,9 @@ async fn main() -> Result<()> {
         .build()
         .await?;
     info!("listening on {BUS_NAME}");
+
+    // mDNS discovery runs for the daemon's whole lifetime (best-effort).
+    discovery::start(state.clone());
 
     // Forward internal events to D-Bus signals.
     let iface = connection
@@ -228,7 +247,7 @@ async fn main() -> Result<()> {
             }
         }
         let (current, _) = state.status();
-        let idle_for = state.last_activity.lock().unwrap().elapsed();
+        let idle_for = state.last_activity.lock().elapsed();
         if (current == "idle" || current == "error") && idle_for > IDLE_EXIT {
             info!("idle for {idle_for:?}, exiting");
             break;

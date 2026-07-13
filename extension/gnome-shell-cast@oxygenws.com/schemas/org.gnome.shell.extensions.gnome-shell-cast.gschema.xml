@@ -8,18 +8,18 @@
         <choice value="1080"/>
         <choice value="720"/>
       </choices>
-      <default>'native'</default>
+      <default>'720'</default>
       <summary>Maximum stream resolution</summary>
       <description>Scale the captured video down to this size before encoding. "native" keeps the captured size.</description>
     </key>
     <key name="fps" type="i">
       <range min="10" max="60"/>
-      <default>30</default>
+      <default>20</default>
       <summary>Stream framerate</summary>
     </key>
     <key name="bitrate-kbps" type="i">
       <range min="1000" max="20000"/>
-      <default>6000</default>
+      <default>4000</default>
       <summary>Video bitrate in kbit/s</summary>
     </key>
   </schema>

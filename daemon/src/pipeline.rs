@@ -21,9 +21,9 @@ pub struct StreamSettings {
 impl Default for StreamSettings {
     fn default() -> Self {
         Self {
-            size: None,
-            fps: 30,
-            bitrate_kbps: 6000,
+            size: Some((1280, 720)),
+            fps: 20,
+            bitrate_kbps: 4000,
         }
     }
 }
@@ -33,10 +33,11 @@ impl StreamSettings {
         let get_i32 = |key: &str| options.get(key).and_then(|v| i32::try_from(v).ok());
 
         let mut settings = Self::default();
-        if let (Some(w), Some(h)) = (get_i32("width"), get_i32("height")) {
-            if w > 0 && h > 0 {
-                settings.size = Some((w, h));
-            }
+        if let (Some(w), Some(h)) = (get_i32("width"), get_i32("height"))
+            && w > 0
+            && h > 0
+        {
+            settings.size = Some((w, h));
         }
         if let Some(fps) = get_i32("fps") {
             settings.fps = fps.clamp(10, 60);
@@ -49,10 +50,10 @@ impl StreamSettings {
 }
 
 /// AAC encoders in order of preference; which ones exist depends on the
-/// installed GStreamer plugin packages (gst-plugins-bad/ugly, gst-libav, ...).
+/// installed `GStreamer` plugin packages (gst-plugins-bad/ugly, gst-libav, ...).
 const AAC_ENCODERS: &[&str] = &["fdkaacenc", "avenc_aac", "voaacenc", "faac"];
 
-/// Returns the first AAC encoder element available in the GStreamer registry.
+/// Returns the first AAC encoder element available in the `GStreamer` registry.
 pub fn find_aac_encoder() -> Option<&'static str> {
     AAC_ENCODERS
         .iter()
@@ -60,69 +61,99 @@ pub fn find_aac_encoder() -> Option<&'static str> {
         .find(|name| gst::ElementFactory::find(name).is_some())
 }
 
-/// Builds the gst-launch description capturing the PipeWire node, encoding
-/// H.264 (+ AAC system audio when a monitor device and encoder are known) and
-/// writing a live HLS stream into `hls_dir`. `audio` is the pulse monitor
-/// device to capture and the AAC encoder element to use.
+/// Builds the gst-launch description writing a live HLS stream into
+/// `hls_dir`: H.264 from the captured `PipeWire` node when `video` carries
+/// the (fd, node id) pair, plus AAC system audio when `audio` names the pulse
+/// monitor device and the AAC encoder element. Audio-only casts pass
+/// `video: None` and produce audio-only TS segments.
 pub fn launch_description(
-    fd: RawFd,
-    node_id: u32,
+    video: Option<(RawFd, u32)>,
     settings: &StreamSettings,
     hls_dir: &Path,
     audio: Option<(&str, &str)>,
 ) -> String {
+    use std::fmt::Write as _;
+
     let dir = hls_dir.display();
     let fps = settings.fps;
-    // Keyframe every HLS segment so segments are independently decodable.
-    let target_duration = 2;
-    let key_int = (fps * target_duration).max(1);
+    // Short segments keep both startup and live lag low: the player is
+    // roughly 3 target-durations behind the encoder. Keyframe every segment
+    // so segments are independently decodable.
+    let target_duration = 1;
 
-    let size_caps = settings
-        .size
-        .map(|(w, h)| format!(",width={w},height={h},pixel-aspect-ratio=1/1"))
-        .unwrap_or_default();
+    let mut desc = String::new();
+    if let Some((fd, node_id)) = video {
+        let key_int = (fps * target_duration).max(1);
+        let size_caps = settings
+            .size
+            .map(|(w, h)| format!(",width={w},height={h},pixel-aspect-ratio=1/1"))
+            .unwrap_or_default();
 
-    let mut desc = format!(
-        "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 resend-last=true \
-         ! queue ! videoconvert ! videoscale ! videorate \
-         ! video/x-raw,framerate={fps}/1{size_caps} \
-         ! x264enc tune=zerolatency speed-preset=veryfast bitrate={bitrate} key-int-max={key_int} bframes=0 \
-         ! video/x-h264,profile=main ! h264parse ! queue \
-         ! hls.video hlssink2 name=hls target-duration={target_duration} playlist-length=5 max-files=10 \
-         playlist-location={dir}/{PLAYLIST_NAME} location={dir}/segment%05d.ts",
-        bitrate = settings.bitrate_kbps,
+        // The source queue is small and leaky: when the encoder can't keep up
+        // with raw frames the pipeline drops the oldest instead of buffering
+        // them, so the stream falls in quality rather than further behind live.
+        let _ = write!(
+            desc,
+            "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 resend-last=true \
+             ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
+             ! videoconvert ! videoscale ! videorate \
+             ! video/x-raw,framerate={fps}/1{size_caps} \
+             ! x264enc tune=zerolatency speed-preset=veryfast bitrate={bitrate} key-int-max={key_int} bframes=0 \
+             ! video/x-h264,profile=main ! h264parse ! queue \
+             ! hls.video ",
+            bitrate = settings.bitrate_kbps,
+        );
+    }
+
+    let _ = write!(
+        desc,
+        "hlssink2 name=hls target-duration={target_duration} playlist-length=3 max-files=6 \
+         playlist-location={dir}/{PLAYLIST_NAME} location={dir}/segment%05d.ts"
     );
 
     if let Some((monitor, encoder)) = audio {
-        desc.push_str(&format!(
+        let _ = write!(
+            desc,
             " pulsesrc device={monitor} provide-clock=false \
              ! queue ! audioconvert ! audioresample \
              ! {encoder} bitrate=128000 ! aacparse ! queue ! hls.audio"
-        ));
+        );
     }
 
     desc
 }
 
 pub fn build(
-    fd: RawFd,
-    node_id: u32,
+    video: Option<(RawFd, u32)>,
     settings: &StreamSettings,
     hls_dir: &Path,
     audio_monitor: Option<&str>,
 ) -> Result<gst::Pipeline> {
-    let audio = audio_monitor.and_then(|monitor| match find_aac_encoder() {
-        Some(encoder) => Some((monitor, encoder)),
-        None => {
+    // Audio-only casts hard-require the audio branch; video casts degrade to
+    // video-only with a warning when AAC encoding is unavailable.
+    let audio = match (audio_monitor, find_aac_encoder()) {
+        (Some(monitor), Some(encoder)) => Some((monitor, encoder)),
+        (Some(_), None) if video.is_none() => {
+            return Err(anyhow::anyhow!(
+                "no AAC encoder found (install fdk-aac/gst-plugins-bad or gst-libav)"
+            ));
+        }
+        (Some(_), None) => {
             warn!(
                 "no AAC encoder found (install fdk-aac/gst-plugins-bad or gst-libav), \
-                 casting video only"
+             casting video only"
             );
             None
         }
-    });
+        (None, _) if video.is_none() => {
+            return Err(anyhow::anyhow!(
+                "audio-only cast but no system audio monitor was found"
+            ));
+        }
+        (None, _) => None,
+    };
 
-    let desc = launch_description(fd, node_id, settings, hls_dir, audio);
+    let desc = launch_description(video, settings, hls_dir, audio);
     info!("pipeline: {desc}");
 
     let pipeline = gst::parse::launch(&desc)
@@ -160,16 +191,16 @@ mod tests {
     #[test]
     fn default_settings_from_empty_options() {
         let settings = StreamSettings::from_options(&HashMap::new());
-        assert_eq!(settings.size, None);
-        assert_eq!(settings.fps, 30);
-        assert_eq!(settings.bitrate_kbps, 6000);
+        assert_eq!(settings.size, Some((1280, 720)));
+        assert_eq!(settings.fps, 20);
+        assert_eq!(settings.bitrate_kbps, 4000);
     }
 
     #[test]
     fn options_are_clamped() {
         let mut options = HashMap::new();
-        options.insert("fps".to_string(), OwnedValue::from(500i32));
-        options.insert("bitrate-kbps".to_string(), OwnedValue::from(1i32));
+        options.insert("fps".to_string(), OwnedValue::from(500_i32));
+        options.insert("bitrate-kbps".to_string(), OwnedValue::from(1_i32));
         let settings = StreamSettings::from_options(&options);
         assert_eq!(settings.fps, 60);
         assert_eq!(settings.bitrate_kbps, 1000);
@@ -181,7 +212,7 @@ mod tests {
             size: Some((1280, 720)),
             ..Default::default()
         };
-        let desc = launch_description(3, 42, &settings, &PathBuf::from("/run/x"), None);
+        let desc = launch_description(Some((3, 42)), &settings, &PathBuf::from("/run/x"), None);
         assert!(desc.contains("width=1280,height=720"));
         assert!(desc.contains("fd=3 path=42"));
         assert!(desc.contains("/run/x/stream.m3u8"));
@@ -191,13 +222,30 @@ mod tests {
     #[test]
     fn description_includes_audio_branch() {
         let desc = launch_description(
-            3,
-            42,
+            Some((3, 42)),
             &StreamSettings::default(),
             &PathBuf::from("/run/x"),
             Some(("alsa_output.pci.monitor", "fdkaacenc")),
         );
+        assert!(desc.contains("hls.video"));
         assert!(desc.contains("pulsesrc device=alsa_output.pci.monitor"));
         assert!(desc.contains("fdkaacenc bitrate=128000"));
+    }
+
+    #[test]
+    fn audio_only_description_has_no_video_branch() {
+        let desc = launch_description(
+            None,
+            &StreamSettings::default(),
+            &PathBuf::from("/run/x"),
+            Some(("alsa_output.pci.monitor", "fdkaacenc")),
+        );
+        assert!(!desc.contains("pipewiresrc"));
+        assert!(!desc.contains("x264enc"));
+        assert!(!desc.contains("hls.video"));
+        assert!(desc.starts_with("hlssink2 name=hls"));
+        assert!(desc.contains("/run/x/stream.m3u8"));
+        assert!(desc.contains("pulsesrc device=alsa_output.pci.monitor"));
+        assert!(desc.contains("hls.audio"));
     }
 }

@@ -1,1 +1,34 @@
-/* Reserved for future styling of the cast indicator. */
+/*
+ * Cast indicator menu styling.
+ *
+ * Colours are theme-aware rather than hardcoded: the active device uses the
+ * user's system accent colour, and the destructive / warning rows carry a
+ * muted tint that switches between dark- and light-popup variants via the
+ * `.gsc-light` class the indicator toggles from the shell's colour scheme.
+ */
+
+/* Device currently being cast to. */
+.gsc-casting-label {
+    color: #3584e4; /* fallback for shells without accent-colour support */
+    color: -st-accent-color;
+    font-weight: 600;
+}
+
+/* Stop casting: destructive. Default tuned for the (dark) shell popup. */
+.gsc-destructive-label {
+    color: #f9868a;
+}
+
+/* Daemon missing / outdated warning row. */
+.gsc-warning-label {
+    color: #f5c145;
+}
+
+/* Light-popup variants: darker so the tint stays legible on a light menu. */
+.gsc-light .gsc-destructive-label {
+    color: #c01c28;
+}
+
+.gsc-light .gsc-warning-label {
+    color: #9c6500;
+}

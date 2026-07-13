@@ -1,15 +1,17 @@
 use std::net::IpAddr;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
+use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use log::{debug, info, warn};
 use rust_cast::channels::heartbeat::HeartbeatResponse;
 use rust_cast::channels::media::{Media, StreamType};
 use rust_cast::channels::receiver::CastDeviceApp;
 use rust_cast::{CastDevice, ChannelMessage};
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::sync::oneshot;
 
 const DESTINATION_ID: &str = "receiver-0";
 
@@ -21,8 +23,8 @@ pub enum CastEvent {
     Ended(String),
 }
 
-/// Keeps the CASTv2 connection to the Chromecast alive on a dedicated thread
-/// (the rust_cast API is blocking). Setting `stop` asks the thread to stop
+/// Keeps the `CASTv2` connection to the Chromecast alive on a dedicated thread
+/// (the `rust_cast` API is blocking). Setting `stop` asks the thread to stop
 /// the receiver app and disconnect; the device pings every few seconds, so
 /// the flag is noticed within roughly that interval.
 pub struct CastControl {
@@ -33,16 +35,20 @@ pub struct CastControl {
 pub fn start(
     addr: IpAddr,
     port: u16,
-    url: String,
+    url_rx: oneshot::Receiver<String>,
     events: UnboundedSender<CastEvent>,
 ) -> CastControl {
     let stop = Arc::new(AtomicBool::new(false));
     let stop_flag = stop.clone();
 
+    #[allow(
+        clippy::expect_used,
+        reason = "spawning a thread only fails on OS resource exhaustion, which is unrecoverable"
+    )]
     let handle = thread::Builder::new()
         .name("cast-control".into())
         .spawn(move || {
-            if let Err(e) = run(addr, port, &url, &stop_flag, &events) {
+            if let Err(e) = run(addr, port, url_rx, &stop_flag, &events) {
                 warn!("cast control ended: {e}");
                 let _ = events.send(CastEvent::Ended(e.to_string()));
             } else {
@@ -60,7 +66,7 @@ pub fn start(
 fn run(
     addr: IpAddr,
     port: u16,
-    url: &str,
+    mut url_rx: oneshot::Receiver<String>,
     stop: &AtomicBool,
     events: &UnboundedSender<CastEvent>,
 ) -> Result<()> {
@@ -83,6 +89,27 @@ fn run(
         .connect(app.transport_id.as_str())
         .map_err(|e| anyhow!("connecting to app: {e}"))?;
 
+    // The encoder is warming up in parallel; wait for the stream URL. Poll so
+    // a stop request (or the session failing before a URL exists) still gets
+    // the receiver app shut down.
+    let url = loop {
+        if stop.load(Ordering::Relaxed) {
+            info!("stopping receiver app");
+            let _ = device.receiver.stop_app(app.session_id.as_str());
+            return Ok(());
+        }
+        match url_rx.try_recv() {
+            Ok(url) => break url,
+            Err(oneshot::error::TryRecvError::Empty) => {
+                thread::sleep(Duration::from_millis(100));
+            }
+            Err(oneshot::error::TryRecvError::Closed) => {
+                let _ = device.receiver.stop_app(app.session_id.as_str());
+                return Err(anyhow!("session ended before the stream was ready"));
+            }
+        }
+    };
+
     info!("loading {url}");
     device
         .media
@@ -90,7 +117,7 @@ fn run(
             app.transport_id.as_str(),
             app.session_id.as_str(),
             &Media {
-                content_id: url.to_string(),
+                content_id: url,
                 content_type: "application/vnd.apple.mpegurl".to_string(),
                 stream_type: StreamType::Live,
                 duration: None,

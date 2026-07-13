@@ -1,7 +1,7 @@
 use std::net::{IpAddr, UdpSocket};
-use std::path::PathBuf;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
@@ -37,18 +37,21 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
                     continue;
                 };
 
-                let name = request.url().trim_start_matches('/').to_string();
+                let name = request.url().trim_start_matches('/');
                 if name.is_empty() || name.contains('/') || name.contains("..") {
                     let _ = request.respond(Response::empty(404));
                     continue;
                 }
 
-                match std::fs::read(dir.join(&name)) {
-                    Ok(data) => {
+                match std::fs::read(dir.join(name)) {
+                    Ok(mut data) => {
+                        if has_extension(name, "m3u8") {
+                            data = inject_start_tag(data);
+                        }
                         debug!("GET /{name} -> {} bytes", data.len());
                         let mut response = Response::from_data(data);
                         for (key, value) in [
-                            ("Content-Type", content_type(&name)),
+                            ("Content-Type", content_type(name)),
                             // CAF/HLS playback on the Chromecast requires CORS.
                             ("Access-Control-Allow-Origin", "*"),
                             ("Cache-Control", "no-cache, no-store"),
@@ -74,13 +77,35 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
     })
 }
 
+/// Tells the player to start 2s from the live edge. Without this, HLS players
+/// pick their own live offset (Shaka and `ExoPlayer` default to 3 target
+/// durations or more, measured from when they *parse* the playlist), which is
+/// where most of the glass-to-glass lag comes from. Both honor EXT-X-START.
+fn inject_start_tag(data: Vec<u8>) -> Vec<u8> {
+    let text = match String::from_utf8(data) {
+        Ok(text) => text,
+        Err(e) => return e.into_bytes(),
+    };
+    if text.contains("#EXT-X-START") {
+        return text.into_bytes();
+    }
+    text.replacen(
+        "#EXTM3U",
+        "#EXTM3U\n#EXT-X-START:TIME-OFFSET=-2.0,PRECISE=NO",
+        1,
+    )
+    .into_bytes()
+}
+
+fn has_extension(name: &str, ext: &str) -> bool {
+    Path::new(name).extension().is_some_and(|e| e == ext)
+}
+
 fn content_type(name: &str) -> &'static str {
-    if name.ends_with(".m3u8") {
-        "application/vnd.apple.mpegurl"
-    } else if name.ends_with(".ts") {
-        "video/mp2t"
-    } else {
-        "application/octet-stream"
+    match Path::new(name).extension().and_then(|e| e.to_str()) {
+        Some("m3u8") => "application/vnd.apple.mpegurl",
+        Some("ts") => "video/mp2t",
+        _ => "application/octet-stream",
     }
 }
 
@@ -101,4 +126,24 @@ pub fn local_ip_towards(target: IpAddr) -> Result<IpAddr> {
         .connect((target, 9))
         .context("probing route to device")?;
     Ok(socket.local_addr()?.ip())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn start_tag_is_injected_after_header() {
+        let playlist = b"#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:1.0,\nsegment00000.ts\n".to_vec();
+        let out = String::from_utf8(inject_start_tag(playlist)).unwrap();
+        assert!(out.starts_with("#EXTM3U\n#EXT-X-START:TIME-OFFSET=-2.0,PRECISE=NO\n"));
+        assert!(out.contains("segment00000.ts"));
+    }
+
+    #[test]
+    fn existing_start_tag_is_kept() {
+        let playlist = b"#EXTM3U\n#EXT-X-START:TIME-OFFSET=-5.0\n".to_vec();
+        let out = String::from_utf8(inject_start_tag(playlist)).unwrap();
+        assert_eq!(out.matches("#EXT-X-START").count(), 1);
+    }
 }

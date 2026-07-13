@@ -4,6 +4,7 @@ import Gio from 'gi://Gio';
 
 export const SOURCE_SCREEN = 0;
 export const SOURCE_WINDOW = 1;
+export const SOURCE_AUDIO = 2;
 
 const BUS_NAME = 'org.gnome.ShellCast';
 const OBJECT_PATH = '/org/gnome/ShellCast';
@@ -12,11 +13,14 @@ const CAST_IFACE_XML = `
 <node>
   <interface name="org.gnome.ShellCast1">
     <method name="ListDevices">
-      <arg type="a(sss)" direction="out" name="devices"/>
+      <arg type="a(sssu)" direction="out" name="devices"/>
     </method>
     <method name="GetStatus">
       <arg type="s" direction="out" name="state"/>
       <arg type="s" direction="out" name="device_id"/>
+    </method>
+    <method name="GetVersion">
+      <arg type="s" direction="out" name="version"/>
     </method>
     <method name="StartCast">
       <arg type="s" direction="in" name="device_id"/>
@@ -74,12 +78,18 @@ export class CastDaemon {
     listDevices(callback) {
         this._proxy.ListDevicesRemote((result, error) => {
             if (error) {
-                this._onError?.(error.message);
+                // A transient failure (e.g. the daemon still activating just
+                // after login) yields an empty list and the "Searching…"
+                // placeholder; a genuinely missing daemon is reported by the
+                // version check, so don't also raise a notification here.
                 callback([]);
                 return;
             }
             const [devices] = result;
-            callback(devices.map(([id, name, address]) => ({ id, name, address })));
+            // Bit 0 of the Cast capability mask = video out; devices without
+            // it (speakers, cast groups) can only receive audio.
+            callback(devices.map(([id, name, address, capabilities]) =>
+                ({ id, name, address, hasVideo: (capabilities & 1) !== 0 })));
         });
     }
 
@@ -91,6 +101,21 @@ export class CastDaemon {
             }
             const [state, deviceId] = result;
             callback(state, deviceId);
+        });
+    }
+
+    /**
+     * Fetches the running daemon's version. Passes null to the callback when
+     * the daemon cannot be reached (e.g. it is not installed) — a D-Bus method
+     * call auto-starts the daemon, so an error here means activation failed.
+     */
+    getVersion(callback) {
+        this._proxy.GetVersionRemote((result, error) => {
+            if (error) {
+                callback(null);
+                return;
+            }
+            callback(result[0]);
         });
     }
 

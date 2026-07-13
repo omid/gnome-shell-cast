@@ -9,12 +9,17 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-import { CastDaemon, SOURCE_SCREEN, SOURCE_WINDOW } from './daemon.js';
+import { CastDaemon, SOURCE_AUDIO, SOURCE_SCREEN, SOURCE_WINDOW } from './daemon.js';
 
 const RESOLUTIONS = {
     '1080': [1920, 1080],
     '720': [1280, 720],
 };
+
+// The daemon version this build of the extension expects. Bump this together
+// with the daemon's Cargo package version whenever they are released as a pair;
+// a mismatch (or a missing daemon) makes the menu show an install prompt.
+const REQUIRED_DAEMON_VERSION = '0.2.0';
 
 export const CastIndicator = GObject.registerClass(
     class CastIndicator extends PanelMenu.Button {
@@ -45,24 +50,51 @@ export const CastIndicator = GObject.registerClass(
 
             this._buildMenu();
 
+            // Track the shell's colour scheme so the destructive/warning tints
+            // can switch to their light-popup variants (see stylesheet.css).
+            this._stSettings = St.Settings.get();
+            this._colorSchemeId = this._stSettings.connect(
+                'notify::color-scheme', () => this._updateColorScheme());
+            this._updateColorScheme();
+
             this.menu.connect('open-state-changed', (_menu, open) => {
                 if (open)
                     this._refresh();
             });
         }
 
+        _updateColorScheme() {
+            const light = this._stSettings.color_scheme ===
+                St.SystemColorScheme?.PREFER_LIGHT;
+            if (light)
+                this.menu.box.add_style_class_name('gsc-light');
+            else
+                this.menu.box.remove_style_class_name('gsc-light');
+        }
+
         _buildMenu() {
+            // Shown only when the daemon is missing or a different version.
+            this._daemonWarningItem = new PopupMenu.PopupImageMenuItem(
+                '', 'dialog-warning-symbolic');
+            this._daemonWarningItem.label.add_style_class_name('gsc-warning-label');
+            this._daemonWarningItem.visible = false;
+            this._daemonWarningItem.connect('activate', () => this._openDaemonHelp());
+            this.menu.addMenuItem(this._daemonWarningItem);
+
             this._devicesSection = new PopupMenu.PopupMenuSection();
             this.menu.addMenuItem(this._devicesSection);
 
             this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-            this._stopItem = new PopupMenu.PopupMenuItem('Stop Casting');
+            this._stopItem = new PopupMenu.PopupImageMenuItem(
+                'Stop casting', 'media-playback-stop-symbolic');
+            this._stopItem.label.add_style_class_name('gsc-destructive-label');
             this._stopItem.connect('activate', () => this._daemon.stopCast());
             this._stopItem.visible = false;
             this.menu.addMenuItem(this._stopItem);
 
-            const prefsItem = new PopupMenu.PopupMenuItem('Preferences');
+            const prefsItem = new PopupMenu.PopupImageMenuItem(
+                'Preferences', 'preferences-system-symbolic');
             prefsItem.connect('activate', () => this._extension.openPreferences());
             this.menu.addMenuItem(prefsItem);
 
@@ -70,8 +102,61 @@ export const CastIndicator = GObject.registerClass(
         }
 
         _refresh() {
+            // Each user-initiated refresh gets one grace retry (see below).
+            this._daemonCheckRetried = false;
             this._refreshDevices();
             this._daemon.getStatus((state, deviceId) => this._setState(state, deviceId));
+            this._checkDaemonVersion();
+        }
+
+        _checkDaemonVersion() {
+            this._daemon.getVersion(version => {
+                if (version === null) {
+                    // The D-Bus-activated daemon can take a moment to come up
+                    // right after login; give it one retry before declaring it
+                    // missing so we don't flash a spurious warning at boot.
+                    if (!this._daemonCheckRetried) {
+                        this._daemonCheckRetried = true;
+                        if (!this._versionRetryId) {
+                            this._versionRetryId = GLib.timeout_add(
+                                GLib.PRIORITY_DEFAULT, 2000, () => {
+                                    this._versionRetryId = 0;
+                                    this._checkDaemonVersion();
+                                    return GLib.SOURCE_REMOVE;
+                                });
+                        }
+                        return;
+                    }
+                    this._showDaemonWarning(
+                        'Daemon not installed — click for setup',
+                        'The gnome-shell-cast daemon is required but could not be started. ' +
+                        'It is installed separately from the extension.');
+                } else if (version !== REQUIRED_DAEMON_VERSION) {
+                    this._showDaemonWarning(
+                        `Update daemon to v${REQUIRED_DAEMON_VERSION} (have v${version})`,
+                        `The installed daemon is v${version} but this extension needs ` +
+                        `v${REQUIRED_DAEMON_VERSION}. Please update it.`);
+                } else {
+                    this._daemonWarningItem.visible = false;
+                }
+            });
+        }
+
+        _showDaemonWarning(label, notifyMessage) {
+            this._daemonWarningItem.label.text = label;
+            this._daemonWarningItem.visible = true;
+            // Notify once per distinct problem so the tray icon isn't silent
+            // when the user hasn't opened the menu yet.
+            if (this._lastDaemonWarning !== notifyMessage) {
+                this._lastDaemonWarning = notifyMessage;
+                this._notifyError(notifyMessage);
+            }
+        }
+
+        _openDaemonHelp() {
+            const url = this._extension.metadata?.url ??
+                'https://github.com/omid/gnome-shell-cast';
+            Gio.AppInfo.launch_default_for_uri(url, null);
         }
 
         _refreshDevices() {
@@ -91,14 +176,43 @@ export const CastIndicator = GObject.registerClass(
                 return;
             }
 
-            for (const device of this._devices) {
-                const item = new PopupMenu.PopupSubMenuMenuItem(device.name, false);
+            const casting = this._state === 'casting' || this._state === 'connecting';
 
-                const screenItem = new PopupMenu.PopupMenuItem('Cast Screen');
+            for (const device of this._devices) {
+                const active = casting && device.id === this._activeDeviceId;
+
+                // Audio-only devices (speakers, cast groups) get a single
+                // item that shares system audio; a screen/window submenu
+                // would be meaningless for them.
+                if (!device.hasVideo) {
+                    const audioItem = new PopupMenu.PopupImageMenuItem(
+                        device.name, 'audio-speakers-symbolic');
+                    if (active) {
+                        audioItem.label.add_style_class_name('gsc-casting-label');
+                        audioItem.label.text = `${device.name} — casting`;
+                    }
+                    audioItem.connect('activate',
+                        () => this._startCast(device, SOURCE_AUDIO));
+                    this._devicesSection.addMenuItem(audioItem);
+                    continue;
+                }
+
+                const item = new PopupMenu.PopupSubMenuMenuItem(device.name, true);
+                item.icon.gicon = active ? this._iconActive : this._iconIdle;
+                if (active) {
+                    // Mark the device we are currently casting to with the
+                    // system accent colour.
+                    item.label.add_style_class_name('gsc-casting-label');
+                    item.label.text = `${device.name} — casting`;
+                }
+
+                const screenItem = new PopupMenu.PopupImageMenuItem(
+                    'Cast screen', 'video-display-symbolic');
                 screenItem.connect('activate', () => this._startCast(device, SOURCE_SCREEN));
                 item.menu.addMenuItem(screenItem);
 
-                const windowItem = new PopupMenu.PopupMenuItem('Cast Window');
+                const windowItem = new PopupMenu.PopupImageMenuItem(
+                    'Cast window', 'window-new-symbolic');
                 windowItem.connect('activate', () => this._startCast(device, SOURCE_WINDOW));
                 item.menu.addMenuItem(windowItem);
 
@@ -133,6 +247,9 @@ export const CastIndicator = GObject.registerClass(
             this._icon.gicon = casting ? this._iconActive : this._iconIdle;
             this._stopItem.visible = casting;
 
+            // Reflect the active device highlight in the device list.
+            this._rebuildDeviceItems();
+
             if (state === 'error')
                 this._notifyError('Casting failed, see the daemon logs for details.');
         }
@@ -142,6 +259,14 @@ export const CastIndicator = GObject.registerClass(
         }
 
         destroy() {
+            if (this._versionRetryId) {
+                GLib.source_remove(this._versionRetryId);
+                this._versionRetryId = 0;
+            }
+            if (this._colorSchemeId) {
+                this._stSettings.disconnect(this._colorSchemeId);
+                this._colorSchemeId = null;
+            }
             this._daemon.destroy();
             this._daemon = null;
             super.destroy();

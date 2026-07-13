@@ -1,0 +1,86 @@
+name: Release daemon binaries
+
+# Builds the Rust daemon natively for each supported Linux CPU architecture and
+# publishes the binaries to a GitHub Release tagged with the extension version
+# from metadata.json (e.g. version 1 -> tag "v1"). Run it manually from the
+# Actions tab once a version is ready to ship.
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+env:
+  UUID: gnome-shell-cast@oxygenws.com
+  BIN: gnome-shell-cast-daemon
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.read.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: read
+        # metadata.json holds an integer version; the release tag is "v<version>".
+        run: |
+          version=$(jq -r '.version' "extension/${UUID}/metadata.json")
+          echo "tag=v${version}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x86_64
+          # Native arm64 runner (free for public repositories).
+          - runner: ubuntu-24.04-arm
+            arch: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install GStreamer development libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: daemon
+      - name: Build release binary
+        run: cargo build --release --manifest-path daemon/Cargo.toml
+      - name: Package binary and checksum
+        run: |
+          out="${BIN}-${{ matrix.arch }}-linux"
+          cp "daemon/target/release/${BIN}" "$out"
+          sha256sum "$out" > "$out.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.arch }}
+          path: |
+            ${{ env.BIN }}-${{ matrix.arch }}-linux
+            ${{ env.BIN }}-${{ matrix.arch }}-linux.sha256
+          if-no-files-found: error
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Creates the tag on this commit if it does not exist yet, and
+          # updates the release in place on re-runs of the same version.
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.tag }}
+          files: artifacts/*
+          fail_on_unmatched_files: true

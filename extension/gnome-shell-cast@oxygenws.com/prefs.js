@@ -17,7 +17,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         window.add(page);
 
         const group = new Adw.PreferencesGroup({
-            title: 'Stream Quality',
+            title: 'Stream quality',
             description: 'Applied the next time a cast is started',
         });
         page.add(group);
