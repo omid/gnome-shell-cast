@@ -58,10 +58,26 @@ export const CastIndicator = GObject.registerClass(
                 'notify::color-scheme', () => this._updateColorScheme());
             this._updateColorScheme();
 
+            // Update the detail lines live when the user toggles the setting.
+            this._showDetailsId = this._settings.connect(
+                'changed::show-details', () => this._onShowDetailsChanged());
+
             this.menu.connect('open-state-changed', (_menu, open) => {
                 if (open)
                     this._refresh();
             });
+        }
+
+        _onShowDetailsChanged() {
+            if (this._settings.get_boolean('show-details') && this._state === 'casting') {
+                this._daemon.getDetails(details => {
+                    this._details = details;
+                    this._rebuildDeviceItems();
+                });
+            } else {
+                this._details = null;
+            }
+            this._rebuildDeviceItems();
         }
 
         _updateColorScheme() {
@@ -218,6 +234,8 @@ export const CastIndicator = GObject.registerClass(
                     audioItem.connect('activate',
                         () => this._startCast(device, SOURCE_AUDIO));
                     this._devicesSection.addMenuItem(audioItem);
+                    if (active)
+                        this._addDetailLines();
                     continue;
                 }
 
@@ -241,7 +259,31 @@ export const CastIndicator = GObject.registerClass(
                 item.menu.addMenuItem(windowItem);
 
                 this._devicesSection.addMenuItem(item);
+                if (active)
+                    this._addDetailLines();
             }
+        }
+
+        // Dim, non-interactive lines under the active device showing the
+        // transport and negotiated codecs. Populated from GetDetails when the
+        // "show details" setting is on; a no-op otherwise.
+        _addDetailLines() {
+            if (!this._details || !this._settings.get_boolean('show-details'))
+                return;
+            const { transport, codec, receiverCodecs } = this._details;
+            if (!transport)
+                return;
+            const transportLabel = transport === 'mirror' ? 'Cast Streaming' : 'HLS';
+            this._addDetailLine(codec ? `${transportLabel} · ${codec}` : transportLabel);
+            if (receiverCodecs && receiverCodecs.length > 0)
+                this._addDetailLine(`receiver supports: ${receiverCodecs.join(', ')}`);
+        }
+
+        _addDetailLine(text) {
+            const item = new PopupMenu.PopupMenuItem(text);
+            item.setSensitive(false);
+            item.label.add_style_class_name('gsc-detail-line');
+            this._devicesSection.addMenuItem(item);
         }
 
         _startCast(device, source) {
@@ -271,6 +313,17 @@ export const CastIndicator = GObject.registerClass(
             this._icon.gicon = casting ? this._iconActive : this._iconIdle;
             this._stopItem.visible = casting;
 
+            // Codecs are known only once a cast is actually running; fetch them
+            // then, and rebuild once they arrive. Otherwise clear them.
+            if (state === 'casting' && this._settings.get_boolean('show-details')) {
+                this._daemon.getDetails(details => {
+                    this._details = details;
+                    this._rebuildDeviceItems();
+                });
+            } else {
+                this._details = null;
+            }
+
             // Reflect the active device highlight in the device list.
             this._rebuildDeviceItems();
 
@@ -290,6 +343,10 @@ export const CastIndicator = GObject.registerClass(
             if (this._colorSchemeId) {
                 this._stSettings.disconnect(this._colorSchemeId);
                 this._colorSchemeId = null;
+            }
+            if (this._showDetailsId) {
+                this._settings.disconnect(this._showDetailsId);
+                this._showDetailsId = null;
             }
             this._daemon.destroy();
             this._daemon = null;

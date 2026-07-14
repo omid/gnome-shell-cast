@@ -50,3 +50,9 @@
     font-size: 0.9em;
     color: #9a9a9a;
 }
+
+/* Codec/transport detail lines under the active device. */
+.gsc-detail-line {
+    font-size: 0.85em;
+    color: #9a9a9a;
+}

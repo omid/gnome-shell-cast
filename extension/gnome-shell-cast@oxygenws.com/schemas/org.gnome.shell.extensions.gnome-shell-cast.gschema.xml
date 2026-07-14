@@ -22,5 +22,10 @@
       <default>4000</default>
       <summary>Video bitrate in kbit/s</summary>
     </key>
+    <key name="show-details" type="b">
+      <default>true</default>
+      <summary>Show cast details</summary>
+      <description>Show the transport and negotiated codecs under the active device while casting.</description>
+    </key>
   </schema>
 </schemalist>

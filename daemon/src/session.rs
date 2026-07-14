@@ -40,10 +40,11 @@ pub async fn run(
         }
     }
 
-    // Only the newest session may clear the shared stop handle; an older
-    // session finishing late must not tear down its successor.
+    // Only the newest session may clear the shared stop handle and details; an
+    // older session finishing late must not tear down its successor.
     if state.generation.load(Ordering::SeqCst) == generation {
         state.active.lock().take();
+        state.clear_details();
     }
 }
 
@@ -140,7 +141,12 @@ async fn cast_session(
                 break;
             }
             event = cast_events.recv() => match event {
-                Some(cast::CastEvent::Playing) => state.set_status("casting", &device.id),
+                Some(cast::CastEvent::Playing) => {
+                    // HLS plays back H.264/AAC; the receiver's codec set isn't
+                    // negotiated, so there is nothing to list there.
+                    state.set_details("hls", "h264", Vec::new());
+                    state.set_status("casting", &device.id);
+                }
                 Some(cast::CastEvent::Ended(reason)) => {
                     info!("device ended the session: {reason}");
                     break;

@@ -19,6 +19,11 @@ const CAST_IFACE_XML = `
       <arg type="s" direction="out" name="state"/>
       <arg type="s" direction="out" name="device_id"/>
     </method>
+    <method name="GetDetails">
+      <arg type="s" direction="out" name="transport"/>
+      <arg type="s" direction="out" name="codec"/>
+      <arg type="as" direction="out" name="receiver_codecs"/>
+    </method>
     <method name="GetVersion">
       <arg type="s" direction="out" name="version"/>
     </method>
@@ -101,6 +106,17 @@ export class CastDaemon {
             }
             const [state, deviceId] = result;
             callback(state, deviceId);
+        });
+    }
+
+    getDetails(callback) {
+        this._proxy.GetDetailsRemote((result, error) => {
+            if (error) {
+                callback(null);
+                return;
+            }
+            const [transport, codec, receiverCodecs] = result;
+            callback({ transport, codec, receiverCodecs });
         });
     }
 

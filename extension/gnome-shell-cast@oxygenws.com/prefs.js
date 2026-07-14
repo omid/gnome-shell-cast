@@ -56,6 +56,16 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         settings.bind('bitrate-kbps', bitrateRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         group.add(bitrateRow);
 
+        const menuGroup = new Adw.PreferencesGroup({ title: 'Menu' });
+        page.add(menuGroup);
+
+        const detailsRow = new Adw.SwitchRow({
+            title: 'Show cast details',
+            subtitle: 'Show the transport and codecs under the active device while casting',
+        });
+        settings.bind('show-details', detailsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        menuGroup.add(detailsRow);
+
         this._addAboutPage(window);
     }
 

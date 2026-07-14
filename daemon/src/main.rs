@@ -35,10 +35,24 @@ pub enum Event {
     StateChanged,
 }
 
+/// Technical detail of the active cast, surfaced in the extension menu when
+/// the user enables "show details". Empty when idle.
+#[derive(Clone, Default)]
+pub struct CastDetails {
+    /// "mirror" (low-latency Cast Streaming) or "hls" (fallback).
+    pub transport: String,
+    /// The video codec actually in use (e.g. "vp9", "h264").
+    pub codec: String,
+    /// Codecs the receiver accepted from our OFFER (mirroring only).
+    pub receiver_codecs: Vec<String>,
+}
+
 pub struct SharedState {
     pub devices: Mutex<HashMap<String, Device>>,
     /// (state, `device_id`); state is one of idle|connecting|casting|error.
     pub status: Mutex<(String, String)>,
+    /// Details of the active cast (see [`CastDetails`]); empty when idle.
+    pub details: Mutex<CastDetails>,
     /// Dropping the sender stops the running cast session.
     pub active: Mutex<Option<oneshot::Sender<()>>>,
     pub events: mpsc::UnboundedSender<Event>,
@@ -51,6 +65,7 @@ impl SharedState {
         Self {
             devices: Mutex::new(HashMap::new()),
             status: Mutex::new(("idle".into(), String::new())),
+            details: Mutex::new(CastDetails::default()),
             active: Mutex::new(None),
             events,
             last_activity: Mutex::new(Instant::now()),
@@ -70,6 +85,22 @@ impl SharedState {
 
     pub fn status(&self) -> (String, String) {
         self.status.lock().clone()
+    }
+
+    pub fn set_details(&self, transport: &str, codec: &str, receiver_codecs: Vec<String>) {
+        *self.details.lock() = CastDetails {
+            transport: transport.to_string(),
+            codec: codec.to_string(),
+            receiver_codecs,
+        };
+    }
+
+    pub fn clear_details(&self) {
+        *self.details.lock() = CastDetails::default();
+    }
+
+    pub fn details(&self) -> CastDetails {
+        self.details.lock().clone()
     }
 }
 
@@ -100,6 +131,14 @@ impl ShellCast {
     async fn get_status(&self) -> (String, String) {
         self.state.touch();
         self.state.status()
+    }
+
+    /// (transport, video codec, codecs the receiver accepted) for the active
+    /// cast; all empty when idle. Shown as extra detail in the menu.
+    async fn get_details(&self) -> (String, String, Vec<String>) {
+        self.state.touch();
+        let d = self.state.details();
+        (d.transport, d.codec, d.receiver_codecs)
     }
 
     /// The daemon's own version, so the extension can detect a daemon that is

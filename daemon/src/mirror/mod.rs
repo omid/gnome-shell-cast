@@ -4,6 +4,7 @@
 
 mod channel;
 mod crypto;
+mod encoder;
 mod messages;
 mod rtcp;
 mod rtp;
@@ -29,7 +30,8 @@ use channel::{ChannelControl, ChannelEvent, MirrorChannel};
 use sender::{ChunkSender, EncodedChunk, MediaSender, StreamConfig, StreamKind, chunk_channel};
 
 const AUDIO_INDEX: u32 = 0;
-const VIDEO_INDEX: u32 = 1;
+/// First video stream index; each offered codec gets the next one up.
+const VIDEO_INDEX_BASE: u32 = 1;
 const AUDIO_BIT_RATE: u32 = 128_000;
 
 pub enum Outcome {
@@ -82,7 +84,6 @@ pub async fn run(
     }
 
     let audio_keys = generate_keys(1_000);
-    let video_keys = generate_keys(50_000);
     let audio_params = audio_monitor.as_ref().map(|_| messages::AudioParams {
         index: AUDIO_INDEX,
         ssrc: audio_keys.ssrc,
@@ -90,17 +91,36 @@ pub async fn run(
         aes_iv_mask: audio_keys.aes_iv_mask,
         bit_rate: AUDIO_BIT_RATE,
     });
-    let video_params = capture.map(|_| messages::VideoParams {
-        index: VIDEO_INDEX,
-        ssrc: video_keys.ssrc,
-        aes_key: video_keys.aes_key,
-        aes_iv_mask: video_keys.aes_iv_mask,
-        max_bit_rate: video_bps,
-        max_fps: fps as u32,
-        width: width as u32,
-        height: height as u32,
-    });
-    let offer = messages::offer(1, audio_params.as_ref(), video_params.as_ref());
+
+    // One video variant per codec we can encode locally, best first; the
+    // receiver picks one in its ANSWER. Empty for an audio-only cast.
+    let codecs = if capture.is_some() {
+        encoder::available_video_codecs()
+    } else {
+        Vec::new()
+    };
+    if capture.is_some() && codecs.is_empty() {
+        return Outcome::Unavailable(anyhow!("no video encoder is installed"));
+    }
+    let video_params: Vec<messages::VideoParams> = codecs
+        .iter()
+        .enumerate()
+        .map(|(i, codec)| {
+            let keys = generate_keys(50_000 + (i as u32) * 1_000);
+            messages::VideoParams {
+                index: VIDEO_INDEX_BASE + i as u32,
+                ssrc: keys.ssrc,
+                aes_key: keys.aes_key,
+                aes_iv_mask: keys.aes_iv_mask,
+                codec_name: codec.codec_name(),
+                max_bit_rate: video_bps,
+                max_fps: fps as u32,
+                width: width as u32,
+                height: height as u32,
+            }
+        })
+        .collect();
+    let offer = messages::offer(1, audio_params.as_ref(), &video_params);
 
     // 2. Launch the mirroring app and negotiate (blocking I/O on a worker).
     let addr = device.addr;
@@ -116,13 +136,40 @@ pub async fn run(
         Ok(Err(e)) => return Outcome::Unavailable(e),
         Err(e) => return Outcome::Unavailable(anyhow!("negotiation task failed: {e}")),
     };
-    if video_params.is_some() && !answer.send_indexes.contains(&VIDEO_INDEX) {
-        return Outcome::Unavailable(anyhow!("receiver did not accept the video stream"));
+    // The receiver accepts one video variant; take our highest-priority one
+    // (video_params is already in preference order). Keep only the scalar
+    // stream data so nothing borrows video_params past here.
+    let chosen_video = video_params
+        .iter()
+        .position(|p| answer.send_indexes.contains(&p.index))
+        .map(|i| {
+            (
+                codecs[i],
+                video_params[i].ssrc,
+                video_params[i].aes_key,
+                video_params[i].aes_iv_mask,
+            )
+        });
+    if capture.is_some() && chosen_video.is_none() {
+        return Outcome::Unavailable(anyhow!(
+            "receiver accepted none of the offered video codecs"
+        ));
     }
     let audio_accepted = audio_params.is_some() && answer.send_indexes.contains(&AUDIO_INDEX);
-    if video_params.is_none() && !audio_accepted {
+    if capture.is_none() && !audio_accepted {
         return Outcome::Unavailable(anyhow!("receiver did not accept the audio stream"));
     }
+
+    // The encoder branch for the negotiated codec (None for an audio-only cast).
+    let video_encoder_desc = match chosen_video {
+        Some((codec, ..)) => match encoder::video_encoder(codec, video_bps, fps as u32) {
+            Some(desc) => Some(desc),
+            None => {
+                return Outcome::Unavailable(anyhow!("no encoder for the negotiated video codec"));
+            }
+        },
+        None => None,
+    };
 
     // From here on the app is running; ChannelControl's Drop stops it again.
     let (channel_events_tx, mut channel_events) = mpsc::unbounded_channel();
@@ -140,7 +187,7 @@ pub async fn run(
         capture,
         settings,
         (width, height),
-        video_bps,
+        video_encoder_desc.as_deref(),
         audio_monitor.as_deref().filter(|_| audio_accepted),
         &chunks_tx,
     );
@@ -151,13 +198,13 @@ pub async fn run(
     };
 
     let mut stream_configs = Vec::with_capacity(2);
-    if video_params.is_some() {
+    if let Some((_, ssrc, aes_key, aes_iv_mask)) = chosen_video {
         stream_configs.push(StreamConfig {
             kind: StreamKind::Video,
-            ssrc: video_keys.ssrc,
+            ssrc,
             payload_type: messages::VIDEO_PAYLOAD_TYPE,
-            aes_key: video_keys.aes_key,
-            aes_iv_mask: video_keys.aes_iv_mask,
+            aes_key,
+            aes_iv_mask,
         });
     }
     if audio_accepted {
@@ -186,10 +233,22 @@ pub async fn run(
         return Outcome::Finished(Err(anyhow!("starting mirroring pipeline: {e}")));
     }
     let _pipeline_stop = PipelineStop(pipeline.clone());
-    if capture.is_some() {
-        info!("mirroring started ({width}x{height} @{fps}fps, {video_bps} bps)");
+    // Codecs the receiver accepted from our OFFER, for the "show details" line.
+    let receiver_codecs: Vec<String> = video_params
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| answer.send_indexes.contains(&p.index))
+        .map(|(i, _)| codecs[i].codec_name().to_string())
+        .collect();
+    if let Some((codec, ..)) = chosen_video {
+        info!(
+            "mirroring started ({} {width}x{height} @{fps}fps, {video_bps} bps)",
+            codec.codec_name()
+        );
+        state.set_details("mirror", codec.codec_name(), receiver_codecs);
     } else {
         info!("audio-only mirroring started ({AUDIO_BIT_RATE} bps)");
+        state.set_details("mirror", "opus", Vec::new());
     }
     state.set_status("casting", &device.id);
 
@@ -248,14 +307,17 @@ fn build_pipeline(
     capture: Option<&Capture>,
     settings: &StreamSettings,
     (width, height): (i32, i32),
-    video_bps: u32,
+    video_encoder: Option<&str>,
     audio_monitor: Option<&str>,
     chunks_tx: &ChunkSender,
 ) -> Result<gst::Pipeline> {
     use std::fmt::Write as _;
 
     let mut desc = String::new();
-    if let Some(capture) = capture {
+    // The video branch exists only when we have both a capture and a chosen
+    // encoder (audio-only casts have neither). `video_encoder` already carries
+    // its codec, bitrate and low-latency settings and names the element `venc`.
+    if let (Some(capture), Some(venc)) = (capture, video_encoder) {
         let fps = settings.fps;
         let fd = capture.fd.as_raw_fd();
         let node = capture.node_id;
@@ -265,9 +327,7 @@ fn build_pipeline(
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
              ! videoconvert ! videoscale ! videorate \
              ! video/x-raw,format=I420,framerate={fps}/1,width={width},height={height},pixel-aspect-ratio=1/1 \
-             ! vp8enc name=venc deadline=1 cpu-used=8 end-usage=cbr target-bitrate={video_bps} \
-               keyframe-max-dist=3000 lag-in-frames=0 error-resilient=default threads=4 \
-             ! appsink name=vsink sync=false max-buffers=32 "
+             ! {venc} ! appsink name=vsink sync=false max-buffers=32 "
         );
     }
     if let Some(monitor) = audio_monitor {
@@ -284,12 +344,12 @@ fn build_pipeline(
 
     let pipeline = gst::parse::launch(&desc)
         .context(
-            "parsing the mirroring pipeline (is gst-plugins-good installed for vp8enc/opusenc?)",
+            "parsing the mirroring pipeline (are the encoder plugins installed for the negotiated codec?)",
         )?
         .downcast::<gst::Pipeline>()
         .map_err(|_| anyhow!("parsed element is not a pipeline"))?;
 
-    if capture.is_some() {
+    if video_encoder.is_some() {
         attach_appsink(
             &pipeline,
             "vsink",

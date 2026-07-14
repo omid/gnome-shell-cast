@@ -34,6 +34,8 @@ pub struct VideoParams {
     pub ssrc: u32,
     pub aes_key: [u8; 16],
     pub aes_iv_mask: [u8; 16],
+    /// Cast OFFER `codecName` (e.g. "vp8"/"vp9"/"av1"); one variant per codec.
+    pub codec_name: &'static str,
     pub max_bit_rate: u32,
     pub max_fps: u32,
     pub width: u32,
@@ -49,9 +51,11 @@ fn hex(bytes: &[u8; 16]) -> String {
 }
 
 /// The OFFER message body: `{"type": "OFFER", "seqNum": .., "offer": {..}}`.
-/// Audio is optional (video-only cast when no monitor source exists) and so
-/// is video (audio-only cast to a speaker); callers pass at least one.
-pub fn offer(seq_num: u32, audio: Option<&AudioParams>, video: Option<&VideoParams>) -> Value {
+/// Audio is optional (video-only cast when no monitor source exists). `videos`
+/// carries one variant per video codec we can encode — the receiver selects
+/// one via the ANSWER's `sendIndexes`; it is empty for an audio-only cast.
+/// Callers pass at least one stream in total.
+pub fn offer(seq_num: u32, audio: Option<&AudioParams>, videos: &[VideoParams]) -> Value {
     let mut streams = Vec::new();
 
     if let Some(a) = audio {
@@ -72,11 +76,11 @@ pub fn offer(seq_num: u32, audio: Option<&AudioParams>, video: Option<&VideoPara
         }));
     }
 
-    if let Some(v) = video {
+    for v in videos {
         streams.push(json!({
             "index": v.index,
             "type": "video_source",
-            "codecName": "vp8",
+            "codecName": v.codec_name,
             "rtpProfile": "cast",
             "rtpPayloadType": VIDEO_PAYLOAD_TYPE,
             "ssrc": v.ssrc,
@@ -144,6 +148,7 @@ mod tests {
             ssrc: 50001,
             aes_key: [0xab; 16],
             aes_iv_mask: [0x12; 16],
+            codec_name: "vp8",
             max_bit_rate: 5_000_000,
             max_fps: 30,
             width: 1920,
@@ -164,7 +169,7 @@ mod tests {
     #[test]
     fn offer_has_expected_shape() {
         let audio = audio();
-        let o = offer(7, Some(&audio), Some(&video()));
+        let o = offer(7, Some(&audio), &[video()]);
         assert_eq!(o["type"], "OFFER");
         assert_eq!(o["seqNum"], 7);
         assert_eq!(o["offer"]["castMode"], "mirroring");
@@ -181,9 +186,43 @@ mod tests {
     }
 
     #[test]
+    fn offer_lists_each_video_codec_as_its_own_stream() {
+        let audio = audio();
+        let videos = [
+            VideoParams {
+                index: 1,
+                codec_name: "av1",
+                ..video()
+            },
+            VideoParams {
+                index: 2,
+                codec_name: "vp9",
+                ..video()
+            },
+            VideoParams {
+                index: 3,
+                codec_name: "vp8",
+                ..video()
+            },
+        ];
+        let o = offer(1, Some(&audio), &videos);
+        let streams = o["offer"]["supportedStreams"].as_array().unwrap();
+        assert_eq!(streams.len(), 4); // 1 audio + 3 video variants
+        assert_eq!(streams[1]["codecName"], "av1");
+        assert_eq!(streams[1]["index"], 1);
+        assert_eq!(streams[2]["codecName"], "vp9");
+        assert_eq!(streams[3]["codecName"], "vp8");
+        // Each video variant carries its own index and payload type 96.
+        for s in &streams[1..] {
+            assert_eq!(s["type"], "video_source");
+            assert_eq!(s["rtpPayloadType"], 96);
+        }
+    }
+
+    #[test]
     fn audio_only_offer_has_no_video_stream() {
         let audio = audio();
-        let o = offer(3, Some(&audio), None);
+        let o = offer(3, Some(&audio), &[]);
         let streams = o["offer"]["supportedStreams"].as_array().unwrap();
         assert_eq!(streams.len(), 1);
         assert_eq!(streams[0]["type"], "audio_source");
