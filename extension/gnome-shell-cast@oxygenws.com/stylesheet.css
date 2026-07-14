@@ -32,3 +32,21 @@
 .gsc-light .gsc-warning-label {
     color: #9c6500;
 }
+
+/* Daemon setup / update dialog. */
+.gsc-setup-dialog {
+    max-width: 32em;
+}
+
+.gsc-setup-command {
+    font-family: monospace;
+    margin: 14px 0 8px 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.25);
+}
+
+.gsc-setup-status {
+    font-size: 0.9em;
+    color: #9a9a9a;
+}

@@ -10,6 +10,7 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { CastDaemon, SOURCE_AUDIO, SOURCE_SCREEN, SOURCE_WINDOW } from './daemon.js';
+import { SetupDialog } from './setupDialog.js';
 
 const RESOLUTIONS = {
     '1080': [1920, 1080],
@@ -19,7 +20,7 @@ const RESOLUTIONS = {
 // The daemon version this build of the extension expects. Bump this together
 // with the daemon's Cargo package version whenever they are released as a pair;
 // a mismatch (or a missing daemon) makes the menu show an install prompt.
-const REQUIRED_DAEMON_VERSION = '0.2.0';
+const REQUIRED_DAEMON_VERSION = '1.0.0';
 
 export const CastIndicator = GObject.registerClass(
     class CastIndicator extends PanelMenu.Button {
@@ -78,7 +79,7 @@ export const CastIndicator = GObject.registerClass(
                 '', 'dialog-warning-symbolic');
             this._daemonWarningItem.label.add_style_class_name('gsc-warning-label');
             this._daemonWarningItem.visible = false;
-            this._daemonWarningItem.connect('activate', () => this._openDaemonHelp());
+            this._daemonWarningItem.connect('activate', () => this._openSetupDialog());
             this.menu.addMenuItem(this._daemonWarningItem);
 
             this._devicesSection = new PopupMenu.PopupMenuSection();
@@ -127,15 +128,17 @@ export const CastIndicator = GObject.registerClass(
                         }
                         return;
                     }
+                    this._daemonSetup = { mode: 'install', currentVersion: null };
                     this._showDaemonWarning(
-                        'Daemon not installed — click for setup',
-                        'The gnome-shell-cast daemon is required but could not be started. ' +
-                        'It is installed separately from the extension.');
+                        'Set up the cast daemon',
+                        'The cast daemon isn’t installed yet. Open the menu and click ' +
+                        '“Set up the cast daemon” to install it.');
                 } else if (version !== REQUIRED_DAEMON_VERSION) {
+                    this._daemonSetup = { mode: 'update', currentVersion: version };
                     this._showDaemonWarning(
-                        `Update daemon to v${REQUIRED_DAEMON_VERSION} (have v${version})`,
-                        `The installed daemon is v${version} but this extension needs ` +
-                        `v${REQUIRED_DAEMON_VERSION}. Please update it.`);
+                        `Update the cast daemon (v${version} → v${REQUIRED_DAEMON_VERSION})`,
+                        `The cast daemon (v${version}) doesn’t match this version of the ` +
+                        `extension (needs v${REQUIRED_DAEMON_VERSION}). Open the menu to update it.`);
                 } else {
                     this._daemonWarningItem.visible = false;
                 }
@@ -153,10 +156,31 @@ export const CastIndicator = GObject.registerClass(
             }
         }
 
-        _openDaemonHelp() {
-            const url = this._extension.metadata?.url ??
+        _daemonRepoUrl() {
+            return this._extension.metadata?.url ??
                 'https://github.com/omid/gnome-shell-cast';
-            Gio.AppInfo.launch_default_for_uri(url, null);
+        }
+
+        // The one-liner the setup/update dialog shows. Pinned to this
+        // extension's version so it installs the matching daemon release — the
+        // same command therefore updates the daemon after an extension update.
+        _installCommand() {
+            const version = this._extension.metadata.version;
+            const raw = this._daemonRepoUrl().replace(
+                'github.com', 'raw.githubusercontent.com');
+            return `curl -fsSL ${raw}/v${version}/scripts/install.sh | sh -s -- v${version}`;
+        }
+
+        _openSetupDialog() {
+            const setup = this._daemonSetup ?? { mode: 'install', currentVersion: null };
+            const dialog = new SetupDialog({
+                mode: setup.mode,
+                command: this._installCommand(),
+                currentVersion: setup.currentVersion,
+                requiredVersion: REQUIRED_DAEMON_VERSION,
+                url: this._daemonRepoUrl(),
+            });
+            dialog.open();
         }
 
         _refreshDevices() {

@@ -46,13 +46,42 @@ sudo dnf install gstreamer1-devel gstreamer1-plugins-base-devel \
     gstreamer1-libav pipewire-gstreamer pulseaudio-utils cargo
 ```
 
-## Install
+## Installing the daemon
+
+If you got the **extension** from extensions.gnome.org, install the **daemon**
+separately (it can't be shipped there). The extension makes this easy: until the
+daemon is present, its menu shows a **“Set up the cast daemon”** item that opens a
+dialog with a ready-to-copy command. It downloads a checksum-verified binary for
+your CPU from the project's GitHub Releases into `~/.local/bin` — **nothing runs
+as root**:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/omid/gnome-shell-cast/v1/scripts/install.sh | sh
+```
+
+(The dialog fills in the version matching your installed extension.) You can
+inspect [`scripts/install.sh`](scripts/install.sh) before running it.
+
+**Updating:** when the extension updates to a version that needs a newer daemon,
+its menu shows **“Update the cast daemon (v… → v…)”** — run the same command from
+that dialog and it installs the matching release.
+
+**Uninstall:**
+
+```sh
+rm -f ~/.local/bin/gnome-shell-cast-daemon \
+      ~/.local/share/dbus-1/services/org.gnome.ShellCast.service
+```
+
+## Install from source
+
+To build and install both halves from this repository:
 
 ```sh
 make install-local
 ```
 
-This builds the daemon (`cargo build --release`), installs:
+This builds the daemon (`cargo build --release`) and installs:
 
 - the extension to `~/.local/share/gnome-shell/extensions/gnome-shell-cast@oxygenws.com`
 - the daemon binary to `~/.local/bin/gnome-shell-cast-daemon`
@@ -64,12 +93,17 @@ Then log out and back in (Wayland), and enable the extension:
 gnome-extensions enable gnome-shell-cast@oxygenws.com
 ```
 
+(`make install-daemon` installs only the daemon half — useful on a machine that
+already has the extension from extensions.gnome.org but no supported prebuilt
+binary.)
+
 ## Usage
 
 1. Click the cast icon in the top panel.
 2. Pick a Chromecast from the discovered device list.
-3. Choose **Cast Screen** or **Cast Window** — GNOME's picker dialog opens for the source.
-4. To end, click the icon and choose **Stop Casting**.
+3. Choose **Cast screen** or **Cast window** — GNOME's picker dialog opens for the source.
+   Audio-only devices (speakers, cast groups) show a single **Cast audio** action instead.
+4. To end, click the icon and choose **Stop casting**.
 
 Preferences (resolution cap, framerate, bitrate) are under the ⚙ menu entry or `gnome-extensions prefs gnome-shell-cast@oxygenws.com`.
 
@@ -84,9 +118,10 @@ the upload**. The two halves are delivered separately:
 2. Upload that zip manually at <https://extensions.gnome.org/upload/> and wait for review.
    Bump `version` in `metadata.json` before each upload.
 3. Users who install the extension from extensions.gnome.org install the daemon
-   themselves with `make install-daemon` (or a distro package, once one exists).
-   Until the daemon is present, the extension shows a notification with the failing
-   D-Bus call when you try to use it.
+   themselves — the extension's **“Set up the cast daemon”** menu item walks them
+   through it (see [Installing the daemon](#installing-the-daemon)). `make release`
+   automates the version bump, tag and GitHub Release that publishes the matching
+   daemon binaries.
 
 ## Troubleshooting
 
@@ -112,13 +147,13 @@ RUST_LOG=debug ~/.local/bin/gnome-shell-cast-daemon
 4. *Cast Window* → portal shows only windows; only that window is streamed.
 5. *Stop Casting* → TV returns to the ambient screen; daemon exits after ~10 min idle.
 
-## Known limitations (v1)
+## Known limitations
 
-- A few seconds of latency (inherent to HTTP/HLS casting).
+- A few seconds of latency on the HTTP/HLS fallback (low-latency Cast Streaming
+  is used when the receiver supports it).
 - Sender and Chromecast must be on the same LAN.
 - DRM-protected content will be black in the capture.
 - Audio is the full system mix (no per-app capture).
-- Not yet published to extensions.gnome.org; no prebuilt daemon binaries.
 
 ## License
 

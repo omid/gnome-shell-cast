@@ -2,7 +2,11 @@
   "uuid": "gnome-shell-cast@oxygenws.com",
   "name": "Cast to Chromecast",
   "description": "Cast your whole screen or a single window to a Chromecast device from the top panel.\n\nRequires the bundled gnome-shell-cast-daemon to be installed (see the project README).",
-  "shell-version": ["48", "49", "50"],
+  "shell-version": [
+    "48",
+    "49",
+    "50"
+  ],
   "settings-schema": "org.gnome.shell.extensions.gnome-shell-cast",
   "url": "https://github.com/omid/gnome-shell-cast",
   "version": 1

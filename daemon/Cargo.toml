@@ -1,6 +1,6 @@
 [package]
 name = "gnome-shell-cast-daemon"
-version = "0.2.0"
+version = "1.0.0"
 edition = "2024"
 license = "MIT"
 description = "Casts the GNOME desktop (screen or window) to Chromecast devices; controlled over D-Bus by the gnome-shell-cast extension"

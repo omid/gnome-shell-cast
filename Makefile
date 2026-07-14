@@ -13,7 +13,7 @@ else
 	_DBUS_SERVICE_DIR = $(DESTDIR)/usr/share/dbus-1/services
 endif
 
-.PHONY: all daemon install-local install-extension install-daemon uninstall-local clean eslint ego-zip zip shexli tailLog check check_nightly check_strictly
+.PHONY: all daemon install-local install-extension install-daemon uninstall-local set-version release clean eslint ego-zip zip shexli tailLog check check_nightly check_strictly
 
 all: daemon
 
@@ -42,6 +42,16 @@ uninstall-local:
 	rm -f $(_BIN_INSTALL_DIR)/gnome-shell-cast-daemon
 	rm -f $(_DBUS_SERVICE_DIR)/org.gnome.ShellCast.service
 
+# Set the single project version everywhere (usage: make set-version V=2).
+set-version:
+	sh scripts/set-version.sh $(V)
+
+# Interactive: bump the version, run checks, build the zip, commit, tag and
+# push. The tag push triggers the release workflow that publishes the daemon
+# binaries. Override the version with V=<n>.
+release:
+	sh scripts/release.sh
+
 clean:
 	rm -rf build/ daemon/target/ $(_EXT_DIR)/schemas/gschemas.compiled
 
@@ -57,7 +67,8 @@ ego-zip: export _VERSION=$(shell jq '.version' $(_EXT_DIR)/metadata.json)
 ego-zip: eslint
 	rm -f $(_EXT_DIR)/schemas/gschemas.compiled
 	gnome-extensions pack --force --out-dir=. \
-		--extra-source=indicator.js --extra-source=daemon.js --extra-source=icons \
+		--extra-source=indicator.js --extra-source=daemon.js \
+		--extra-source=setupDialog.js --extra-source=icons \
 		--schema=schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml \
 		$(_EXT_DIR)
 	mv "$(_UUID).shell-extension.zip" "$(_UUID).v$(_VERSION).zip"
