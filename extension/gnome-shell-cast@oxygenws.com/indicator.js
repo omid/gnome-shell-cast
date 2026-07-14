@@ -25,7 +25,7 @@ const REQUIRED_DAEMON_VERSION = '1.0.0';
 export const CastIndicator = GObject.registerClass(
     class CastIndicator extends PanelMenu.Button {
         _init(extension) {
-            super._init(0.5, 'Cast to Chromecast');
+            super._init(0.5, 'GNOME Shell Cast');
 
             this._extension = extension;
             this._settings = extension.getSettings();
@@ -279,7 +279,7 @@ export const CastIndicator = GObject.registerClass(
         }
 
         _notifyError(message) {
-            Main.notify('Cast to Chromecast', message);
+            Main.notify('GNOME Shell Cast', message);
         }
 
         destroy() {

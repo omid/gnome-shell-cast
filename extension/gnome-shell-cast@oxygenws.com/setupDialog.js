@@ -29,7 +29,7 @@ export const SetupDialog = GObject.registerClass(
                 ? `A newer version of the extension needs a matching daemon ` +
                   `(installed v${currentVersion} → needs v${requiredVersion}). ` +
                   `Run the command below to update it — nothing runs as root.`
-                : `Cast to Chromecast needs a small background daemon. It can't be ` +
+                : `GNOME Shell Cast needs a small background daemon. It can't be ` +
                   `shipped through extensions.gnome.org, so install it once with the ` +
                   `command below. It downloads a checksum-verified binary to ` +
                   `~/.local/bin — nothing runs as root.`;

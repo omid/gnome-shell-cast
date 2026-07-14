@@ -13,7 +13,10 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
 
-        const page = new Adw.PreferencesPage();
+        const page = new Adw.PreferencesPage({
+            title: 'Settings',
+            icon_name: 'preferences-system-symbolic',
+        });
         window.add(page);
 
         const group = new Adw.PreferencesGroup({
@@ -52,5 +55,35 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         });
         settings.bind('bitrate-kbps', bitrateRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         group.add(bitrateRow);
+
+        this._addAboutPage(window);
+    }
+
+    _addAboutPage(window) {
+        const url = this.metadata.url ?? 'https://github.com/omid/gnome-shell-cast';
+
+        const page = new Adw.PreferencesPage({
+            title: 'About',
+            icon_name: 'help-about-symbolic',
+        });
+        window.add(page);
+
+        const group = new Adw.PreferencesGroup();
+        page.add(group);
+
+        group.add(new Adw.ActionRow({
+            title: this.metadata.name,
+            subtitle: `Version ${this.metadata.version}`,
+        }));
+
+        const linkRow = (title, uri) => {
+            const row = new Adw.ActionRow({ title, subtitle: uri, activatable: true });
+            row.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
+            row.connect('activated', () => Gio.AppInfo.launch_default_for_uri(uri, null));
+            return row;
+        };
+
+        group.add(linkRow('Homepage', url));
+        group.add(linkRow('Report an issue', `${url}/issues`));
     }
 }
