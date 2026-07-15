@@ -18,15 +18,13 @@ const RESOLUTIONS = {
     '720': [1280, 720],
 };
 
-// The daemon version this build of the extension expects. Bump this together
-// with the daemon's Cargo package version whenever they are released as a pair;
-// a mismatch (or a missing daemon) makes the menu show an install prompt.
-const REQUIRED_DAEMON_VERSION = '1.0.0';
-
 export const CastIndicator = GObject.registerClass(
     class CastIndicator extends PanelMenu.Button {
         _init(extension) {
             super._init(0.5, 'GNOME Shell Cast');
+
+            this.version = extension.metadata.version;
+            this.daemonVersion = `${this.version}.0.0`;
 
             this._extension = extension;
             this._settings = extension.getSettings();
@@ -151,12 +149,12 @@ export const CastIndicator = GObject.registerClass(
                         'Set up the cast daemon',
                         'The cast daemon isn’t installed yet. Open the menu and click ' +
                         '“Set up the cast daemon” to install it.');
-                } else if (version !== REQUIRED_DAEMON_VERSION) {
+                } else if (version !== this.daemonVersion) {
                     this._daemonSetup = { mode: 'update', currentVersion: version };
                     this._showDaemonWarning(
-                        `Update the cast daemon (v${version} → v${REQUIRED_DAEMON_VERSION})`,
+                        `Update the cast daemon (v${version} → v${this.daemonVersion})`,
                         `The cast daemon (v${version}) doesn’t match this version of the ` +
-                        `extension (needs v${REQUIRED_DAEMON_VERSION}). Open the menu to update it.`);
+                        `extension (needs v${this.daemonVersion}). Open the menu to update it.`);
                 } else {
                     this._daemonWarningItem.visible = false;
                 }
@@ -195,7 +193,7 @@ export const CastIndicator = GObject.registerClass(
                 mode: setup.mode,
                 command: this._installCommand(),
                 currentVersion: setup.currentVersion,
-                requiredVersion: REQUIRED_DAEMON_VERSION,
+                requiredVersion: this.daemonVersion,
                 url: this._daemonRepoUrl(),
             });
             dialog.open();

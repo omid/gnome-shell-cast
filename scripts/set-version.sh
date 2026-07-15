@@ -2,7 +2,6 @@
 # Sets the single project version N everywhere it must agree:
 #   extension/<uuid>/metadata.json   version = N          (EGO integer, tag vN)
 #   daemon/Cargo.toml                version = "N.0.0"     (daemon self-report)
-#   extension/<uuid>/indicator.js    REQUIRED_DAEMON_VERSION = 'N.0.0'
 #   daemon/Cargo.lock                the daemon package entry
 # See scripts/release.sh, which bumps N and calls this.
 set -eu
@@ -25,7 +24,6 @@ cd "$root"
 meta="extension/$UUID/metadata.json"
 cargo_toml="daemon/Cargo.toml"
 cargo_lock="daemon/Cargo.lock"
-indicator="extension/$UUID/indicator.js"
 
 # metadata.json — integer version.
 tmp=$(mktemp)
@@ -41,8 +39,5 @@ awk -v ver="$SEMVER" '
     }
     { print; prev = $0 }
 ' "$cargo_lock" >"$cargo_lock.tmp" && mv "$cargo_lock.tmp" "$cargo_lock"
-
-# indicator.js — the daemon version the extension requires.
-sed -i "s/\(REQUIRED_DAEMON_VERSION = '\)[^']*'/\1$SEMVER'/" "$indicator"
 
 echo "Set version to $N (metadata=$N, daemon=$SEMVER, tag=v$N)."

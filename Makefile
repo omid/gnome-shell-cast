@@ -18,46 +18,46 @@ endif
 all: daemon
 
 daemon:
-	cd daemon && cargo build --release
+	@cd daemon && cargo build --release
 
 install-local: install-extension install-daemon
 
 install-extension:
-	glib-compile-schemas $(_EXT_DIR)/schemas/
-	rm -rf $(_EXT_INSTALL_BASE)/$(_UUID)
-	mkdir -p $(_EXT_INSTALL_BASE)/$(_UUID)
-	cp -r $(_EXT_DIR)/* $(_EXT_INSTALL_BASE)/$(_UUID)/
+	@glib-compile-schemas $(_EXT_DIR)/schemas/
+	@rm -rf $(_EXT_INSTALL_BASE)/$(_UUID)
+	@mkdir -p $(_EXT_INSTALL_BASE)/$(_UUID)
+	@cp -r $(_EXT_DIR)/* $(_EXT_INSTALL_BASE)/$(_UUID)/
 
 # Standalone daemon install, for users who got the extension itself from
 # extensions.gnome.org (the daemon cannot be distributed there).
 install-daemon: daemon
-	mkdir -p $(_BIN_INSTALL_DIR)
-	install -m755 $(_DAEMON_BIN) $(_BIN_INSTALL_DIR)/gnome-shell-cast-daemon
-	mkdir -p $(_DBUS_SERVICE_DIR)
-	sed 's|@BINDIR@|$(_BIN_INSTALL_DIR)|' data/org.gnome.ShellCast.service.in \
+	@mkdir -p $(_BIN_INSTALL_DIR)
+	@install -m755 $(_DAEMON_BIN) $(_BIN_INSTALL_DIR)/gnome-shell-cast-daemon
+	@mkdir -p $(_DBUS_SERVICE_DIR)
+	@sed 's|@BINDIR@|$(_BIN_INSTALL_DIR)|' data/org.gnome.ShellCast.service.in \
 		> $(_DBUS_SERVICE_DIR)/org.gnome.ShellCast.service
 
 uninstall-local:
-	rm -rf $(_EXT_INSTALL_BASE)/$(_UUID)
-	rm -f $(_BIN_INSTALL_DIR)/gnome-shell-cast-daemon
-	rm -f $(_DBUS_SERVICE_DIR)/org.gnome.ShellCast.service
+	@rm -rf $(_EXT_INSTALL_BASE)/$(_UUID)
+	@rm -f $(_BIN_INSTALL_DIR)/gnome-shell-cast-daemon
+	@rm -f $(_DBUS_SERVICE_DIR)/org.gnome.ShellCast.service
 
 # Set the single project version everywhere (usage: make set-version V=2).
 set-version:
-	sh scripts/set-version.sh $(V)
+	@sh scripts/set-version.sh $(V)
 
 # Interactive: bump the version, run checks, build the zip, commit, tag and
 # push. The tag push triggers the release workflow that publishes the daemon
 # binaries. Override the version with V=<n>.
 release:
-	sh scripts/release.sh
+	@sh scripts/release.sh
 
 clean:
-	rm -rf build/ daemon/target/ $(_EXT_DIR)/schemas/gschemas.compiled
+	@rm -rf build/ daemon/target/ $(_EXT_DIR)/schemas/gschemas.compiled
 
 eslint:
-	yarn install
-	npx eslint $(_EXT_DIR)
+	@yarn install
+	@npx eslint $(_EXT_DIR)
 
 # Builds the reviewable extension package for extensions.gnome.org.
 # EGO only accepts pure-JS extensions — no compiled binaries — so the Rust
@@ -65,59 +65,59 @@ eslint:
 # `make install-daemon`. Upload the zip at https://extensions.gnome.org/upload/
 ego-zip: export _VERSION=$(shell jq '.version' $(_EXT_DIR)/metadata.json)
 ego-zip: eslint
-	rm -f $(_EXT_DIR)/schemas/gschemas.compiled
-	gnome-extensions pack --force --out-dir=. \
+	@rm -f $(_EXT_DIR)/schemas/gschemas.compiled
+	@gnome-extensions pack --force --out-dir=. \
 		--extra-source=indicator.js --extra-source=daemon.js \
 		--extra-source=setupDialog.js --extra-source=errorDialog.js \
 		--extra-source=icons \
 		--schema=schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml \
 		$(_EXT_DIR)
-	mv "$(_UUID).shell-extension.zip" "$(_UUID).v$(_VERSION).zip"
+	@mv "$(_UUID).shell-extension.zip" "$(_UUID).v$(_VERSION).zip"
 	@echo "Upload $(_UUID).v$(_VERSION).zip at https://extensions.gnome.org/upload/"
 
 zip: ego-zip
 
 tailLog:
-	journalctl -f -g gnome-shell-cast
+	@journalctl -f -g gnome-shell-cast
 
 shexli: export _VERSION=$(shell jq '.version' $(_EXT_DIR)/metadata.json)
 shexli: zip
-	uv venv --allow-existing
-	uv pip install shexli
-	uv run shexli "$(_UUID).v$(_VERSION).zip"
+	@uv venv --allow-existing
+	@uv pip install shexli
+	@uv run shexli "$(_UUID).v$(_VERSION).zip"
 
 
 .PHONY: check
 check: ## Fast type-check without producing artifacts for all shared crates.
-	(cd daemon && cargo check --all-targets) || exit 1;
+	@(cd daemon && cargo check --all-targets) || exit 1;
 
 # ---------------------------------------------------------------- test
 
 .PHONY: test
 test: ## Run the full test suite for all shared crates.
-	(cd daemon && cargo test) || exit 1;
+	@(cd daemon && cargo test) || exit 1;
 
 .PHONY: test-doc
 test-doc: ## Run doctests only for all shared crates.
-	(cd daemon && cargo test --doc) || exit 1;
+	@(cd daemon && cargo test --doc) || exit 1;
 
 # ---------------------------------------------------------------- lint / fmt
 
 .PHONY: fmt
 fmt: ## Format the code in-place for all shared crates.
-	(cd daemon && cargo fmt --all) || exit 1;
+	@(cd daemon && cargo fmt --all) || exit 1;
 
 .PHONY: fmt-check
 fmt-check: ## Verify formatting without modifying files (CI mode).
-	(cd daemon && cargo fmt --all -- --check) || exit 1;
+	@(cd daemon && cargo fmt --all -- --check) || exit 1;
 
 .PHONY: clippy
 clippy: ## Run clippy, denying warnings.
-	(cd daemon && cargo clippy --all-targets -- -D warnings) || exit 1;
+	@(cd daemon && cargo clippy --all-targets -- -D warnings) || exit 1;
 
 .PHONY: clippy-fix
 clippy-fix: ## Run clippy, denying warnings.
-	(cd daemon && cargo clippy --all-targets --fix --allow-dirty -- -D warnings) || exit 1;
+	@(cd daemon && cargo clippy --all-targets --fix --allow-dirty -- -D warnings) || exit 1;
 
 .PHONY: lint
 lint: fmt-check clippy ## fmt-check + clippy.
@@ -126,25 +126,25 @@ lint: fmt-check clippy ## fmt-check + clippy.
 
 .PHONY: doc
 doc: ## Build rustdoc (no dependencies).
-	(cd daemon && cargo doc --no-deps) || exit 1;
+	@(cd daemon && cargo doc --no-deps) || exit 1;
 
 # ---------------------------------------------------------------- meta
 
 .PHONY: update-dry-run
 update-dry-run: ## Check for available updates without modifying Cargo.lock.
-	(cd daemon && cargo update --dry-run) || exit 1;
+	@(cd daemon && cargo update --dry-run) || exit 1;
 
 .PHONY: check-unused-deps
 check-unused-deps: ## Check for unused dependencies (requires cargo-machete).
-	(cd daemon && cargo machete) || exit 1;
+	@(cd daemon && cargo machete) || exit 1;
 
 .PHONY: check-outdated
 check-outdated: ## Check for outdated dependencies (requires cargo-outdated).
-	(cd daemon && cargo outdated -wR) || exit 1;
+	@(cd daemon && cargo outdated -wR) || exit 1;
 
 .PHONY: sort-toml
 sort-toml: ## Sort Cargo.toml fields (requires cargo-sort).
-	(cd daemon && cargo sort -wg) || exit 1;
+	@(cd daemon && cargo sort -wg) || exit 1;
 
 .PHONY: check-full
 check-full: fmt clippy update-dry-run check-unused-deps check-outdated sort-toml ## Run comprehensive checks on the workspace.
