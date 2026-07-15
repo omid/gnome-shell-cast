@@ -160,10 +160,11 @@ pub async fn run(
         return Outcome::Unavailable(anyhow!("receiver did not accept the audio stream"));
     }
 
-    // The encoder branch for the negotiated codec (None for an audio-only cast).
-    let video_encoder_desc = match chosen_video {
+    // The encoder for the negotiated codec (None for an audio-only cast):
+    // (launch fragment, is-hardware).
+    let video_encoder = match chosen_video {
         Some((codec, ..)) => match encoder::video_encoder(codec, video_bps, fps as u32) {
-            Some(desc) => Some(desc),
+            Some(picked) => Some(picked),
             None => {
                 return Outcome::Unavailable(anyhow!("no encoder for the negotiated video codec"));
             }
@@ -187,7 +188,7 @@ pub async fn run(
         capture,
         settings,
         (width, height),
-        video_encoder_desc.as_deref(),
+        video_encoder.as_ref().map(|(desc, _)| desc.as_str()),
         audio_monitor.as_deref().filter(|_| audio_accepted),
         &chunks_tx,
     );
@@ -241,9 +242,11 @@ pub async fn run(
         .map(|(i, _)| codecs[i].codec_name().to_string())
         .collect();
     if let Some((codec, ..)) = chosen_video {
+        let hw = video_encoder.as_ref().is_some_and(|(_, hw)| *hw);
         info!(
-            "mirroring started ({} {width}x{height} @{fps}fps, {video_bps} bps)",
-            codec.codec_name()
+            "mirroring started ({} {}, {width}x{height} @{fps}fps, {video_bps} bps)",
+            codec.codec_name(),
+            if hw { "hardware" } else { "software" }
         );
         state.set_details("mirror", codec.codec_name(), receiver_codecs);
     } else {

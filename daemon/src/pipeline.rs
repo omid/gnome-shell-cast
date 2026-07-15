@@ -61,6 +61,30 @@ pub fn find_aac_encoder() -> Option<&'static str> {
         .find(|name| gst::ElementFactory::find(name).is_some())
 }
 
+/// H.264 encoders for the HLS path, hardware first (VA-API, then NVENC), then
+/// software `x264enc`. Each candidate is parse-checked, so a hardware encoder
+/// that is present but mis-parametrised falls back to the next one.
+const H264_ENCODERS: &[&str] = &["vah264enc", "vah264lpenc", "nvh264enc", "x264enc"];
+
+fn find_h264_encoder(bitrate_kbps: i32, key_int: i32) -> String {
+    let software = format!(
+        "x264enc tune=zerolatency speed-preset=veryfast bitrate={bitrate_kbps} key-int-max={key_int} bframes=0"
+    );
+    for &f in H264_ENCODERS {
+        let fragment = match f {
+            "x264enc" => software.clone(),
+            _ if f.starts_with("nv") => {
+                format!("{f} bitrate={bitrate_kbps} rc-mode=cbr gop-size={key_int} bframes=0")
+            }
+            _ => format!("{f} bitrate={bitrate_kbps} rate-control=cbr key-int-max={key_int}"),
+        };
+        if gst::parse::launch(&fragment).is_ok() {
+            return fragment;
+        }
+    }
+    software
+}
+
 /// Builds the gst-launch description writing a live HLS stream into
 /// `hls_dir`: H.264 from the captured `PipeWire` node when `video` carries
 /// the (fd, node id) pair, plus AAC system audio when `audio` names the pulse
@@ -71,6 +95,7 @@ pub fn launch_description(
     settings: &StreamSettings,
     hls_dir: &Path,
     audio: Option<(&str, &str)>,
+    video_encoder: &str,
 ) -> String {
     use std::fmt::Write as _;
 
@@ -83,7 +108,6 @@ pub fn launch_description(
 
     let mut desc = String::new();
     if let Some((fd, node_id)) = video {
-        let key_int = (fps * target_duration).max(1);
         let size_caps = settings
             .size
             .map(|(w, h)| format!(",width={w},height={h},pixel-aspect-ratio=1/1"))
@@ -92,16 +116,15 @@ pub fn launch_description(
         // The source queue is small and leaky: when the encoder can't keep up
         // with raw frames the pipeline drops the oldest instead of buffering
         // them, so the stream falls in quality rather than further behind live.
+        // `video_encoder` is the chosen H.264 element (hardware if available).
         let _ = write!(
             desc,
             "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 resend-last=true \
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
              ! videoconvert ! videoscale ! videorate \
              ! video/x-raw,framerate={fps}/1{size_caps} \
-             ! x264enc tune=zerolatency speed-preset=veryfast bitrate={bitrate} key-int-max={key_int} bframes=0 \
-             ! video/x-h264,profile=main ! h264parse ! queue \
-             ! hls.video ",
-            bitrate = settings.bitrate_kbps,
+             ! {video_encoder} ! h264parse ! queue \
+             ! hls.video "
         );
     }
 
@@ -153,7 +176,10 @@ pub fn build(
         (None, _) => None,
     };
 
-    let desc = launch_description(video, settings, hls_dir, audio);
+    // Keyframe every segment (target-duration = 1s) so segments decode alone.
+    let key_int = settings.fps.max(1);
+    let video_encoder = find_h264_encoder(settings.bitrate_kbps, key_int);
+    let desc = launch_description(video, settings, hls_dir, audio, &video_encoder);
     info!("pipeline: {desc}");
 
     let pipeline = gst::parse::launch(&desc)
@@ -212,9 +238,16 @@ mod tests {
             size: Some((1280, 720)),
             ..Default::default()
         };
-        let desc = launch_description(Some((3, 42)), &settings, &PathBuf::from("/run/x"), None);
+        let desc = launch_description(
+            Some((3, 42)),
+            &settings,
+            &PathBuf::from("/run/x"),
+            None,
+            "x264enc bitrate=4000",
+        );
         assert!(desc.contains("width=1280,height=720"));
         assert!(desc.contains("fd=3 path=42"));
+        assert!(desc.contains("x264enc bitrate=4000 ! h264parse"));
         assert!(desc.contains("/run/x/stream.m3u8"));
         assert!(!desc.contains("pulsesrc"));
     }
@@ -226,6 +259,7 @@ mod tests {
             &StreamSettings::default(),
             &PathBuf::from("/run/x"),
             Some(("alsa_output.pci.monitor", "fdkaacenc")),
+            "x264enc bitrate=4000",
         );
         assert!(desc.contains("hls.video"));
         assert!(desc.contains("pulsesrc device=alsa_output.pci.monitor"));
@@ -239,6 +273,7 @@ mod tests {
             &StreamSettings::default(),
             &PathBuf::from("/run/x"),
             Some(("alsa_output.pci.monitor", "fdkaacenc")),
+            "x264enc bitrate=4000",
         );
         assert!(!desc.contains("pipewiresrc"));
         assert!(!desc.contains("x264enc"));
