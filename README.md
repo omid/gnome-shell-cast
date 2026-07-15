@@ -24,6 +24,10 @@ Chromecast's Default Media Receiver plays media it pulls over HTTP. When you sta
 
 ## Requirements
 
+> Missing a plugin? See **[docs/DEPENDENCIES.md](docs/DEPENDENCIES.md)** for
+> per-distro package lists (Debian/Ubuntu, Fedora, Arch, openSUSE) and a
+> symptom-to-fix table.
+
 - GNOME Shell **48–50** (Wayland or X11; capture uses the ScreenCast portal)
 - PipeWire + `xdg-desktop-portal-gnome` (default on any modern GNOME distro)
 - GStreamer 1.x with plugins: `base`, `good`, `bad`, `ugly` (for `x264enc`) and `libav` (for AAC encoding)
