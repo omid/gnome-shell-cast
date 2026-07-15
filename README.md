@@ -60,7 +60,7 @@ your CPU from the project's GitHub Releases into `~/.local/bin` — **nothing ru
 as root**:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/omid/gnome-shell-cast/v1/scripts/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/omid/gnome-shell-cast/refs/heads/main/scripts/install.sh | sh
 ```
 
 (The dialog fills in the version matching your installed extension.) You can

@@ -184,7 +184,7 @@ export const CastIndicator = GObject.registerClass(
             const version = this._extension.metadata.version;
             const raw = this._daemonRepoUrl().replace(
                 'github.com', 'raw.githubusercontent.com');
-            return `curl -fsSL ${raw}/v${version}/scripts/install.sh | sh -s -- v${version}`;
+            return `curl -fsSL ${raw}/refs/tags/v${version}/scripts/install.sh | sh -s -- v${version}`;
         }
 
         _openSetupDialog() {
