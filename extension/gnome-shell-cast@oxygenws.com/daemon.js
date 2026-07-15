@@ -24,6 +24,10 @@ const CAST_IFACE_XML = `
       <arg type="s" direction="out" name="codec"/>
       <arg type="as" direction="out" name="receiver_codecs"/>
     </method>
+    <method name="GetLastEvent">
+      <arg type="s" direction="out" name="kind"/>
+      <arg type="s" direction="out" name="message"/>
+    </method>
     <method name="GetVersion">
       <arg type="s" direction="out" name="version"/>
     </method>
@@ -49,10 +53,11 @@ const CastProxy = Gio.DBusProxy.makeProxyWrapper(CAST_IFACE_XML);
  * proxy does not launch it, but any method call does.
  */
 export class CastDaemon {
-    constructor({ onDevicesChanged, onStateChanged, onError }) {
+    constructor({ onDevicesChanged, onStateChanged, onError, onStartError }) {
         this._onDevicesChanged = onDevicesChanged;
         this._onStateChanged = onStateChanged;
         this._onError = onError;
+        this._onStartError = onStartError;
         this._signalIds = [];
 
         this._proxy = new CastProxy(
@@ -120,6 +125,17 @@ export class CastDaemon {
         });
     }
 
+    getLastEvent(callback) {
+        this._proxy.GetLastEventRemote((result, error) => {
+            if (error) {
+                callback({ kind: '', message: '' });
+                return;
+            }
+            const [kind, message] = result;
+            callback({ kind, message });
+        });
+    }
+
     /**
      * Fetches the running daemon's version. Passes null to the callback when
      * the daemon cannot be reached (e.g. it is not installed) — a D-Bus method
@@ -138,7 +154,7 @@ export class CastDaemon {
     startCast(deviceId, source, options) {
         this._proxy.StartCastRemote(deviceId, source, options, (_result, error) => {
             if (error)
-                this._onError?.(error.message);
+                (this._onStartError ?? this._onError)?.(error.message);
         });
     }
 

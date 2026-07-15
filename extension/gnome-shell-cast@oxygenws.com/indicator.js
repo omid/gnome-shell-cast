@@ -11,6 +11,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
 import { CastDaemon, SOURCE_AUDIO, SOURCE_SCREEN, SOURCE_WINDOW } from './daemon.js';
 import { SetupDialog } from './setupDialog.js';
+import { ErrorDialog } from './errorDialog.js';
 
 const RESOLUTIONS = {
     '1080': [1920, 1080],
@@ -47,6 +48,7 @@ export const CastIndicator = GObject.registerClass(
                 onDevicesChanged: () => this._refreshDevices(),
                 onStateChanged: (state, deviceId) => this._setState(state, deviceId),
                 onError: message => this._notifyError(message),
+                onStartError: message => this._showError(message),
             });
 
             this._buildMenu();
@@ -306,6 +308,7 @@ export const CastIndicator = GObject.registerClass(
         }
 
         _setState(state, deviceId) {
+            const prev = this._state;
             this._state = state;
             this._activeDeviceId = deviceId;
 
@@ -327,8 +330,36 @@ export const CastIndicator = GObject.registerClass(
             // Reflect the active device highlight in the device list.
             this._rebuildDeviceItems();
 
-            if (state === 'error')
-                this._notifyError('Casting failed, see the daemon logs for details.');
+            // A genuine failure pops the error window with the real reason; a
+            // device that just disconnected gets a notification instead.
+            if (state === 'error' && prev !== 'error') {
+                this._daemon.getLastEvent(({ message }) =>
+                    this._showError(message || 'The cast failed.'));
+            } else if (state === 'idle' && (prev === 'casting' || prev === 'connecting')) {
+                this._daemon.getLastEvent(({ kind, message }) => {
+                    if (kind === 'ended') {
+                        this._notifyError(message
+                            ? `The device ended the session (${message}).`
+                            : 'The device ended the session.');
+                    }
+                });
+            }
+        }
+
+        _showError(message) {
+            // Don't re-pop the window for the same error.
+            if (this._lastErrorShown === message)
+                return;
+            this._lastErrorShown = message;
+            const dialog = new ErrorDialog({
+                message,
+                version: this._extension.metadata.version,
+                url: this._daemonRepoUrl(),
+            });
+            dialog.connect('closed', () => {
+                this._lastErrorShown = null;
+            });
+            dialog.open();
         }
 
         _notifyError(message) {

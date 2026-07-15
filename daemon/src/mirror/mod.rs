@@ -265,6 +265,7 @@ pub async fn run(
             event = channel_events.recv() => match event {
                 Some(ChannelEvent::Ended(reason)) => {
                     info!("device ended the mirroring session: {reason}");
+                    state.set_last_event("ended", &reason);
                     break Ok(());
                 }
                 None => break Ok(()),

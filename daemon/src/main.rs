@@ -53,6 +53,9 @@ pub struct SharedState {
     pub status: Mutex<(String, String)>,
     /// Details of the active cast (see [`CastDetails`]); empty when idle.
     pub details: Mutex<CastDetails>,
+    /// How the last session ended: (kind, message), kind ∈ ""|"error"|"ended".
+    /// "error" is a genuine failure; "ended" is the device disconnecting.
+    pub last_event: Mutex<(String, String)>,
     /// Dropping the sender stops the running cast session.
     pub active: Mutex<Option<oneshot::Sender<()>>>,
     pub events: mpsc::UnboundedSender<Event>,
@@ -66,6 +69,7 @@ impl SharedState {
             devices: Mutex::new(HashMap::new()),
             status: Mutex::new(("idle".into(), String::new())),
             details: Mutex::new(CastDetails::default()),
+            last_event: Mutex::new((String::new(), String::new())),
             active: Mutex::new(None),
             events,
             last_activity: Mutex::new(Instant::now()),
@@ -101,6 +105,14 @@ impl SharedState {
 
     pub fn details(&self) -> CastDetails {
         self.details.lock().clone()
+    }
+
+    pub fn set_last_event(&self, kind: &str, message: &str) {
+        *self.last_event.lock() = (kind.to_string(), message.to_string());
+    }
+
+    pub fn last_event(&self) -> (String, String) {
+        self.last_event.lock().clone()
     }
 }
 
@@ -139,6 +151,14 @@ impl ShellCast {
         self.state.touch();
         let d = self.state.details();
         (d.transport, d.codec, d.receiver_codecs)
+    }
+
+    /// How the last session ended: (kind, message), kind ∈ ""|"error"|"ended".
+    /// The extension shows an error window for "error" and a notification for
+    /// "ended" (device disconnected).
+    async fn get_last_event(&self) -> (String, String) {
+        self.state.touch();
+        self.state.last_event()
     }
 
     /// The daemon's own version, so the extension can detect a daemon that is
@@ -185,6 +205,9 @@ impl ShellCast {
             "start cast to {} ({}) with {settings:?}",
             device.name, device.addr
         );
+
+        // Fresh start: clear any previous session's end reason.
+        self.state.set_last_event("", "");
 
         let (stop_tx, stop_rx) = oneshot::channel();
         // Dropping a previous sender (if any) makes that session's stop_rx

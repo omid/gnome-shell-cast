@@ -36,6 +36,7 @@ pub async fn run(
         }
         Err(e) => {
             warn!("cast session failed: {e:#}");
+            state.set_last_event("error", &format!("{e:#}"));
             state.set_status("error", &device.id);
         }
     }
@@ -149,6 +150,7 @@ async fn cast_session(
                 }
                 Some(cast::CastEvent::Ended(reason)) => {
                     info!("device ended the session: {reason}");
+                    state.set_last_event("ended", &reason);
                     break;
                 }
                 None => break,
