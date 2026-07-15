@@ -143,9 +143,10 @@ async fn cast_session(
             }
             event = cast_events.recv() => match event {
                 Some(cast::CastEvent::Playing) => {
-                    // HLS plays back H.264/AAC; the receiver's codec set isn't
-                    // negotiated, so there is nothing to list there.
-                    state.set_details("hls", "h264", Vec::new());
+                    // HLS isn't negotiated, so there are no receiver codecs to
+                    // list. Audio-only casts carry only AAC audio (no video).
+                    let codec = if source == SourceKind::Audio { "aac" } else { "h264" };
+                    state.set_details("hls", codec, Vec::new());
                     state.set_status("casting", &device.id);
                 }
                 Some(cast::CastEvent::Ended(reason)) => {
