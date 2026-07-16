@@ -18,6 +18,21 @@ const RESOLUTIONS = {
     720: [1280, 720],
 };
 
+// Display names for the lowercase codec ids the daemon reports (Cast
+// protocol / GStreamer element names).
+const CODEC_LABELS = {
+    h264: 'H.264',
+    vp8: 'VP8',
+    vp9: 'VP9',
+    av1: 'AV1',
+    aac: 'AAC',
+    opus: 'Opus',
+};
+
+function formatCodec(codec) {
+    return CODEC_LABELS[codec] ?? codec;
+}
+
 export const CastIndicator = GObject.registerClass(
     class CastIndicator extends PanelMenu.Button {
         _init(extension) {
@@ -281,10 +296,10 @@ export const CastIndicator = GObject.registerClass(
             if (!this._details || !this._settings.get_boolean('show-details')) return;
             const { transport, codec, receiverCodecs } = this._details;
             if (!transport) return;
-            const transportLabel = transport === 'mirror' ? 'Cast Streaming' : 'HLS';
-            this._addDetailLine(codec ? `${transportLabel} · ${codec}` : transportLabel);
+            const transportLabel = transport === 'mirror' ? 'Cast streaming' : 'HLS';
+            this._addDetailLine(codec ? `${transportLabel} · ${formatCodec(codec)}` : transportLabel);
             if (receiverCodecs && receiverCodecs.length > 0)
-                this._addDetailLine(`receiver supports: ${receiverCodecs.join(', ')}`);
+                this._addDetailLine(`Receiver supports: ${receiverCodecs.map(formatCodec).join(', ')}`);
         }
 
         _addDetailLine(text) {
