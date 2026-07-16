@@ -121,7 +121,13 @@ impl Drop for HlsServer {
 /// The local address the OS would use to reach `target` — i.e. the right
 /// interface IP to put in the URL handed to the Chromecast.
 pub fn local_ip_towards(target: IpAddr) -> Result<IpAddr> {
-    let socket = UdpSocket::bind("0.0.0.0:0").context("binding probe socket")?;
+    // The probe socket's family must match the target's, or connect() fails
+    // with EAFNOSUPPORT (e.g. an IPv4-bound socket probing an IPv6 device).
+    let bind_addr = match target {
+        IpAddr::V4(_) => "0.0.0.0:0",
+        IpAddr::V6(_) => "[::]:0",
+    };
+    let socket = UdpSocket::bind(bind_addr).context("binding probe socket")?;
     socket
         .connect((target, 9))
         .context("probing route to device")?;
