@@ -69,6 +69,7 @@ ego-zip: eslint
 	@gnome-extensions pack --force --out-dir=. \
 		--extra-source=indicator.js --extra-source=daemon.js \
 		--extra-source=setupDialog.js --extra-source=errorDialog.js \
+		--extra-source=castMenu.js --extra-source=quickIndicator.js \
 		--extra-source=icons \
 		--schema=schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml \
 		$(_EXT_DIR)

@@ -27,5 +27,14 @@
       <summary>Show cast details</summary>
       <description>Show the transport and negotiated codecs under the active device while casting.</description>
     </key>
+    <key name="indicator-location" type="s">
+      <choices>
+        <choice value="tray"/>
+        <choice value="quick-settings"/>
+      </choices>
+      <default>'tray'</default>
+      <summary>Indicator location</summary>
+      <description>Where to show the cast indicator: the top-bar tray, or the quick settings menu.</description>
+    </key>
   </schema>
 </schemalist>

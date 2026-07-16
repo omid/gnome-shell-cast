@@ -9,6 +9,9 @@ import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/
 const RESOLUTION_VALUES = ['native', '1080', '720'];
 const RESOLUTION_LABELS = ['Native', '1080p', '720p'];
 
+const LOCATION_VALUES = ['tray', 'quick-settings'];
+const LOCATION_LABELS = ['Top bar', 'Quick settings'];
+
 export default class GnomeShellCastPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
@@ -62,6 +65,20 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
 
         const menuGroup = new Adw.PreferencesGroup({ title: 'Menu' });
         page.add(menuGroup);
+
+        const locationRow = new Adw.ComboRow({
+            title: 'Indicator location',
+            subtitle: 'Show the cast icon in the top bar, or in the quick settings menu',
+            model: new Gtk.StringList({ strings: LOCATION_LABELS }),
+            selected: Math.max(
+                0,
+                LOCATION_VALUES.indexOf(settings.get_string('indicator-location')),
+            ),
+        });
+        locationRow.connect('notify::selected', (row) => {
+            settings.set_string('indicator-location', LOCATION_VALUES[row.selected]);
+        });
+        menuGroup.add(locationRow);
 
         const detailsRow = new Adw.SwitchRow({
             title: 'Show cast details',
