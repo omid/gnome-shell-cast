@@ -22,9 +22,7 @@ export const SetupDialog = GObject.registerClass(
             this._url = url;
 
             const isUpdate = mode === 'update';
-            const title = isUpdate
-                ? 'Update the cast daemon'
-                : 'Set up the cast daemon';
+            const title = isUpdate ? 'Update the cast daemon' : 'Set up the cast daemon';
             const description = isUpdate
                 ? `A newer version of the extension needs a matching daemon ` +
                   `(installed v${currentVersion} → needs v${requiredVersion}). ` +
@@ -34,8 +32,7 @@ export const SetupDialog = GObject.registerClass(
                   `command below. It downloads a checksum-verified binary to ` +
                   `~/.local/bin — nothing runs as root.`;
 
-            this.contentLayout.add_child(
-                new Dialog.MessageDialogContent({ title, description }));
+            this.contentLayout.add_child(new Dialog.MessageDialogContent({ title, description }));
 
             // The command, selectable so it can also be copied by hand.
             const cmd = new St.Label({
@@ -70,12 +67,12 @@ export const SetupDialog = GObject.registerClass(
         }
 
         _copy() {
-            St.Clipboard.get_default().set_text(
-                St.ClipboardType.CLIPBOARD, this._command);
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._command);
             this._status.text = 'Copied! Paste it into a terminal and run it.';
         }
 
         _openInstructions() {
             Gio.AppInfo.launch_default_for_uri(this._url, null);
         }
-    });
+    },
+);

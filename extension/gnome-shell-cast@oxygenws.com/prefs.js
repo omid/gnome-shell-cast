@@ -31,7 +31,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             model: new Gtk.StringList({ strings: RESOLUTION_LABELS }),
             selected: Math.max(0, RESOLUTION_VALUES.indexOf(settings.get_string('resolution'))),
         });
-        resolutionRow.connect('notify::selected', row => {
+        resolutionRow.connect('notify::selected', (row) => {
             settings.set_string('resolution', RESOLUTION_VALUES[row.selected]);
         });
         group.add(resolutionRow);
@@ -40,7 +40,9 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             title: 'Framerate',
             subtitle: 'Frames per second',
             adjustment: new Gtk.Adjustment({
-                lower: 10, upper: 60, step_increment: 5,
+                lower: 10,
+                upper: 60,
+                step_increment: 5,
             }),
         });
         settings.bind('fps', fpsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
@@ -50,7 +52,9 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             title: 'Video bitrate',
             subtitle: 'kbit/s',
             adjustment: new Gtk.Adjustment({
-                lower: 1000, upper: 20000, step_increment: 500,
+                lower: 1000,
+                upper: 20000,
+                step_increment: 500,
             }),
         });
         settings.bind('bitrate-kbps', bitrateRow, 'value', Gio.SettingsBindFlags.DEFAULT);
@@ -81,10 +85,12 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         const group = new Adw.PreferencesGroup();
         page.add(group);
 
-        group.add(new Adw.ActionRow({
-            title: this.metadata.name,
-            subtitle: `Version ${this.metadata.version}`,
-        }));
+        group.add(
+            new Adw.ActionRow({
+                title: this.metadata.name,
+                subtitle: `Version ${this.metadata.version}`,
+            }),
+        );
 
         const linkRow = (title, uri) => {
             const row = new Adw.ActionRow({ title, subtitle: uri, activatable: true });

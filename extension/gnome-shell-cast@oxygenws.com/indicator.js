@@ -14,8 +14,8 @@ import { SetupDialog } from './setupDialog.js';
 import { ErrorDialog } from './errorDialog.js';
 
 const RESOLUTIONS = {
-    '1080': [1920, 1080],
-    '720': [1280, 720],
+    1080: [1920, 1080],
+    720: [1280, 720],
 };
 
 export const CastIndicator = GObject.registerClass(
@@ -32,10 +32,10 @@ export const CastIndicator = GObject.registerClass(
             this._state = 'idle';
             this._activeDeviceId = '';
 
-            this._iconIdle = Gio.icon_new_for_string(
-                `${extension.path}/icons/cast-symbolic.svg`);
+            this._iconIdle = Gio.icon_new_for_string(`${extension.path}/icons/cast-symbolic.svg`);
             this._iconActive = Gio.icon_new_for_string(
-                `${extension.path}/icons/cast-connected-symbolic.svg`);
+                `${extension.path}/icons/cast-connected-symbolic.svg`,
+            );
             this._icon = new St.Icon({
                 gicon: this._iconIdle,
                 style_class: 'system-status-icon',
@@ -45,8 +45,8 @@ export const CastIndicator = GObject.registerClass(
             this._daemon = new CastDaemon({
                 onDevicesChanged: () => this._refreshDevices(),
                 onStateChanged: (state, deviceId) => this._setState(state, deviceId),
-                onError: message => this._notifyError(message),
-                onStartError: message => this._showError(message),
+                onError: (message) => this._notifyError(message),
+                onStartError: (message) => this._showError(message),
             });
 
             this._buildMenu();
@@ -54,23 +54,24 @@ export const CastIndicator = GObject.registerClass(
             // Track the shell's colour scheme so the destructive/warning tints
             // can switch to their light-popup variants (see stylesheet.css).
             this._stSettings = St.Settings.get();
-            this._colorSchemeId = this._stSettings.connect(
-                'notify::color-scheme', () => this._updateColorScheme());
+            this._colorSchemeId = this._stSettings.connect('notify::color-scheme', () =>
+                this._updateColorScheme(),
+            );
             this._updateColorScheme();
 
             // Update the detail lines live when the user toggles the setting.
-            this._showDetailsId = this._settings.connect(
-                'changed::show-details', () => this._onShowDetailsChanged());
+            this._showDetailsId = this._settings.connect('changed::show-details', () =>
+                this._onShowDetailsChanged(),
+            );
 
             this.menu.connect('open-state-changed', (_menu, open) => {
-                if (open)
-                    this._refresh();
+                if (open) this._refresh();
             });
         }
 
         _onShowDetailsChanged() {
             if (this._settings.get_boolean('show-details') && this._state === 'casting') {
-                this._daemon.getDetails(details => {
+                this._daemon.getDetails((details) => {
                     this._details = details;
                     this._rebuildDeviceItems();
                 });
@@ -81,18 +82,17 @@ export const CastIndicator = GObject.registerClass(
         }
 
         _updateColorScheme() {
-            const light = this._stSettings.color_scheme ===
-                St.SystemColorScheme?.PREFER_LIGHT;
-            if (light)
-                this.menu.box.add_style_class_name('gsc-light');
-            else
-                this.menu.box.remove_style_class_name('gsc-light');
+            const light = this._stSettings.color_scheme === St.SystemColorScheme?.PREFER_LIGHT;
+            if (light) this.menu.box.add_style_class_name('gsc-light');
+            else this.menu.box.remove_style_class_name('gsc-light');
         }
 
         _buildMenu() {
             // Shown only when the daemon is missing or a different version.
             this._daemonWarningItem = new PopupMenu.PopupImageMenuItem(
-                '', 'dialog-warning-symbolic');
+                '',
+                'dialog-warning-symbolic',
+            );
             this._daemonWarningItem.label.add_style_class_name('gsc-warning-label');
             this._daemonWarningItem.visible = false;
             this._daemonWarningItem.connect('activate', () => this._openSetupDialog());
@@ -104,14 +104,18 @@ export const CastIndicator = GObject.registerClass(
             this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
             this._stopItem = new PopupMenu.PopupImageMenuItem(
-                'Stop casting', 'media-playback-stop-symbolic');
+                'Stop casting',
+                'media-playback-stop-symbolic',
+            );
             this._stopItem.label.add_style_class_name('gsc-destructive-label');
             this._stopItem.connect('activate', () => this._daemon.stopCast());
             this._stopItem.visible = false;
             this.menu.addMenuItem(this._stopItem);
 
             const prefsItem = new PopupMenu.PopupImageMenuItem(
-                'Preferences', 'preferences-system-symbolic');
+                'Preferences',
+                'preferences-system-symbolic',
+            );
             prefsItem.connect('activate', () => this._extension.openPreferences());
             this.menu.addMenuItem(prefsItem);
 
@@ -127,7 +131,7 @@ export const CastIndicator = GObject.registerClass(
         }
 
         _checkDaemonVersion() {
-            this._daemon.getVersion(version => {
+            this._daemon.getVersion((version) => {
                 if (version === null) {
                     // The D-Bus-activated daemon can take a moment to come up
                     // right after login; give it one retry before declaring it
@@ -136,11 +140,14 @@ export const CastIndicator = GObject.registerClass(
                         this._daemonCheckRetried = true;
                         if (!this._versionRetryId) {
                             this._versionRetryId = GLib.timeout_add(
-                                GLib.PRIORITY_DEFAULT, 2000, () => {
+                                GLib.PRIORITY_DEFAULT,
+                                2000,
+                                () => {
                                     this._versionRetryId = 0;
                                     this._checkDaemonVersion();
                                     return GLib.SOURCE_REMOVE;
-                                });
+                                },
+                            );
                         }
                         return;
                     }
@@ -148,13 +155,15 @@ export const CastIndicator = GObject.registerClass(
                     this._showDaemonWarning(
                         'Set up the cast daemon',
                         'The cast daemon isn’t installed yet. Open the menu and click ' +
-                        '“Set up the cast daemon” to install it.');
+                            '“Set up the cast daemon” to install it.',
+                    );
                 } else if (version !== this.daemonVersion) {
                     this._daemonSetup = { mode: 'update', currentVersion: version };
                     this._showDaemonWarning(
                         `Update the cast daemon (v${version} → v${this.daemonVersion})`,
                         `The cast daemon (v${version}) doesn’t match this version of the ` +
-                        `extension (needs v${this.daemonVersion}). Open the menu to update it.`);
+                            `extension (needs v${this.daemonVersion}). Open the menu to update it.`,
+                    );
                 } else {
                     this._daemonWarningItem.visible = false;
                 }
@@ -173,8 +182,7 @@ export const CastIndicator = GObject.registerClass(
         }
 
         _daemonRepoUrl() {
-            return this._extension.metadata?.url ??
-                'https://github.com/omid/gnome-shell-cast';
+            return this._extension.metadata?.url ?? 'https://github.com/omid/gnome-shell-cast';
         }
 
         // The one-liner the setup/update dialog shows. Pinned to this
@@ -182,8 +190,7 @@ export const CastIndicator = GObject.registerClass(
         // same command therefore updates the daemon after an extension update.
         _installCommand() {
             const version = this._extension.metadata.version;
-            const raw = this._daemonRepoUrl().replace(
-                'github.com', 'raw.githubusercontent.com');
+            const raw = this._daemonRepoUrl().replace('github.com', 'raw.githubusercontent.com');
             return `curl -fsSL ${raw}/refs/tags/v${version}/scripts/install.sh | sh -s -- v${version}`;
         }
 
@@ -200,7 +207,7 @@ export const CastIndicator = GObject.registerClass(
         }
 
         _refreshDevices() {
-            this._daemon.listDevices(devices => {
+            this._daemon.listDevices((devices) => {
                 this._devices = devices;
                 this._rebuildDeviceItems();
             });
@@ -226,16 +233,16 @@ export const CastIndicator = GObject.registerClass(
                 // would be meaningless for them.
                 if (!device.hasVideo) {
                     const audioItem = new PopupMenu.PopupImageMenuItem(
-                        device.name, 'audio-speakers-symbolic');
+                        device.name,
+                        'audio-speakers-symbolic',
+                    );
                     if (active) {
                         audioItem.label.add_style_class_name('gsc-casting-label');
                         audioItem.label.text = `${device.name} — casting`;
                     }
-                    audioItem.connect('activate',
-                        () => this._startCast(device, SOURCE_AUDIO));
+                    audioItem.connect('activate', () => this._startCast(device, SOURCE_AUDIO));
                     this._devicesSection.addMenuItem(audioItem);
-                    if (active)
-                        this._addDetailLines();
+                    if (active) this._addDetailLines();
                     continue;
                 }
 
@@ -249,18 +256,21 @@ export const CastIndicator = GObject.registerClass(
                 }
 
                 const screenItem = new PopupMenu.PopupImageMenuItem(
-                    'Cast screen', 'video-display-symbolic');
+                    'Cast screen',
+                    'video-display-symbolic',
+                );
                 screenItem.connect('activate', () => this._startCast(device, SOURCE_SCREEN));
                 item.menu.addMenuItem(screenItem);
 
                 const windowItem = new PopupMenu.PopupImageMenuItem(
-                    'Cast window', 'window-new-symbolic');
+                    'Cast window',
+                    'window-new-symbolic',
+                );
                 windowItem.connect('activate', () => this._startCast(device, SOURCE_WINDOW));
                 item.menu.addMenuItem(windowItem);
 
                 this._devicesSection.addMenuItem(item);
-                if (active)
-                    this._addDetailLines();
+                if (active) this._addDetailLines();
             }
         }
 
@@ -268,11 +278,9 @@ export const CastIndicator = GObject.registerClass(
         // transport and negotiated codecs. Populated from GetDetails when the
         // "show details" setting is on; a no-op otherwise.
         _addDetailLines() {
-            if (!this._details || !this._settings.get_boolean('show-details'))
-                return;
+            if (!this._details || !this._settings.get_boolean('show-details')) return;
             const { transport, codec, receiverCodecs } = this._details;
-            if (!transport)
-                return;
+            if (!transport) return;
             const transportLabel = transport === 'mirror' ? 'Cast Streaming' : 'HLS';
             this._addDetailLine(codec ? `${transportLabel} · ${codec}` : transportLabel);
             if (receiverCodecs && receiverCodecs.length > 0)
@@ -292,7 +300,7 @@ export const CastIndicator = GObject.registerClass(
 
         _castOptions() {
             const options = {
-                'fps': new GLib.Variant('i', this._settings.get_int('fps')),
+                fps: new GLib.Variant('i', this._settings.get_int('fps')),
                 'bitrate-kbps': new GLib.Variant('i', this._settings.get_int('bitrate-kbps')),
             };
 
@@ -317,7 +325,7 @@ export const CastIndicator = GObject.registerClass(
             // Codecs are known only once a cast is actually running; fetch them
             // then, and rebuild once they arrive. Otherwise clear them.
             if (state === 'casting' && this._settings.get_boolean('show-details')) {
-                this._daemon.getDetails(details => {
+                this._daemon.getDetails((details) => {
                     this._details = details;
                     this._rebuildDeviceItems();
                 });
@@ -332,13 +340,16 @@ export const CastIndicator = GObject.registerClass(
             // device that just disconnected gets a notification instead.
             if (state === 'error' && prev !== 'error') {
                 this._daemon.getLastEvent(({ message }) =>
-                    this._showError(message || 'The cast failed.'));
+                    this._showError(message || 'The cast failed.'),
+                );
             } else if (state === 'idle' && (prev === 'casting' || prev === 'connecting')) {
                 this._daemon.getLastEvent(({ kind, message }) => {
                     if (kind === 'ended') {
-                        this._notifyError(message
-                            ? `The device ended the session (${message}).`
-                            : 'The device ended the session.');
+                        this._notifyError(
+                            message
+                                ? `The device ended the session (${message}).`
+                                : 'The device ended the session.',
+                        );
                     }
                 });
             }
@@ -346,8 +357,7 @@ export const CastIndicator = GObject.registerClass(
 
         _showError(message) {
             // Don't re-pop the window for the same error.
-            if (this._lastErrorShown === message)
-                return;
+            if (this._lastErrorShown === message) return;
             this._lastErrorShown = message;
             const dialog = new ErrorDialog({
                 message,
@@ -381,4 +391,5 @@ export const CastIndicator = GObject.registerClass(
             this._daemon = null;
             super.destroy();
         }
-    });
+    },
+);

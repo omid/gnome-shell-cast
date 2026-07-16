@@ -1,0 +1,7 @@
+daemon/
+docs/
+package-lock.json
+**/gschemas.compiled
+*.md
+# Rewritten by jq in scripts/set-version.sh; keep jq's formatting.
+extension/*/metadata.json

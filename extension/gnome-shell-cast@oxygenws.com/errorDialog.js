@@ -23,11 +23,13 @@ export const ErrorDialog = GObject.registerClass(
                 'Please also paste the output of: ' +
                 'journalctl --user -g gnome_shell_cast';
 
-            this.contentLayout.add_child(new Dialog.MessageDialogContent({
-                title: 'Casting failed',
-                description: 'If this keeps happening, please report it — that ' +
-                    'helps get it fixed.',
-            }));
+            this.contentLayout.add_child(
+                new Dialog.MessageDialogContent({
+                    title: 'Casting failed',
+                    description:
+                        'If this keeps happening, please report it — that helps get it fixed.',
+                }),
+            );
 
             const error = new St.Label({
                 style_class: 'gsc-setup-command',
@@ -40,7 +42,8 @@ export const ErrorDialog = GObject.registerClass(
 
             this._status = new St.Label({
                 style_class: 'gsc-setup-status',
-                text: 'The report will include this error, the version, and a ' +
+                text:
+                    'The report will include this error, the version, and a ' +
                     'reminder to attach logs.',
             });
             this.contentLayout.add_child(this._status);
@@ -62,14 +65,15 @@ export const ErrorDialog = GObject.registerClass(
         }
 
         _copy() {
-            St.Clipboard.get_default().set_text(
-                St.ClipboardType.CLIPBOARD, this._details);
+            St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._details);
             this._status.text = 'Copied! Paste it into a new issue.';
         }
 
         _report() {
-            const query = `?title=${encodeURIComponent('Cast error')}` +
+            const query =
+                `?title=${encodeURIComponent('Cast error')}` +
                 `&body=${encodeURIComponent(this._details)}`;
             Gio.AppInfo.launch_default_for_uri(`${this._url}/issues/new${query}`, null);
         }
-    });
+    },
+);

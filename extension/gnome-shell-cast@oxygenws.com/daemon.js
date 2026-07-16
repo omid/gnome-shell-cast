@@ -76,7 +76,8 @@ export class CastDaemon {
                 this._signalIds.push([
                     proxy,
                     proxy.connectSignal('StateChanged', (_p, _sender, [state, deviceId]) =>
-                        this._onStateChanged?.(state, deviceId)),
+                        this._onStateChanged?.(state, deviceId),
+                    ),
                 ]);
             },
             null,
@@ -98,8 +99,14 @@ export class CastDaemon {
             const [devices] = result;
             // Bit 0 of the Cast capability mask = video out; devices without
             // it (speakers, cast groups) can only receive audio.
-            callback(devices.map(([id, name, address, capabilities]) =>
-                ({ id, name, address, hasVideo: (capabilities & 1) !== 0 })));
+            callback(
+                devices.map(([id, name, address, capabilities]) => ({
+                    id,
+                    name,
+                    address,
+                    hasVideo: (capabilities & 1) !== 0,
+                })),
+            );
         });
     }
 
@@ -153,21 +160,18 @@ export class CastDaemon {
 
     startCast(deviceId, source, options) {
         this._proxy.StartCastRemote(deviceId, source, options, (_result, error) => {
-            if (error)
-                (this._onStartError ?? this._onError)?.(error.message);
+            if (error) (this._onStartError ?? this._onError)?.(error.message);
         });
     }
 
     stopCast() {
         this._proxy.StopCastRemote((_result, error) => {
-            if (error)
-                this._onError?.(error.message);
+            if (error) this._onError?.(error.message);
         });
     }
 
     destroy() {
-        for (const [proxy, id] of this._signalIds)
-            proxy.disconnectSignal(id);
+        for (const [proxy, id] of this._signalIds) proxy.disconnectSignal(id);
         this._signalIds = [];
         this._proxy = null;
     }

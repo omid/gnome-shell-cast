@@ -57,7 +57,7 @@ clean:
 
 eslint:
 	@yarn install
-	@npx eslint $(_EXT_DIR)
+	@npx eslint $(_EXT_DIR) eslint.config.mjs
 
 # Builds the reviewable extension package for extensions.gnome.org.
 # EGO only accepts pure-JS extensions — no compiled binaries — so the Rust
@@ -122,6 +122,17 @@ clippy-fix: ## Run clippy, denying warnings.
 .PHONY: lint
 lint: fmt-check clippy ## fmt-check + clippy.
 
+.PHONY: fmt-js
+fmt-js: ## Format the extension JS in-place with Prettier.
+	@npx prettier --write extension/ eslint.config.mjs
+
+.PHONY: fmt-js-check
+fmt-js-check: ## Verify extension JS formatting without modifying files (CI mode).
+	@npx prettier --check extension/ eslint.config.mjs
+
+.PHONY: lint-js
+lint-js: eslint fmt-js-check ## eslint + prettier check for the extension.
+
 # ---------------------------------------------------------------- docs
 
 .PHONY: doc
@@ -153,4 +164,4 @@ check-full: fmt clippy update-dry-run check-unused-deps check-outdated sort-toml
 check-fix: fmt clippy-fix update-dry-run check-unused-deps check-outdated sort-toml ## Run comprehensive checks on the workspace.
 
 .PHONY: ci
-ci: fmt-check clippy test ## What CI should run: fmt-check + clippy + test.
+ci: fmt-check clippy test lint-js ## What CI should run: Rust fmt-check + clippy + test, JS eslint + prettier.
