@@ -32,7 +32,7 @@
         <choice value="tray"/>
         <choice value="quick-settings"/>
       </choices>
-      <default>'tray'</default>
+      <default>'quick-settings'</default>
       <summary>Indicator location</summary>
       <description>Where to show the cast indicator: the top-bar tray, or the quick settings menu.</description>
     </key>
