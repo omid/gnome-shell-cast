@@ -11,6 +11,20 @@ The project has two parts, shipped together in this repository:
 
 The two talk over the D-Bus session bus (`org.gnome.ShellCast1`). The daemon is D-Bus activatable, so it starts on demand and exits when idle.
 
+## Screenshots
+
+<p align="center">
+  <img src="assets/Screenshot1.png" alt="Preferences dialog and the quick settings menu while casting" width="70%">
+  <br>
+  <em>Preferences and the quick settings menu while casting</em>
+</p>
+
+<p align="center">
+  <img src="assets/Screenshot2.png" alt="Top-bar tray menu while casting" width="70%">
+  <br>
+  <em>Top-bar tray menu while casting</em>
+</p>
+
 ## How it works
 
 Chromecast's Default Media Receiver plays media it pulls over HTTP. When you start a cast:
