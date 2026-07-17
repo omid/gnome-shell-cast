@@ -114,7 +114,7 @@ async fn cast_session(
 
     // 4. Encode into the directory and serve it.
     let audio_monitor = pipeline::default_audio_monitor().await;
-    if audio_monitor.is_none() && capture.is_some() {
+    if audio_monitor.is_none() {
         warn!("no audio monitor found, casting video only");
     }
     let pipeline = pipeline::build(
@@ -152,30 +152,54 @@ async fn cast_session(
     });
 
     // 7. Run until asked to stop, the device disconnects, or the pipeline dies.
+    // HLS isn't negotiated, so no receiver codecs; this path is always H.264.
     let bus = pipeline
         .bus()
         .ok_or_else(|| anyhow!("pipeline has no bus"))?;
+    let result = run_cast_loop(
+        state,
+        device,
+        &mut stop_rx,
+        &mut cast_events,
+        &bus,
+        "hls",
+        "h264",
+    )
+    .await;
+
+    drop(control); // Stops the receiver app and joins the control thread.
+    result
+}
+
+/// Drives a launched cast until stop, device disconnect, or a pipeline error,
+/// reporting `casting` (with the given transport/codec) once playback starts.
+async fn run_cast_loop(
+    state: &SharedState,
+    device: &Device,
+    stop_rx: &mut oneshot::Receiver<()>,
+    cast_events: &mut mpsc::UnboundedReceiver<cast::CastEvent>,
+    bus: &gst::Bus,
+    transport: &str,
+    codec: &str,
+) -> Result<()> {
     let mut bus_poll = tokio::time::interval(Duration::from_millis(500));
     loop {
         tokio::select! {
-            _ = &mut stop_rx => {
+            _ = &mut *stop_rx => {
                 info!("stop requested");
-                break;
+                return Ok(());
             }
             event = cast_events.recv() => match event {
                 Some(cast::CastEvent::Playing) => {
-                    // HLS isn't negotiated, so there are no receiver codecs to
-                    // list. Audio-only casts carry only AAC audio (no video).
-                    let codec = if source == SourceKind::Audio { "aac" } else { "h264" };
-                    state.set_details("hls", codec, Vec::new());
+                    state.set_details(transport, codec, Vec::new());
                     state.set_status("casting", &device.id);
                 }
                 Some(cast::CastEvent::Ended(reason)) => {
                     info!("device ended the session: {reason}");
                     state.set_last_event("ended", &reason);
-                    break;
+                    return Ok(());
                 }
-                None => break,
+                None => return Ok(()),
             },
             _ = bus_poll.tick() => {
                 while let Some(message) = bus.pop() {
@@ -191,9 +215,6 @@ async fn cast_session(
             }
         }
     }
-
-    drop(control); // Stops the receiver app and joins the control thread.
-    Ok(())
 }
 
 /// Casts system audio to an audio-only receiver as a progressive HTTP stream
@@ -244,42 +265,19 @@ async fn cast_audio_stream(
     let bus = pipeline
         .bus()
         .ok_or_else(|| anyhow!("pipeline has no bus"))?;
-    let mut bus_poll = tokio::time::interval(Duration::from_millis(500));
-    loop {
-        tokio::select! {
-            _ = &mut stop_rx => {
-                info!("stop requested");
-                break;
-            }
-            event = cast_events.recv() => match event {
-                Some(cast::CastEvent::Playing) => {
-                    state.set_details("audio", codec, Vec::new());
-                    state.set_status("casting", &device.id);
-                }
-                Some(cast::CastEvent::Ended(reason)) => {
-                    info!("device ended the session: {reason}");
-                    state.set_last_event("ended", &reason);
-                    break;
-                }
-                None => break,
-            },
-            _ = bus_poll.tick() => {
-                while let Some(message) = bus.pop() {
-                    use gst::MessageView;
-                    match message.view() {
-                        MessageView::Error(e) => {
-                            return Err(anyhow!("pipeline error: {}", e.error()));
-                        }
-                        MessageView::Eos(_) => return Err(anyhow!("pipeline reached EOS")),
-                        _ => {}
-                    }
-                }
-            }
-        }
-    }
+    let result = run_cast_loop(
+        state,
+        device,
+        &mut stop_rx,
+        &mut cast_events,
+        &bus,
+        "audio",
+        codec,
+    )
+    .await;
 
     drop(control); // Stops the receiver app and joins the control thread.
-    Ok(())
+    result
 }
 
 /// Feeds every encoded audio buffer from the pipeline's `asink` appsink into

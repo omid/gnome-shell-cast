@@ -365,11 +365,7 @@ export class CastMenu {
         this._state = state;
         this._activeDeviceId = deviceId;
 
-        this._setIcon(this.casting);
-        this._stopItem.visible = this.casting;
-
-        // Let the quick-settings host show/hide the cast volume slider.
-        this._onCastChanged?.(this.casting, this.activeDeviceName());
+        this._reflectState();
 
         // Codecs are known only once a cast is actually running; fetch them
         // then, and rebuild once they arrive. Otherwise clear them.
@@ -404,6 +400,13 @@ export class CastMenu {
         }
     }
 
+    // Reflects the current cast state on the icon, stop item and volume slider.
+    _reflectState() {
+        this._setIcon(this.casting);
+        this._stopItem.visible = this.casting;
+        this._onCastChanged?.(this.casting, this.activeDeviceName());
+    }
+
     // Daemon gone without a final state update: reset to "not casting" without
     // calling back into D-Bus (which would just reactivate it).
     _onDaemonGone() {
@@ -411,9 +414,7 @@ export class CastMenu {
         this._state = 'idle';
         this._activeDeviceId = '';
         this._details = null;
-        this._setIcon(false);
-        this._stopItem.visible = false;
-        this._onCastChanged?.(false, this.activeDeviceName());
+        this._reflectState();
         this._rebuildDeviceItems();
     }
 

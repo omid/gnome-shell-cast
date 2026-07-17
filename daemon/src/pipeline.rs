@@ -188,26 +188,16 @@ pub fn build(
     hls_dir: &Path,
     audio_monitor: Option<&str>,
 ) -> Result<gst::Pipeline> {
-    // Audio-only casts hard-require the audio branch; video casts degrade to
-    // video-only with a warning when AAC encoding is unavailable.
+    // Video casts (this path) degrade to video-only with a warning when AAC
+    // encoding or the audio monitor is unavailable.
     let audio = match (audio_monitor, find_aac_encoder()) {
         (Some(monitor), Some(encoder)) => Some((monitor, encoder)),
-        (Some(_), None) if video.is_none() => {
-            return Err(anyhow::anyhow!(
-                "no AAC encoder found (install fdk-aac/gst-plugins-bad or gst-libav)"
-            ));
-        }
         (Some(_), None) => {
             warn!(
                 "no AAC encoder found (install fdk-aac/gst-plugins-bad or gst-libav), \
              casting video only"
             );
             None
-        }
-        (None, _) if video.is_none() => {
-            return Err(anyhow::anyhow!(
-                "audio-only cast but no system audio monitor was found"
-            ));
         }
         (None, _) => None,
     };
