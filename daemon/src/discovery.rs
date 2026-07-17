@@ -91,10 +91,10 @@ fn run(state: &Arc<SharedState>) {
                     .find(|a| a.is_ipv4())
                     .or_else(|| info.get_addresses().iter().next())
                     .cloned()
-                    .and_then(|v| match v {
-                        ScopedIp::V4(ip) => Some(IpAddr::from(*ip.addr())),
-                        ScopedIp::V6(ip) => Some(IpAddr::from(*ip.addr())),
-                        _ => todo!(),
+                    .map(|v| match v {
+                        ScopedIp::V4(ip) => IpAddr::from(*ip.addr()),
+                        ScopedIp::V6(ip) => IpAddr::from(*ip.addr()),
+                        _ => unreachable!("mDNS address is neither IPv4 nor IPv6"),
                     })
                 else {
                     warn!("resolved {} without addresses", info.get_fullname());
