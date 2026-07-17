@@ -15,15 +15,13 @@ use tokio::sync::oneshot;
 
 const DESTINATION_ID: &str = "receiver-0";
 
-/// What to hand the Default Media Receiver once the stream is ready: the URL
-/// and its HTTP content type (HLS playlist for screen casts, a progressive
-/// audio type like `audio/mpeg` for audio-only casts).
+/// The media to load once the stream is ready: URL and HTTP content type (HLS
+/// playlist for screen casts, a progressive audio type for audio-only casts).
 #[derive(Debug)]
 pub struct LoadMedia {
     pub url: String,
     pub content_type: String,
-    /// Now-playing title shown by the receiver (the built-in Default Media
-    /// Receiver app's own name can't be changed); `None` leaves it untitled.
+    /// Now-playing title shown by the receiver; `None` leaves it untitled.
     pub title: Option<String>,
     /// Secondary line under the title, e.g. the casting computer's hostname.
     pub artist: Option<String>,

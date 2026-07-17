@@ -58,9 +58,8 @@ async fn cast_session(
     settings: StreamSettings,
     mut stop_rx: oneshot::Receiver<()>,
 ) -> Result<()> {
-    // Dedicated receiver-volume connection driving the extension's cast volume
-    // slider; kept for the whole session regardless of transport. Dropping it
-    // when this function returns stops its worker thread.
+    // Receiver-volume connection for the extension's slider, kept for the whole
+    // session; dropped (stopping its thread) when this function returns.
     let volume = volume::VolumeControl::start(device.addr, device.port, {
         let state = state.clone();
         move |level| state.set_cast_volume(f64::from(level))
@@ -91,9 +90,8 @@ async fn cast_session(
         }
     }
 
-    // Audio-only receivers (speakers, smart clocks) run a Default Media
-    // Receiver that rejects live HLS but plays a progressive HTTP audio stream
-    // (internet-radio style), so give them that instead of the HLS path below.
+    // Audio-only receivers (speakers, smart clocks) reject live HLS but play a
+    // progressive audio stream, so route them there instead of the HLS path.
     if source == SourceKind::Audio {
         return cast_audio_stream(state, device, stop_rx).await;
     }
@@ -199,8 +197,7 @@ async fn cast_session(
 }
 
 /// Casts system audio to an audio-only receiver as a progressive HTTP stream
-/// (MP3 or ADTS AAC) played by the Default Media Receiver - the HLS path these
-/// devices reject is skipped entirely.
+/// (MP3 or ADTS AAC), which its Default Media Receiver plays where HLS fails.
 async fn cast_audio_stream(
     state: &Arc<SharedState>,
     device: &Device,

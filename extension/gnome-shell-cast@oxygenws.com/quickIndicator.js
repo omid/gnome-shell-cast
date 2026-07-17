@@ -9,10 +9,9 @@ import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.j
 
 import { CastMenu, loadIcons } from './castMenu.js';
 
-// A volume slider for the active cast device, shown among the Quick Settings
-// volume sliders while casting. Moving it sets the receiver's own volume via
-// the daemon; the daemon reports the receiver's volume back so the slider stays
-// in sync (initial value and any external change).
+// Volume slider for the active cast device, shown among the Quick Settings
+// volume sliders while casting. Moving it sets the receiver's volume via the
+// daemon, which reports it back to keep the slider in sync.
 const CastVolumeSlider = GObject.registerClass(
     class CastVolumeSlider extends QuickSettings.QuickSlider {
         _init(gicon, onChange) {
@@ -29,22 +28,18 @@ const CastVolumeSlider = GObject.registerClass(
             this._changedId = this.slider.connect('notify::value', () => this._onUserChanged());
         }
 
-        // Shows or hides the slider for the active cast and labels it for
-        // screen readers with the device name.
         setCasting(casting, deviceName) {
             this.visible = casting;
             if (casting) {
                 this.accessible_name = _('%s volume').replace('%s', deviceName);
-                // Do this once the item is actually in the grid (a cast is now
-                // active, so the quick-settings items have been laid out).
+                // Position now that the item is in the grid (a cast is active).
                 this._placeInVolumeSection();
             }
         }
 
-        // Reflects the receiver's volume without echoing it back as a change.
-        // Relies on `notify::value` firing synchronously during the assignment
-        // (true for St's slider), so the `_fromDaemon` guard is still set when
-        // `_onUserChanged` runs.
+        // Reflects the receiver's volume without echoing it back. Relies on
+        // `notify::value` firing synchronously (St's slider does) so the
+        // `_fromDaemon` guard is still set when `_onUserChanged` runs.
         setValueFromDaemon(level) {
             this._fromDaemon = true;
             this.slider.value = level;
@@ -52,22 +47,15 @@ const CastVolumeSlider = GObject.registerClass(
             this._fromDaemon = false;
         }
 
-        // Places the slider full width among the native volume sliders,
-        // directly below the system output slider.
-        //
-        // Deliberately fault-tolerant: this reaches into private Quick Settings
-        // internals (the item grid, the output volume slider, the grid's
-        // column-span child property) that are not stable API. It assumes the
-        // GNOME 48-50 quick-settings layout, and every step is guarded so that
-        // on an unexpected layout the slider just stays where it was added (a
-        // working half-width tile) instead of throwing. Width and position are
-        // handled independently so one failing does not lose the other.
+        // Makes the slider full width and moves it below the system output
+        // slider. Reaches into private Quick Settings internals (GNOME 48-50
+        // layout), so every step is guarded to degrade to a plain half-width
+        // tile rather than throw; width and position fail independently.
         _placeInVolumeSection() {
             const grid = this.get_parent();
             if (!grid) return;
 
-            // Span both columns, like the built-in volume sliders (external
-            // items default to a single, half-width column).
+            // Span both columns (external items default to a single column).
             try {
                 grid.layout_manager?.child_set_property(grid, this, 'column-span', 2);
             } catch {
@@ -157,9 +145,8 @@ const CastToggle = GObject.registerClass(
                 onVolume: hooks.onVolume,
             });
 
-            // While casting, a click on the toggle is a quick "stop". When not
-            // connected there is nothing to toggle, so open the menu instead:
-            // picking a device to cast to is the only useful action then.
+            // Casting: a click is a quick "stop". Idle: nothing to toggle, so
+            // open the menu to pick a device.
             this.connect('clicked', () => {
                 if (this._cast.casting) this._cast.stopCast();
                 else this.menu.open();
@@ -198,11 +185,9 @@ export const CastQuickIndicator = GObject.registerClass(
             const icons = loadIcons(extension);
             this._indicatorIcon = this._addIndicator();
             this._indicatorIcon.gicon = icons.active;
-            // This icon only shows while casting, so it always wears the shell's
-            // own privacy-indicator class: GNOME's orange for the active mic /
-            // screen-sharing indicators (theme-aware).
+            // Shown only while casting; wear the shell's privacy-indicator class
+            // for GNOME's orange (the active mic / screen-sharing tint).
             this._indicatorIcon.add_style_class_name('privacy-indicator');
-            // Only take up space in the top bar while actually casting.
             this._indicatorIcon.visible = false;
 
             this._slider = new CastVolumeSlider(icons.active, (level) =>

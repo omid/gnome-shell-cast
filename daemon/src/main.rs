@@ -60,10 +60,10 @@ pub struct SharedState {
     pub last_event: Mutex<(String, String)>,
     /// Dropping the sender stops the running cast session.
     pub active: Mutex<Option<oneshot::Sender<()>>>,
-    /// Requests a new receiver volume level (0.0 to 1.0) on the active session's
-    /// dedicated volume connection; `None` when idle.
+    /// Sends volume levels (0.0-1.0) to the active session's volume connection;
+    /// `None` when idle.
     pub volume_tx: Mutex<Option<std::sync::mpsc::Sender<f32>>>,
-    /// Last known receiver volume level (0.0 to 1.0), surfaced to the slider.
+    /// Last known receiver volume (0.0-1.0), surfaced to the slider.
     pub cast_volume: Mutex<f64>,
     pub events: mpsc::UnboundedSender<Event>,
     pub last_activity: Mutex<Instant>,
@@ -136,8 +136,7 @@ impl SharedState {
         }
     }
 
-    /// Records the receiver's current volume and notifies the extension so the
-    /// slider tracks it (initial read and external changes included).
+    /// Records the receiver's volume and notifies the extension's slider.
     pub fn set_cast_volume(&self, level: f64) {
         *self.cast_volume.lock() = level;
         let _ = self.events.send(Event::VolumeChanged);
@@ -265,14 +264,14 @@ impl ShellCast {
         }
     }
 
-    /// The active receiver's volume level (0.0 to 1.0); the last known value
-    /// when idle. Lets the extension initialise the cast volume slider.
+    /// The receiver's volume (0.0-1.0), last known value when idle; initialises
+    /// the slider.
     async fn get_volume(&self) -> f64 {
         self.state.touch();
         self.state.cast_volume()
     }
 
-    /// Sets the active receiver's volume level (0.0 to 1.0); a no-op when idle.
+    /// Sets the active receiver's volume (0.0-1.0); a no-op when idle.
     async fn set_volume(&self, level: f64) {
         self.state.touch();
         self.state.request_volume(level.clamp(0.0, 1.0));

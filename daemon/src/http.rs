@@ -99,9 +99,8 @@ impl AudioBroadcaster {
         }
     }
 
-    /// Hands a freshly encoded chunk to every connected client. A client whose
-    /// queue is momentarily full drops this chunk (a brief audio glitch) rather
-    /// than stalling the encoder; a client whose reader is gone is removed.
+    /// Sends a chunk to every client. A full queue drops the chunk (a brief
+    /// glitch) rather than stalling the encoder; a gone client is removed.
     pub fn push(&self, chunk: Chunk) {
         self.clients.lock().retain(|client| {
             !matches!(

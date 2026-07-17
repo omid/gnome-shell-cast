@@ -109,12 +109,10 @@ export class CastDaemon {
                 Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES,
         );
 
-        // The daemon sends no final StateChanged if it dies (crash, kill, bus
-        // drop), which would leave the indicator stuck "casting". Watching the
-        // bus name catches that: `onVanished` fires when the daemon's name
-        // loses its owner. (It also fires once at startup when the daemon isn't
-        // running; the handler is a no-op then.) Watching does not activate the
-        // daemon.
+        // A dying daemon (crash, kill) sends no final StateChanged, leaving the
+        // indicator stuck "casting". `onVanished` fires when its bus name loses
+        // its owner; it also fires once at startup (handler is a no-op then).
+        // Watching does not activate the daemon.
         this._watchId = Gio.bus_watch_name(
             Gio.BusType.SESSION,
             BUS_NAME,

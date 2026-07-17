@@ -12,11 +12,9 @@ use rust_cast::message_manager::{CastMessage, CastMessagePayload, MessageManager
 use rustls::{ClientConnection, StreamOwned};
 use serde_json::{Value, json};
 
-// A sender id of our own, distinct from the one `rust_cast` uses for the cast
-// session ("sender-0"). Two connections sharing a sender id look like one
-// virtual connection to the device, and tearing one down (or failing to answer
-// its heartbeats) disrupts the other. A separate id keeps this connection fully
-// independent of the cast session.
+// Our own sender id, distinct from rust_cast's "sender-0": two connections
+// sharing an id look like one virtual connection to the device, so a separate
+// id keeps this one from disrupting the cast session.
 const SENDER_ID: &str = "sender-gsc-volume";
 const RECEIVER_ID: &str = "receiver-0";
 const NS_CONNECTION: &str = "urn:x-cast:com.google.cast.tp.connection";
@@ -30,14 +28,10 @@ const PING_INTERVAL: Duration = Duration::from_secs(5);
 
 type Manager = MessageManager<StreamOwned<ClientConnection, TcpStream>>;
 
-/// Controls the Chromecast's receiver-level volume over its own connection,
-/// separate from (and non-colliding with) the mirroring/HLS session. The
-/// extension's cast volume slider drives it through the daemon's `SetVolume`
-/// method. Dropping it stops the worker thread and closes the connection.
-///
-/// The connection is (re)established lazily and re-established transparently if
-/// the device drops it, and it answers the device's heartbeats so it is not
-/// torn down while idle.
+/// Controls the Chromecast's receiver volume over its own connection (the
+/// extension's slider drives it via `SetVolume`). Reconnects on demand and
+/// answers heartbeats so the device keeps the connection alive; dropping this
+/// stops the worker thread.
 pub struct VolumeControl {
     tx: Sender<f32>,
     stop: Arc<AtomicBool>,
@@ -45,9 +39,8 @@ pub struct VolumeControl {
 }
 
 impl VolumeControl {
-    /// Starts the worker. `on_level` is called with the receiver's volume level
-    /// (0.0 to 1.0) once it is first read and after each change, so the daemon
-    /// can publish it to the slider.
+    /// Starts the worker. `on_level` reports the receiver's volume (0.0-1.0) on
+    /// the initial read and after each change, for the daemon to push to the slider.
     pub fn start<F: Fn(f32) + Send + 'static>(
         addr: IpAddr,
         port: u16,
@@ -90,8 +83,7 @@ fn run(
     let mut last_ping = Instant::now();
 
     while !stop.load(Ordering::Relaxed) {
-        // (Re)connect if needed, reading the current volume up front so the
-        // slider starts in the right position.
+        // Reconnect if needed and read the current volume up front.
         if manager.is_none() {
             match connect(addr, port) {
                 Ok(m) => {
@@ -148,8 +140,8 @@ fn run(
             last_ping = Instant::now();
         }
 
-        // Service incoming messages (heartbeat, volume updates). The read
-        // timeout paces the loop, so this returns promptly even when quiet.
+        // Service incoming messages (heartbeats, volume updates); the read
+        // timeout paces the loop.
         match m.receive() {
             Ok(message) => handle(m, &message, on_level),
             Err(rust_cast::errors::Error::Io(e))

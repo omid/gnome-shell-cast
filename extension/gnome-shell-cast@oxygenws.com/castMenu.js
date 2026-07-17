@@ -404,9 +404,8 @@ export class CastMenu {
         }
     }
 
-    // The daemon disappeared (crash, kill, bus drop) without a final state
-    // update. Reflect "not casting" without calling back into D-Bus, which
-    // would just reactivate the daemon.
+    // Daemon gone without a final state update: reset to "not casting" without
+    // calling back into D-Bus (which would just reactivate it).
     _onDaemonGone() {
         if (this._state === 'idle') return;
         this._state = 'idle';
