@@ -5,6 +5,7 @@ import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
+import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import { CastMenu, loadIcons } from './castMenu.js';
 
@@ -33,7 +34,7 @@ const CastVolumeSlider = GObject.registerClass(
         setCasting(casting, deviceName) {
             this.visible = casting;
             if (casting) {
-                this.accessible_name = `${deviceName} volume`;
+                this.accessible_name = _('%s volume').replace('%s', deviceName);
                 // Do this once the item is actually in the grid (a cast is now
                 // active, so the quick-settings items have been laid out).
                 this._placeInVolumeSection();
@@ -41,6 +42,9 @@ const CastVolumeSlider = GObject.registerClass(
         }
 
         // Reflects the receiver's volume without echoing it back as a change.
+        // Relies on `notify::value` firing synchronously during the assignment
+        // (true for St's slider), so the `_fromDaemon` guard is still set when
+        // `_onUserChanged` runs.
         setValueFromDaemon(level) {
             this._fromDaemon = true;
             this.slider.value = level;
@@ -48,30 +52,44 @@ const CastVolumeSlider = GObject.registerClass(
             this._fromDaemon = false;
         }
 
-        // Makes the slider full width (external quick-settings items default to
-        // a single, half-width column) and moves it directly below the general
-        // system output volume slider, among the native volume controls.
-        // Best-effort: leaves defaults in place if the layout can't be matched.
+        // Places the slider full width among the native volume sliders,
+        // directly below the system output slider.
+        //
+        // Deliberately fault-tolerant: this reaches into private Quick Settings
+        // internals (the item grid, the output volume slider, the grid's
+        // column-span child property) that are not stable API. It assumes the
+        // GNOME 48-50 quick-settings layout, and every step is guarded so that
+        // on an unexpected layout the slider just stays where it was added (a
+        // working half-width tile) instead of throwing. Width and position are
+        // handled independently so one failing does not lose the other.
         _placeInVolumeSection() {
             const grid = this.get_parent();
             if (!grid) return;
-            // Span both columns like the other volume sliders.
+
+            // Span both columns, like the built-in volume sliders (external
+            // items default to a single, half-width column).
             try {
-                grid.layout_manager.child_set_property(grid, this, 'column-span', 2);
+                grid.layout_manager?.child_set_property(grid, this, 'column-span', 2);
             } catch {
-                // Layout without a column-span child property; leave as-is.
+                // No column-span child property on this layout; keep the default.
             }
+
+            // Move directly below the system output volume slider, once.
             if (this._positioned) return;
-            const qs = Main.panel.statusArea.quickSettings;
-            const output =
-                qs?._volumeOutput?.quickSettingsItems?.[0] ??
-                qs?._volume?._output ??
-                grid
-                    .get_children()
-                    .find((child) => child.constructor?.name === 'OutputStreamSlider');
-            if (output && output.get_parent() === grid) {
-                grid.set_child_above_sibling(this, output);
-                this._positioned = true;
+            try {
+                const qs = Main.panel.statusArea.quickSettings;
+                const output =
+                    qs?._volumeOutput?.quickSettingsItems?.[0] ??
+                    qs?._volume?._output ??
+                    grid
+                        .get_children()
+                        .find((child) => child.constructor?.name === 'OutputStreamSlider');
+                if (output && output.get_parent() === grid) {
+                    grid.set_child_above_sibling(this, output);
+                    this._positioned = true;
+                }
+            } catch {
+                // Unknown layout; leave the slider where it was added.
             }
         }
 
@@ -120,7 +138,7 @@ const CastToggle = GObject.registerClass(
     class CastToggle extends QuickSettings.QuickMenuToggle {
         _init(extension, icons, hooks) {
             super._init({
-                title: 'Cast',
+                title: _('Cast'),
                 gicon: icons.idle,
                 toggleMode: false,
             });
@@ -139,10 +157,12 @@ const CastToggle = GObject.registerClass(
                 onVolume: hooks.onVolume,
             });
 
-            // The toggle area itself only makes sense as a quick "stop"; picking
-            // a device to cast to happens in the menu opened via the arrow.
+            // While casting, a click on the toggle is a quick "stop". When not
+            // connected there is nothing to toggle, so open the menu instead:
+            // picking a device to cast to is the only useful action then.
             this.connect('clicked', () => {
                 if (this._cast.casting) this._cast.stopCast();
+                else this.menu.open();
             });
 
             this._openStateId = this.menu.connect('open-state-changed', (_menu, open) => {

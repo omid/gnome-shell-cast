@@ -23,7 +23,7 @@
       <summary>Video bitrate in kbit/s</summary>
     </key>
     <key name="show-details" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Show cast details</summary>
       <description>Show the transport and negotiated codecs under the active device while casting.</description>
     </key>

@@ -6,6 +6,7 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import { CastDaemon, SOURCE_AUDIO, SOURCE_SCREEN, SOURCE_WINDOW } from './daemon.js';
 import { SetupDialog } from './setupDialog.js';
@@ -66,6 +67,7 @@ export class CastMenu {
             onDevicesChanged: () => this._refreshDevices(),
             onStateChanged: (state, deviceId) => this._setState(state, deviceId),
             onVolumeChanged: (level) => this._onVolume?.(level),
+            onDaemonGone: () => this._onDaemonGone(),
             onError: (message) => this._notifyError(message),
             onStartError: (message) => this._showError(message),
         });
@@ -147,7 +149,7 @@ export class CastMenu {
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
         this._stopItem = new PopupMenu.PopupImageMenuItem(
-            'Stop casting',
+            _('Stop casting'),
             'media-playback-stop-symbolic',
         );
         this._stopItem.label.add_style_class_name('gsc-destructive-label');
@@ -156,7 +158,7 @@ export class CastMenu {
         this._menu.addMenuItem(this._stopItem);
 
         const prefsItem = new PopupMenu.PopupImageMenuItem(
-            'Preferences',
+            _('Preferences'),
             'preferences-system-symbolic',
         );
         prefsItem.connect('activate', () => this._extension.openPreferences());
@@ -184,16 +186,24 @@ export class CastMenu {
                 }
                 this._daemonSetup = { mode: 'install', currentVersion: null };
                 this._showDaemonWarning(
-                    'Set up the cast daemon',
-                    'The cast daemon isn’t installed yet. Open the menu and click ' +
-                        '“Set up the cast daemon” to install it.',
+                    _('Set up the cast daemon'),
+                    _(
+                        'The cast daemon isn’t installed yet. Open the menu and click ' +
+                            '“Set up the cast daemon” to install it.',
+                    ),
                 );
             } else if (version !== this.daemonVersion) {
                 this._daemonSetup = { mode: 'update', currentVersion: version };
                 this._showDaemonWarning(
-                    `Update the cast daemon (v${version} → v${this.daemonVersion})`,
-                    `The cast daemon (v${version}) doesn’t match this version of the ` +
-                        `extension (needs v${this.daemonVersion}). Open the menu to update it.`,
+                    _('Update the cast daemon (v%old → v%new)')
+                        .replace('%old', version)
+                        .replace('%new', this.daemonVersion),
+                    _(
+                        'The cast daemon (v%old) doesn’t match this version of the ' +
+                            'extension (needs v%new). Open the menu to update it.',
+                    )
+                        .replace('%old', version)
+                        .replace('%new', this.daemonVersion),
                 );
             } else {
                 this._daemonWarningItem.visible = false;
@@ -269,7 +279,7 @@ export class CastMenu {
                 );
                 if (active) {
                     audioItem.label.add_style_class_name('gsc-casting-label');
-                    audioItem.label.text = `${device.name} (casting)`;
+                    audioItem.label.text = _('%s (casting)').replace('%s', device.name);
                 }
                 audioItem.connect('activate', () => this._startCast(device, SOURCE_AUDIO));
                 this._devicesSection.addMenuItem(audioItem);
@@ -283,18 +293,18 @@ export class CastMenu {
                 // Mark the device we are currently casting to with the
                 // system accent colour.
                 item.label.add_style_class_name('gsc-casting-label');
-                item.label.text = `${device.name} (casting)`;
+                item.label.text = _('%s (casting)').replace('%s', device.name);
             }
 
             const screenItem = new PopupMenu.PopupImageMenuItem(
-                'Cast screen',
+                _('Cast screen'),
                 'video-display-symbolic',
             );
             screenItem.connect('activate', () => this._startCast(device, SOURCE_SCREEN));
             item.menu.addMenuItem(screenItem);
 
             const windowItem = new PopupMenu.PopupImageMenuItem(
-                'Cast window',
+                _('Cast window'),
                 'window-new-symbolic',
             );
             windowItem.connect('activate', () => this._startCast(device, SOURCE_WINDOW));
@@ -312,11 +322,16 @@ export class CastMenu {
         if (!this._details || !this._settings.get_boolean('show-details')) return;
         const { transport, codec, receiverCodecs } = this._details;
         if (!transport) return;
-        const TRANSPORT_LABELS = { mirror: 'Cast streaming', audio: 'Audio stream' };
-        const transportLabel = TRANSPORT_LABELS[transport] ?? 'HLS';
+        const TRANSPORT_LABELS = { mirror: _('Cast streaming'), audio: _('Audio stream') };
+        const transportLabel = TRANSPORT_LABELS[transport] ?? _('HLS');
         this._addDetailLine(codec ? `${transportLabel} · ${formatCodec(codec)}` : transportLabel);
         if (receiverCodecs && receiverCodecs.length > 0)
-            this._addDetailLine(`Receiver supports: ${receiverCodecs.map(formatCodec).join(', ')}`);
+            this._addDetailLine(
+                _('Receiver supports: %s').replace(
+                    '%s',
+                    receiverCodecs.map(formatCodec).join(', '),
+                ),
+            );
     }
 
     _addDetailLine(text) {
@@ -374,19 +389,33 @@ export class CastMenu {
         // device that just disconnected gets a notification instead.
         if (state === 'error' && prev !== 'error') {
             this._daemon.getLastEvent(({ message }) =>
-                this._showError(message || 'The cast failed.'),
+                this._showError(message || _('The cast failed.')),
             );
         } else if (state === 'idle' && (prev === 'casting' || prev === 'connecting')) {
             this._daemon.getLastEvent(({ kind, message }) => {
                 if (kind === 'ended') {
                     this._notifyError(
                         message
-                            ? `The device ended the session (${message}).`
-                            : 'The device ended the session.',
+                            ? _('The device ended the session (%s).').replace('%s', message)
+                            : _('The device ended the session.'),
                     );
                 }
             });
         }
+    }
+
+    // The daemon disappeared (crash, kill, bus drop) without a final state
+    // update. Reflect "not casting" without calling back into D-Bus, which
+    // would just reactivate the daemon.
+    _onDaemonGone() {
+        if (this._state === 'idle') return;
+        this._state = 'idle';
+        this._activeDeviceId = '';
+        this._details = null;
+        this._setIcon(false);
+        this._stopItem.visible = false;
+        this._onCastChanged?.(false, this.activeDeviceName());
+        this._rebuildDeviceItems();
     }
 
     _showError(message) {

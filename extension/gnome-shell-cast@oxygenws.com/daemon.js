@@ -62,10 +62,18 @@ const CastProxy = Gio.DBusProxy.makeProxyWrapper(CAST_IFACE_XML);
  * proxy does not launch it, but any method call does.
  */
 export class CastDaemon {
-    constructor({ onDevicesChanged, onStateChanged, onVolumeChanged, onError, onStartError }) {
+    constructor({
+        onDevicesChanged,
+        onStateChanged,
+        onVolumeChanged,
+        onDaemonGone,
+        onError,
+        onStartError,
+    }) {
         this._onDevicesChanged = onDevicesChanged;
         this._onStateChanged = onStateChanged;
         this._onVolumeChanged = onVolumeChanged;
+        this._onDaemonGone = onDaemonGone;
         this._onError = onError;
         this._onStartError = onStartError;
         this._signalIds = [];
@@ -99,6 +107,20 @@ export class CastDaemon {
             null,
             Gio.DBusProxyFlags.DO_NOT_AUTO_START_AT_CONSTRUCTION |
                 Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES,
+        );
+
+        // The daemon sends no final StateChanged if it dies (crash, kill, bus
+        // drop), which would leave the indicator stuck "casting". Watching the
+        // bus name catches that: `onVanished` fires when the daemon's name
+        // loses its owner. (It also fires once at startup when the daemon isn't
+        // running; the handler is a no-op then.) Watching does not activate the
+        // daemon.
+        this._watchId = Gio.bus_watch_name(
+            Gio.BusType.SESSION,
+            BUS_NAME,
+            Gio.BusNameWatcherFlags.NONE,
+            null,
+            () => this._onDaemonGone?.(),
         );
     }
 
@@ -205,6 +227,10 @@ export class CastDaemon {
     destroy() {
         for (const [proxy, id] of this._signalIds) proxy.disconnectSignal(id);
         this._signalIds = [];
+        if (this._watchId) {
+            Gio.bus_unwatch_name(this._watchId);
+            this._watchId = 0;
+        }
         this._proxy = null;
     }
 }
