@@ -19,6 +19,7 @@ package that fixes them.
   - `vp8enc` / `vp9enc` (VP8/VP9, from *good*/*vpx*) - Cast Streaming (mirroring)
   - `av1enc` (aom) or `svtav1enc` (SVT-AV1) - optional AV1 mirroring
   - an AAC encoder: `fdkaacenc` (*bad*), `avenc_aac` (*libav*), or `faac`
+  - `lamemp3enc` (MP3, from *good*) - preferred for audio-only casts (speakers, smart displays, cast groups); the AAC encoder above is used if it is missing
   - `opusenc` (Opus audio, from *good*)
 - **PipeWire** and its GStreamer plugin (`pipewiresrc`), plus `xdg-desktop-portal-gnome`
 - `pactl` (for locating the system-audio monitor)
@@ -83,6 +84,7 @@ sudo zypper install \
 | Casting always uses HLS (multi-second lag), never low-latency | mirroring encoders missing, so it falls back | plugins **good** (`vp8enc`) |
 | Log: *"no AAC encoder found"* | no AAC encoder for the HLS fallback | plugins **bad** (`fdkaacenc`) or **libav** |
 | Video works but there's no audio | `pactl` missing, or no monitor source | `pulseaudio-utils` / `pipewire-pulse` |
+| Casting to a speaker or cast group plays nothing | audio-only receivers need an MP3 or AAC encoder | plugins **good** (`lamemp3enc`) or **bad** (`fdkaacenc`) |
 | Log: *"parsing the mirroring pipeline"* fails | GStreamer base/good plugins incomplete | plugins **base** + **good** |
 | Details line never shows hardware | no VA-API/NVENC GStreamer plugin (software encoding is used, which still works) | `gstreamer-vaapi` (Intel/AMD) |
 | Screen picker never opens | portal missing | `xdg-desktop-portal-gnome` + PipeWire |

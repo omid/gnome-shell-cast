@@ -1,13 +1,13 @@
 # GNOME Shell Cast
 
-Cast your **whole screen or a single window** to a **Chromecast** device, right from the GNOME Shell top panel.
+Cast your **whole screen or a single window** to a **Chromecast** device, or send your **system audio** to a Chromecast speaker, smart display, or cast group, right from the GNOME Shell top panel.
 
 The project has two parts, shipped together in this repository:
 
 | Component | Language | Role |
 |---|---|---|
 | `extension/` | GJS | Panel indicator: device list, *Cast Screen* / *Cast Window*, *Stop Casting*, preferences |
-| `daemon/` | Rust | Does the heavy lifting: Chromecast discovery (mDNS) and control (CASTv2), screen/window capture (XDG ScreenCast portal → PipeWire), encoding (GStreamer, H.264 + AAC), and serving the live HLS stream over HTTP |
+| `daemon/` | Rust | Does the heavy lifting: Chromecast discovery (mDNS) and control (CASTv2), screen/window capture (XDG ScreenCast portal → PipeWire), encoding (GStreamer, H.264 + AAC), and serving the stream over HTTP (live HLS for screens; a progressive MP3/AAC stream for audio-only receivers) |
 
 The two talk over the D-Bus session bus (`org.gnome.ShellCast1`). The daemon is D-Bus activatable, so it starts on demand and exits when idle.
 
@@ -36,6 +36,8 @@ Chromecast's Default Media Receiver plays media it pulls over HTTP. When you sta
 
 > **Latency note:** this HTTP/HLS approach - the same one tools like mkchromecast use - has an inherent delay of a few seconds. It is great for presentations, photos, and videos; it is not suitable for gaming.
 
+**Audio-only receivers** (Chromecast Audio, Google/Nest speakers and smart displays, cast groups) advertise no video, and their Default Media Receiver rejects the live HLS stream. For them the daemon skips screen capture entirely and streams your **system audio** as a continuous MP3 (falling back to AAC) over HTTP, the way an internet-radio station does. Pick such a device from the menu and it offers a single **Cast audio** action.
+
 ## Requirements
 
 > Missing a plugin? See **[docs/DEPENDENCIES.md](docs/DEPENDENCIES.md)** for
@@ -44,7 +46,7 @@ Chromecast's Default Media Receiver plays media it pulls over HTTP. When you sta
 
 - GNOME Shell **48–50** (Wayland or X11; capture uses the ScreenCast portal)
 - PipeWire + `xdg-desktop-portal-gnome` (default on any modern GNOME distro)
-- GStreamer 1.x with plugins: `base`, `good`, `bad`, `ugly` (for `x264enc`) and `libav` (for AAC encoding)
+- GStreamer 1.x with plugins: `base`, `good`, `bad`, `ugly` (for `x264enc`) and `libav` (for AAC encoding). Audio-only casts use `lamemp3enc` (from `good`) with AAC as a fallback
 - `pactl` (pulseaudio-utils) for locating the system-audio monitor device
 - Rust toolchain (only to build the daemon)
 
