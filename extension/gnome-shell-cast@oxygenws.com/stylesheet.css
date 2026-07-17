@@ -7,14 +7,6 @@
  * `.gsc-light` class the indicator toggles from the shell's colour scheme.
  */
 
-/* Top-bar cast icon while streaming. The icon also carries the shell's own
-   `privacy-indicator` class so it follows GNOME's orange (matching the active
-   microphone / screen-sharing indicators, and adapting to the theme); this is
-   only a fallback tint for themes that do not define that class. */
-.gsc-casting-icon {
-    color: #ff7800;
-}
-
 /* Device currently being cast to. */
 .gsc-casting-label {
     color: #3584e4; /* fallback for shells without accent-colour support */
