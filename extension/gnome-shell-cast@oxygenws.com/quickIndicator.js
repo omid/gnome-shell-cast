@@ -178,6 +178,12 @@ export const CastQuickIndicator = GObject.registerClass(
             const icons = loadIcons(extension);
             this._indicatorIcon = this._addIndicator();
             this._indicatorIcon.gicon = icons.active;
+            // This icon only shows while casting, so it always wears the orange
+            // "streaming" tint: the shell's own privacy-indicator class (so it
+            // follows GNOME's mic / screen-sharing colour, theme-aware) plus a
+            // fallback for themes that do not define it.
+            this._indicatorIcon.add_style_class_name('gsc-casting-icon');
+            this._indicatorIcon.add_style_class_name('privacy-indicator');
             // Only take up space in the top bar while actually casting.
             this._indicatorIcon.visible = false;
 

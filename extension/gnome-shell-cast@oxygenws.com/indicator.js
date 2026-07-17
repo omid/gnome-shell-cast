@@ -25,6 +25,14 @@ export const CastPanelIndicator = GObject.registerClass(
                 icons: this._icons,
                 setIcon: (active) => {
                     this._icon.gicon = active ? this._icons.active : this._icons.idle;
+                    // While streaming, wear the shell's own privacy-indicator
+                    // class so the icon follows GNOME's orange (the same tint as
+                    // the active microphone / screen-sharing indicators, and
+                    // theme-aware); gsc-casting-icon is a fallback tint.
+                    for (const cls of ['gsc-casting-icon', 'privacy-indicator']) {
+                        if (active) this._icon.add_style_class_name(cls);
+                        else this._icon.remove_style_class_name(cls);
+                    }
                 },
             });
 
