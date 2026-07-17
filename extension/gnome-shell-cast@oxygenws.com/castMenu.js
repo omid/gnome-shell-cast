@@ -86,6 +86,11 @@ export class CastMenu {
         this._showDetailsId = this._settings.connect('changed::show-details', () =>
             this._onShowDetailsChanged(),
         );
+
+        // Refresh the device list and daemon state each time the menu opens.
+        this._openStateId = menu.connect('open-state-changed', (_menu, open) => {
+            if (open) this.refresh();
+        });
     }
 
     get casting() {
@@ -449,6 +454,10 @@ export class CastMenu {
         if (this._showDetailsId) {
             this._settings.disconnect(this._showDetailsId);
             this._showDetailsId = null;
+        }
+        if (this._openStateId) {
+            this._menu.disconnect(this._openStateId);
+            this._openStateId = null;
         }
         this._daemon.destroy();
         this._daemon = null;

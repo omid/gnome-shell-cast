@@ -30,10 +30,6 @@ export const CastPanelIndicator = GObject.registerClass(
                     else this._icon.remove_style_class_name('privacy-indicator');
                 },
             });
-
-            this.menu.connect('open-state-changed', (_menu, open) => {
-                if (open) this._cast.refresh();
-            });
         }
 
         destroy() {

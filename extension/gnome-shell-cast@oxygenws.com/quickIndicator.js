@@ -151,10 +151,6 @@ const CastToggle = GObject.registerClass(
                 if (this._cast.casting) this._cast.stopCast();
                 else this.menu.open();
             });
-
-            this._openStateId = this.menu.connect('open-state-changed', (_menu, open) => {
-                if (open) this._cast.refresh();
-            });
         }
 
         setVolume(level) {
@@ -166,10 +162,6 @@ const CastToggle = GObject.registerClass(
         }
 
         destroy() {
-            if (this._openStateId) {
-                this.menu.disconnect(this._openStateId);
-                this._openStateId = null;
-            }
             this._cast.destroy();
             this._cast = null;
             super.destroy();
