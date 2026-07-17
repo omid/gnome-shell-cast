@@ -13,7 +13,7 @@ else
 	_DBUS_SERVICE_DIR = $(DESTDIR)/usr/share/dbus-1/services
 endif
 
-.PHONY: all daemon install-local install-extension install-daemon uninstall-local set-version release clean eslint ego-zip zip shexli tailLog check check_nightly check_strictly
+.PHONY: all daemon install-local install-extension install-daemon uninstall-local set-version release clean eslint eslint-fix ego-zip zip shexli tailLog check check_nightly check_strictly
 
 all: daemon
 
@@ -59,8 +59,12 @@ eslint:
 	@yarn install
 	@npx eslint $(_EXT_DIR) eslint.config.mjs
 
+eslint-fix:
+	@yarn install
+	@npx eslint --fix $(_EXT_DIR) eslint.config.mjs
+
 # Builds the reviewable extension package for extensions.gnome.org.
-# EGO only accepts pure-JS extensions — no compiled binaries — so the Rust
+# EGO only accepts pure-JS extensions - no compiled binaries - so the Rust
 # daemon is deliberately NOT part of this zip; users install it with
 # `make install-daemon`. Upload the zip at https://extensions.gnome.org/upload/
 ego-zip: export _VERSION=$(shell jq '.version' $(_EXT_DIR)/metadata.json)
@@ -120,9 +124,6 @@ clippy: ## Run clippy, denying warnings.
 clippy-fix: ## Run clippy, denying warnings.
 	@(cd daemon && cargo clippy --all-targets --fix --allow-dirty -- -D warnings) || exit 1;
 
-.PHONY: lint
-lint: fmt-check clippy ## fmt-check + clippy.
-
 .PHONY: fmt-js
 fmt-js: ## Format the extension JS in-place with Prettier.
 	@npx prettier --write extension/ eslint.config.mjs
@@ -130,9 +131,6 @@ fmt-js: ## Format the extension JS in-place with Prettier.
 .PHONY: fmt-js-check
 fmt-js-check: ## Verify extension JS formatting without modifying files (CI mode).
 	@npx prettier --check extension/ eslint.config.mjs
-
-.PHONY: lint-js
-lint-js: eslint fmt-js-check ## eslint + prettier check for the extension.
 
 # ---------------------------------------------------------------- docs
 
@@ -155,14 +153,17 @@ check-outdated: ## Check for outdated dependencies (requires cargo-outdated).
 	@(cd daemon && cargo outdated -wR) || exit 1;
 
 .PHONY: sort-toml
-sort-toml: ## Sort Cargo.toml fields (requires cargo-sort).
+sort-toml: ## Sort Cargo.toml fields in-place (requires cargo-sort).
 	@(cd daemon && cargo sort -wg) || exit 1;
 
-.PHONY: check-full
-check-full: fmt clippy update-dry-run check-unused-deps check-outdated sort-toml ## Run comprehensive checks on the workspace.
+.PHONY: sort-check
+sort-check: ## Verify Cargo.toml is sorted without modifying it (requires cargo-sort).
+	@(cd daemon && cargo sort -cg) || exit 1;
 
-.PHONY: check-fix
-check-fix: fmt clippy-fix update-dry-run check-unused-deps check-outdated sort-toml ## Run comprehensive checks on the workspace.
+# ---------------------------------------------------------------- everything
 
-.PHONY: ci
-ci: fmt-check clippy test lint-js ## What CI should run: Rust fmt-check + clippy + test, JS eslint + prettier.
+.PHONY: check-all
+check-all: fmt-check clippy test eslint fmt-js-check update-dry-run check-unused-deps check-outdated sort-check shexli ## Check ALL (no changes): daemon fmt+clippy+test, extension eslint+prettier, dependency hygiene, Cargo.toml sort, and shexli EGO validation. This is what CI should run.
+
+.PHONY: fix-all
+fix-all: fmt clippy-fix fmt-js eslint-fix sort-toml ## Fix ALL in-place: daemon fmt+clippy-fix, extension prettier+eslint --fix, and Cargo.toml sort.
