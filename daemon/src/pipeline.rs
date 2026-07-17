@@ -146,6 +146,44 @@ pub fn launch_description(
     desc
 }
 
+/// Builds a progressive (non-HLS) audio pipeline that encodes the system audio
+/// monitor to a continuous byte stream on an appsink named `asink`, for
+/// audio-only receivers (speakers, smart clocks) whose Default Media Receiver
+/// rejects live HLS but plays an internet-radio-style HTTP stream. Prefers MP3
+/// (the most widely supported audio type on cheap Cast receivers), falling back
+/// to ADTS AAC. Returns the pipeline and the HTTP content type to advertise.
+pub fn build_audio_stream(monitor: &str) -> Result<(gst::Pipeline, &'static str)> {
+    let (encode, content_type) = if gst::ElementFactory::find("lamemp3enc").is_some() {
+        (
+            "lamemp3enc target=bitrate bitrate=128 cbr=true".to_string(),
+            "audio/mpeg",
+        )
+    } else {
+        let aac = find_aac_encoder().context(
+            "no MP3 or AAC encoder found (install gst-plugins-ugly, fdk-aac/gst-plugins-bad, or gst-libav)",
+        )?;
+        (
+            format!(
+                "{aac} bitrate=128000 ! aacparse ! audio/mpeg,mpegversion=4,stream-format=adts"
+            ),
+            "audio/aac",
+        )
+    };
+
+    let desc = format!(
+        "pulsesrc device={monitor} provide-clock=false \
+         ! queue ! audioconvert ! audioresample ! audio/x-raw,rate=44100,channels=2 \
+         ! {encode} ! appsink name=asink sync=false max-buffers=64 drop=false"
+    );
+    info!("audio stream pipeline: {desc}");
+
+    let pipeline = gst::parse::launch(&desc)
+        .context("building the progressive audio pipeline")?
+        .downcast::<gst::Pipeline>()
+        .map_err(|_| anyhow::anyhow!("parsed element is not a pipeline"))?;
+    Ok((pipeline, content_type))
+}
+
 pub fn build(
     video: Option<(RawFd, u32)>,
     settings: &StreamSettings,

@@ -1,13 +1,16 @@
+use std::io::Read;
 use std::net::{IpAddr, UdpSocket};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{Receiver, SyncSender, TrySendError, sync_channel};
 use std::thread;
 use std::time::Duration;
 
 use anyhow::{Context, Result};
 use log::{debug, info, warn};
-use tiny_http::{Header, Response, Server};
+use parking_lot::Mutex;
+use tiny_http::{Header, Response, Server, StatusCode};
 
 /// Minimal HTTP server serving the HLS playlist and segments to the
 /// Chromecast. Serves only plain file names inside `dir` — no subdirectories.
@@ -67,6 +70,125 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
                         let _ = request.respond(Response::empty(404));
                     }
                 }
+            }
+        })?;
+
+    Ok(HlsServer {
+        port,
+        stop,
+        handle: Some(handle),
+    })
+}
+
+/// A live audio chunk shared with every connected client without copying.
+type Chunk = Arc<[u8]>;
+
+/// Fans a live encoded-audio byte stream out to the HTTP clients currently
+/// connected (normally just the one Cast device). Cloneable: the encoder side
+/// holds one handle to `push` chunks, the server thread holds another to
+/// `subscribe` new clients.
+#[derive(Clone)]
+pub struct AudioBroadcaster {
+    clients: Arc<Mutex<Vec<SyncSender<Chunk>>>>,
+}
+
+impl AudioBroadcaster {
+    pub fn new() -> Self {
+        Self {
+            clients: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    /// Hands a freshly encoded chunk to every connected client. A client whose
+    /// queue is momentarily full drops this chunk (a brief audio glitch) rather
+    /// than stalling the encoder; a client whose reader is gone is removed.
+    pub fn push(&self, chunk: Chunk) {
+        self.clients.lock().retain(|client| {
+            !matches!(
+                client.try_send(chunk.clone()),
+                Err(TrySendError::Disconnected(_))
+            )
+        });
+    }
+
+    fn subscribe(&self) -> Receiver<Chunk> {
+        // Bounded so a stalled client bounds its memory; full sends are dropped
+        // in `push` instead of blocking the encoder.
+        let (tx, rx) = sync_channel(256);
+        self.clients.lock().push(tx);
+        rx
+    }
+}
+
+/// A blocking `Read` over the chunks a client is subscribed to, so `tiny_http`
+/// can stream an unbounded live response body. Reads block until the next chunk
+/// arrives and report EOF once the broadcaster (and all its senders) is gone.
+struct ChannelReader {
+    rx: Receiver<Chunk>,
+    cur: Chunk,
+    pos: usize,
+}
+
+impl Read for ChannelReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        while self.pos >= self.cur.len() {
+            match self.rx.recv() {
+                Ok(chunk) => {
+                    self.cur = chunk;
+                    self.pos = 0;
+                }
+                Err(_) => return Ok(0),
+            }
+        }
+        let n = (self.cur.len() - self.pos).min(buf.len());
+        buf[..n].copy_from_slice(&self.cur[self.pos..self.pos + n]);
+        self.pos += n;
+        Ok(n)
+    }
+}
+
+/// Serves the live progressive audio stream from `broadcaster` to whichever
+/// client (the Cast device) connects, with the given `content_type`. Every
+/// request gets its own streaming thread so one long-lived response doesn't
+/// block the accept loop.
+pub fn serve_audio(broadcaster: AudioBroadcaster, content_type: &'static str) -> Result<HlsServer> {
+    let server =
+        Server::http("0.0.0.0:0").map_err(|e| anyhow::anyhow!("starting HTTP server: {e}"))?;
+    let port = server
+        .server_addr()
+        .to_ip()
+        .context("HTTP server has no IP address")?
+        .port();
+    info!("serving live audio ({content_type}) on port {port}");
+
+    let stop = Arc::new(AtomicBool::new(false));
+    let stop_flag = stop.clone();
+    let handle = thread::Builder::new()
+        .name("audio-http".into())
+        .spawn(move || {
+            while !stop_flag.load(Ordering::Relaxed) {
+                let Ok(Some(request)) = server.recv_timeout(Duration::from_millis(200)) else {
+                    continue;
+                };
+                debug!("audio client connected: {}", request.url());
+                let reader = ChannelReader {
+                    rx: broadcaster.subscribe(),
+                    cur: Arc::from(Vec::new()),
+                    pos: 0,
+                };
+                let headers = [
+                    ("Content-Type", content_type),
+                    ("Cache-Control", "no-cache, no-store"),
+                    ("Access-Control-Allow-Origin", "*"),
+                ]
+                .into_iter()
+                .filter_map(|(k, v)| Header::from_bytes(k.as_bytes(), v.as_bytes()).ok())
+                .collect();
+                // No content length: tiny_http streams the endless body chunked.
+                let response = Response::new(StatusCode(200), headers, reader, None, None);
+                thread::spawn(move || {
+                    let _ = request.respond(response);
+                });
             }
         })?;
 

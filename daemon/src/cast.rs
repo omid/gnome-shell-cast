@@ -15,6 +15,15 @@ use tokio::sync::oneshot;
 
 const DESTINATION_ID: &str = "receiver-0";
 
+/// What to hand the Default Media Receiver once the stream is ready: the URL
+/// and its HTTP content type (HLS playlist for screen casts, a progressive
+/// audio type like `audio/mpeg` for audio-only casts).
+#[derive(Debug)]
+pub struct LoadMedia {
+    pub url: String,
+    pub content_type: String,
+}
+
 #[derive(Debug)]
 pub enum CastEvent {
     /// The receiver app launched and accepted the media URL.
@@ -35,7 +44,7 @@ pub struct CastControl {
 pub fn start(
     addr: IpAddr,
     port: u16,
-    url_rx: oneshot::Receiver<String>,
+    url_rx: oneshot::Receiver<LoadMedia>,
     events: UnboundedSender<CastEvent>,
 ) -> CastControl {
     let stop = Arc::new(AtomicBool::new(false));
@@ -66,7 +75,7 @@ pub fn start(
 fn run(
     addr: IpAddr,
     port: u16,
-    mut url_rx: oneshot::Receiver<String>,
+    mut url_rx: oneshot::Receiver<LoadMedia>,
     stop: &AtomicBool,
     events: &UnboundedSender<CastEvent>,
 ) -> Result<()> {
@@ -92,14 +101,14 @@ fn run(
     // The encoder is warming up in parallel; wait for the stream URL. Poll so
     // a stop request (or the session failing before a URL exists) still gets
     // the receiver app shut down.
-    let url = loop {
+    let media = loop {
         if stop.load(Ordering::Relaxed) {
             info!("stopping receiver app");
             let _ = device.receiver.stop_app(app.session_id.as_str());
             return Ok(());
         }
         match url_rx.try_recv() {
-            Ok(url) => break url,
+            Ok(media) => break media,
             Err(oneshot::error::TryRecvError::Empty) => {
                 thread::sleep(Duration::from_millis(100));
             }
@@ -110,15 +119,15 @@ fn run(
         }
     };
 
-    info!("loading {url}");
+    info!("loading {} ({})", media.url, media.content_type);
     device
         .media
         .load(
             app.transport_id.as_str(),
             app.session_id.as_str(),
             &Media {
-                content_id: url,
-                content_type: "application/vnd.apple.mpegurl".to_string(),
+                content_id: media.url,
+                content_type: media.content_type,
                 stream_type: StreamType::Live,
                 duration: None,
                 metadata: None,

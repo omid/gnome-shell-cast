@@ -7,6 +7,7 @@ use std::time::Duration;
 use anyhow::{Context, Result, anyhow};
 use gstreamer as gst;
 use gstreamer::prelude::*;
+use gstreamer_app::AppSink;
 use log::{info, warn};
 use tokio::sync::{mpsc, oneshot};
 
@@ -80,6 +81,13 @@ async fn cast_session(
         }
     }
 
+    // Audio-only receivers (speakers, smart clocks) run a Default Media
+    // Receiver that rejects live HLS but plays a progressive HTTP audio stream
+    // (internet-radio style), so give them that instead of the HLS path below.
+    if source == SourceKind::Audio {
+        return cast_audio_stream(state, device, stop_rx).await;
+    }
+
     // 3. Connect to the Chromecast and launch its receiver app in parallel
     // with the encoder warm-up below; the URL is delivered once the first
     // HLS segment exists. Declared before `control` so an early error drops
@@ -128,7 +136,10 @@ async fn cast_session(
 
     // 6. Hand the URL to the already-connected cast thread; a send error
     // means the connection died, which the event loop below will report.
-    let _ = url_tx.send(url);
+    let _ = url_tx.send(cast::LoadMedia {
+        url,
+        content_type: "application/vnd.apple.mpegurl".to_string(),
+    });
 
     // 7. Run until asked to stop, the device disconnects, or the pipeline dies.
     let bus = pipeline
@@ -172,6 +183,117 @@ async fn cast_session(
     }
 
     drop(control); // Stops the receiver app and joins the control thread.
+    Ok(())
+}
+
+/// Casts system audio to an audio-only receiver as a progressive HTTP stream
+/// (MP3 or ADTS AAC) played by the Default Media Receiver — the HLS path these
+/// devices reject is skipped entirely.
+async fn cast_audio_stream(
+    state: &Arc<SharedState>,
+    device: &Device,
+    mut stop_rx: oneshot::Receiver<()>,
+) -> Result<()> {
+    let monitor = pipeline::default_audio_monitor()
+        .await
+        .ok_or_else(|| anyhow!("no system audio monitor found (pactl get-default-sink)"))?;
+
+    // Connect and launch the Default Media Receiver in parallel with the
+    // encoder warm-up; the URL is delivered once audio is flowing.
+    let (url_tx, url_rx) = oneshot::channel();
+    let (cast_events_tx, mut cast_events) = mpsc::unbounded_channel();
+    let control = cast::start(device.addr, device.port, url_rx, cast_events_tx);
+
+    let (pipeline, content_type) = pipeline::build_audio_stream(&monitor)?;
+    let broadcaster = http::AudioBroadcaster::new();
+    attach_audio_sink(&pipeline, &broadcaster)?;
+    pipeline
+        .set_state(gst::State::Playing)
+        .context("starting the audio pipeline")?;
+    let _pipeline_stop = PipelineStop(pipeline.clone());
+
+    let server = http::serve_audio(broadcaster, content_type)?;
+    let codec = if content_type == "audio/mpeg" {
+        "mp3"
+    } else {
+        "aac"
+    };
+
+    let local_ip = http::local_ip_towards(device.addr)?;
+    // A filename with a plausible extension; the receiver keys playback off the
+    // LOAD content type, but some are pickier when the URL has no extension.
+    let url = format!("http://{local_ip}:{}/audio.{codec}", server.port);
+    info!("audio stream ready at {url}");
+    let _ = url_tx.send(cast::LoadMedia {
+        url,
+        content_type: content_type.to_string(),
+    });
+
+    // Run until asked to stop, the device disconnects, or the pipeline dies.
+    let bus = pipeline
+        .bus()
+        .ok_or_else(|| anyhow!("pipeline has no bus"))?;
+    let mut bus_poll = tokio::time::interval(Duration::from_millis(500));
+    loop {
+        tokio::select! {
+            _ = &mut stop_rx => {
+                info!("stop requested");
+                break;
+            }
+            event = cast_events.recv() => match event {
+                Some(cast::CastEvent::Playing) => {
+                    state.set_details("audio", codec, Vec::new());
+                    state.set_status("casting", &device.id);
+                }
+                Some(cast::CastEvent::Ended(reason)) => {
+                    info!("device ended the session: {reason}");
+                    state.set_last_event("ended", &reason);
+                    break;
+                }
+                None => break,
+            },
+            _ = bus_poll.tick() => {
+                while let Some(message) = bus.pop() {
+                    use gst::MessageView;
+                    match message.view() {
+                        MessageView::Error(e) => {
+                            return Err(anyhow!("pipeline error: {}", e.error()));
+                        }
+                        MessageView::Eos(_) => return Err(anyhow!("pipeline reached EOS")),
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
+    drop(control); // Stops the receiver app and joins the control thread.
+    Ok(())
+}
+
+/// Feeds every encoded audio buffer from the pipeline's `asink` appsink into
+/// the broadcaster, which fans it out to the connected HTTP client.
+fn attach_audio_sink(pipeline: &gst::Pipeline, broadcaster: &http::AudioBroadcaster) -> Result<()> {
+    let sink = pipeline
+        .by_name("asink")
+        .and_then(|e| e.downcast::<AppSink>().ok())
+        .ok_or_else(|| anyhow!("audio pipeline has no appsink named asink"))?;
+    let broadcaster = broadcaster.clone();
+    sink.set_callbacks(
+        gstreamer_app::AppSinkCallbacks::builder()
+            .new_sample(move |sink| {
+                let sample = sink.pull_sample().map_err(|_| gst::FlowError::Eos)?;
+                let Some(buffer) = sample.buffer() else {
+                    return Ok(gst::FlowSuccess::Ok);
+                };
+                let Ok(map) = buffer.map_readable() else {
+                    return Err(gst::FlowError::Error);
+                };
+                broadcaster.push(std::sync::Arc::from(map.as_slice()));
+                Ok(gst::FlowSuccess::Ok)
+            })
+            .build(),
+    );
     Ok(())
 }
 

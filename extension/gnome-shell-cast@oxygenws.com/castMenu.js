@@ -24,6 +24,7 @@ const CODEC_LABELS = {
     vp9: 'VP9',
     av1: 'AV1',
     aac: 'AAC',
+    mp3: 'MP3',
     opus: 'Opus',
 };
 
@@ -293,7 +294,8 @@ export class CastMenu {
         if (!this._details || !this._settings.get_boolean('show-details')) return;
         const { transport, codec, receiverCodecs } = this._details;
         if (!transport) return;
-        const transportLabel = transport === 'mirror' ? 'Cast streaming' : 'HLS';
+        const TRANSPORT_LABELS = { mirror: 'Cast streaming', audio: 'Audio stream' };
+        const transportLabel = TRANSPORT_LABELS[transport] ?? 'HLS';
         this._addDetailLine(codec ? `${transportLabel} · ${formatCodec(codec)}` : transportLabel);
         if (receiverCodecs && receiverCodecs.length > 0)
             this._addDetailLine(`Receiver supports: ${receiverCodecs.map(formatCodec).join(', ')}`);
