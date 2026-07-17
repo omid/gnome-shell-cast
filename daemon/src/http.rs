@@ -13,9 +13,13 @@ use parking_lot::Mutex;
 use tiny_http::{Header, Response, Server, StatusCode};
 
 /// Minimal HTTP server serving the HLS playlist and segments to the
-/// Chromecast. Serves only plain file names inside `dir` - no subdirectories.
+/// Chromecast. Every URL is under an unguessable per-session token
+/// (`/<token>/<file>`); anything else 404s, so other hosts on the LAN can't
+/// pull the stream even though the socket is bound to all interfaces. Serves
+/// only plain file names inside `dir` - no subdirectories.
 pub struct HlsServer {
     pub port: u16,
+    pub token: String,
     stop: Arc<AtomicBool>,
     handle: Option<thread::JoinHandle<()>>,
 }
@@ -28,10 +32,12 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
         .to_ip()
         .context("HTTP server has no IP address")?
         .port();
+    let token = random_token();
     info!("serving {} on port {port}", dir.display());
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_flag = stop.clone();
+    let route_token = token.clone();
     let handle = thread::Builder::new()
         .name("hls-http".into())
         .spawn(move || {
@@ -40,11 +46,10 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
                     continue;
                 };
 
-                let name = request.url().trim_start_matches('/');
-                if name.is_empty() || name.contains('/') || name.contains("..") {
+                let Some(name) = file_after_token(request.url(), &route_token) else {
                     let _ = request.respond(Response::empty(404));
                     continue;
-                }
+                };
 
                 match std::fs::read(dir.join(name)) {
                     Ok(mut data) => {
@@ -75,9 +80,31 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
 
     Ok(HlsServer {
         port,
+        token,
         stop,
         handle: Some(handle),
     })
+}
+
+/// A random URL-path token guarding the stream so only the Chromecast (which we
+/// hand the full URL) can fetch it, even on a shared LAN.
+fn random_token() -> String {
+    use std::fmt::Write as _;
+    let bytes: [u8; 16] = rand::random();
+    bytes.iter().fold(String::with_capacity(32), |mut s, b| {
+        let _ = write!(s, "{b:02x}");
+        s
+    })
+}
+
+/// The file name in a `/<token>/<file>` request URL, or `None` if the token is
+/// wrong or the file name is empty or unsafe (contains `/` or `..`).
+fn file_after_token<'a>(url: &'a str, token: &str) -> Option<&'a str> {
+    let (tok, name) = url.trim_start_matches('/').split_once('/')?;
+    if tok != token || name.is_empty() || name.contains('/') || name.contains("..") {
+        return None;
+    }
+    Some(name)
 }
 
 /// A live audio chunk shared with every connected client without copying.
@@ -158,10 +185,12 @@ pub fn serve_audio(broadcaster: AudioBroadcaster, content_type: &'static str) ->
         .to_ip()
         .context("HTTP server has no IP address")?
         .port();
+    let token = random_token();
     info!("serving live audio ({content_type}) on port {port}");
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_flag = stop.clone();
+    let route_token = token.clone();
     let handle = thread::Builder::new()
         .name("audio-http".into())
         .spawn(move || {
@@ -169,6 +198,10 @@ pub fn serve_audio(broadcaster: AudioBroadcaster, content_type: &'static str) ->
                 let Ok(Some(request)) = server.recv_timeout(Duration::from_millis(200)) else {
                     continue;
                 };
+                if file_after_token(request.url(), &route_token).is_none() {
+                    let _ = request.respond(Response::empty(404));
+                    continue;
+                }
                 debug!("audio client connected: {}", request.url());
                 let reader = ChannelReader {
                     rx: broadcaster.subscribe(),
@@ -193,6 +226,7 @@ pub fn serve_audio(broadcaster: AudioBroadcaster, content_type: &'static str) ->
 
     Ok(HlsServer {
         port,
+        token,
         stop,
         handle: Some(handle),
     })
@@ -272,5 +306,32 @@ mod tests {
         let playlist = b"#EXTM3U\n#EXT-X-START:TIME-OFFSET=-5.0\n".to_vec();
         let out = String::from_utf8(inject_start_tag(playlist)).unwrap();
         assert_eq!(out.matches("#EXT-X-START").count(), 1);
+    }
+
+    #[test]
+    fn token_gates_and_extracts_the_file_name() {
+        // Right token: yields the file name.
+        assert_eq!(
+            file_after_token("/abc123/stream.m3u8", "abc123"),
+            Some("stream.m3u8")
+        );
+        assert_eq!(
+            file_after_token("/abc123/segment00007.ts", "abc123"),
+            Some("segment00007.ts")
+        );
+        // Wrong or missing token, path traversal, or no file: rejected.
+        assert_eq!(file_after_token("/wrong/stream.m3u8", "abc123"), None);
+        assert_eq!(file_after_token("/stream.m3u8", "abc123"), None);
+        assert_eq!(file_after_token("/abc123/", "abc123"), None);
+        assert_eq!(file_after_token("/abc123/../secret", "abc123"), None);
+        assert_eq!(file_after_token("/abc123/sub/dir.ts", "abc123"), None);
+    }
+
+    #[test]
+    fn tokens_are_random_and_hex() {
+        let (a, b) = (random_token(), random_token());
+        assert_ne!(a, b);
+        assert_eq!(a.len(), 32);
+        assert!(a.chars().all(|c| c.is_ascii_hexdigit()));
     }
 }

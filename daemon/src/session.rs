@@ -139,7 +139,10 @@ async fn cast_session(
     wait_for_playlist(&hls_dir).await?;
 
     let local_ip = http::local_ip_towards(device.addr)?;
-    let url = format!("http://{local_ip}:{}/{PLAYLIST_NAME}", server.port);
+    let url = format!(
+        "http://{local_ip}:{}/{}/{PLAYLIST_NAME}",
+        server.port, server.token
+    );
     info!("stream ready at {url}");
 
     // 6. Hand the URL to the already-connected cast thread; a send error
@@ -252,7 +255,10 @@ async fn cast_audio_stream(
     let local_ip = http::local_ip_towards(device.addr)?;
     // A filename with a plausible extension; the receiver keys playback off the
     // LOAD content type, but some are pickier when the URL has no extension.
-    let url = format!("http://{local_ip}:{}/audio.{codec}", server.port);
+    let url = format!(
+        "http://{local_ip}:{}/{}/audio.{codec}",
+        server.port, server.token
+    );
     info!("audio stream ready at {url}");
     let _ = url_tx.send(cast::LoadMedia {
         url,
