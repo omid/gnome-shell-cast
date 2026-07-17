@@ -103,7 +103,7 @@ impl Packetizer {
     /// (recycled from an earlier frame via [`PacketizedFrame::into_buffer`],
     /// or empty; contents are discarded, capacity is reused). Each payload
     /// chunk is copied into the packet and then handed to
-    /// `process_payload(packet_payload)` — the caller encrypts in place
+    /// `process_payload(packet_payload)` - the caller encrypts in place
     /// there, so the frame is never held in an intermediate encrypted copy.
     /// Chunks are processed in payload order, so a streaming cipher can be
     /// carried across calls.

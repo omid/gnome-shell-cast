@@ -57,7 +57,7 @@ confirm "Commit these as \"Release v$new\"?"
 git commit -m "Release v$new"
 
 echo
-echo "==> Tag v$new and push (this triggers the release workflow — point of no return)"
+echo "==> Tag v$new and push (this triggers the release workflow - point of no return)"
 confirm "Tag v$new and push to origin/main now?"
 git tag "v$new"
 git push origin main "v$new"

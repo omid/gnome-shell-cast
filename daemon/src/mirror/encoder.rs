@@ -1,7 +1,7 @@
 //! Video codec and encoder selection for the Cast Streaming (mirroring) path.
 //!
-//! The RTP/RTCP/crypto layer is codec-agnostic — it packetizes whole encrypted
-//! frames — so the only codec-specific parts of mirroring are the `codecName`
+//! The RTP/RTCP/crypto layer is codec-agnostic - it packetizes whole encrypted
+//! frames - so the only codec-specific parts of mirroring are the `codecName`
 //! advertised in the OFFER and the `GStreamer` encoder element. This module
 //! owns both: which codecs we can encode locally, and the encoder for each,
 //! **preferring hardware** (VA-API/NVENC) over software.
@@ -32,7 +32,7 @@ impl VideoCodec {
     }
 }
 
-/// Efficiency order, best first — used to break ties among codecs at the same
+/// Efficiency order, best first - used to break ties among codecs at the same
 /// hardware tier. VP8 is last and mandatory (every Cast-V2 receiver decodes
 /// it), so it is the guaranteed fallback.
 const EFFICIENCY_ORDER: [VideoCodec; 4] = [
@@ -71,7 +71,7 @@ fn is_hardware(factory: &str) -> bool {
 /// The launch fragment configuring `factory` for low-latency CBR at
 /// `bitrate_bps`, producing an element named `venc` (so keyframe forcing can
 /// find it). `fps` sizes the keyframe interval. Hardware params are kept
-/// minimal — just bitrate and CBR — to maximise the chance they parse across
+/// minimal - just bitrate and CBR - to maximise the chance they parse across
 /// driver/plugin versions; the parse-check drops any that don't.
 fn launch_for(factory: &str, bitrate_bps: u32, fps: u32) -> String {
     let kbps = (bitrate_bps / 1000).max(1); // svtav1/av1/VA/NVENC want kbit/s
@@ -126,7 +126,7 @@ pub fn video_encoder(codec: VideoCodec, bitrate_bps: u32, fps: u32) -> Option<(S
 }
 
 /// The codecs we can encode on this host, **hardware-encodable ones first**,
-/// then by efficiency. Used to build the OFFER — we advertise only codecs we
+/// then by efficiency. Used to build the OFFER - we advertise only codecs we
 /// can produce, in the order we prefer to use them.
 pub fn available_video_codecs() -> Vec<VideoCodec> {
     let mut avail: Vec<(VideoCodec, bool)> = EFFICIENCY_ORDER

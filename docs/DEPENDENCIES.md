@@ -15,9 +15,9 @@ package that fixes them.
 **Runtime (to cast):**
 
 - GStreamer 1.x core and the **base**, **good**, **bad**, and **ugly** plugin sets
-  - `x264enc` (H.264, from *ugly*) — the HLS fallback and a hardware-free H.264 path
-  - `vp8enc` / `vp9enc` (VP8/VP9, from *good*/*vpx*) — Cast Streaming (mirroring)
-  - `av1enc` (aom) or `svtav1enc` (SVT-AV1) — optional AV1 mirroring
+  - `x264enc` (H.264, from *ugly*) - the HLS fallback and a hardware-free H.264 path
+  - `vp8enc` / `vp9enc` (VP8/VP9, from *good*/*vpx*) - Cast Streaming (mirroring)
+  - `av1enc` (aom) or `svtav1enc` (SVT-AV1) - optional AV1 mirroring
   - an AAC encoder: `fdkaacenc` (*bad*), `avenc_aac` (*libav*), or `faac`
   - `opusenc` (Opus audio, from *good*)
 - **PipeWire** and its GStreamer plugin (`pipewiresrc`), plus `xdg-desktop-portal-gnome`
@@ -78,7 +78,7 @@ sudo zypper install \
 
 | Symptom | Likely cause | Install |
 |---|---|---|
-| No devices ever appear in the menu | not a library issue — mDNS (UDP 5353) blocked, or the device is on another subnet/VLAN | — |
+| No devices ever appear in the menu | not a library issue - mDNS (UDP 5353) blocked, or the device is on another subnet/VLAN | - |
 | Cast starts then fails; log says *"no video encoder is installed"* | no VP8/VP9/etc. encoder | plugins **good** (vpx) and **ugly** (x264) |
 | Casting always uses HLS (multi-second lag), never low-latency | mirroring encoders missing, so it falls back | plugins **good** (`vp8enc`) |
 | Log: *"no AAC encoder found"* | no AAC encoder for the HLS fallback | plugins **bad** (`fdkaacenc`) or **libav** |

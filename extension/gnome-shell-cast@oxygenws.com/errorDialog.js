@@ -27,7 +27,7 @@ export const ErrorDialog = GObject.registerClass(
                 new Dialog.MessageDialogContent({
                     title: 'Casting failed',
                     description:
-                        'If this keeps happening, please report it — that helps get it fixed.',
+                        'If this keeps happening, please report it (that helps get it fixed).',
                 }),
             );
 

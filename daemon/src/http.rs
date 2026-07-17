@@ -13,7 +13,7 @@ use parking_lot::Mutex;
 use tiny_http::{Header, Response, Server, StatusCode};
 
 /// Minimal HTTP server serving the HLS playlist and segments to the
-/// Chromecast. Serves only plain file names inside `dir` — no subdirectories.
+/// Chromecast. Serves only plain file names inside `dir` - no subdirectories.
 pub struct HlsServer {
     pub port: u16,
     stop: Arc<AtomicBool>,
@@ -240,7 +240,7 @@ impl Drop for HlsServer {
     }
 }
 
-/// The local address the OS would use to reach `target` — i.e. the right
+/// The local address the OS would use to reach `target` - i.e. the right
 /// interface IP to put in the URL handed to the Chromecast.
 pub fn local_ip_towards(target: IpAddr) -> Result<IpAddr> {
     // The probe socket's family must match the target's, or connect() fails

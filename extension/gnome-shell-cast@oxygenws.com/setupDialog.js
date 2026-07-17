@@ -11,7 +11,7 @@ import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
 // Modal shown from the indicator when the daemon is missing (mode 'install')
 // or out of date relative to the extension (mode 'update'). It only shows the
-// install command and copies it to the clipboard — it never runs anything, so
+// install command and copies it to the clipboard - it never runs anything, so
 // the user stays in control and extensions.gnome.org review stays happy.
 export const SetupDialog = GObject.registerClass(
     class SetupDialog extends ModalDialog.ModalDialog {
@@ -26,11 +26,11 @@ export const SetupDialog = GObject.registerClass(
             const description = isUpdate
                 ? `A newer version of the extension needs a matching daemon ` +
                   `(installed v${currentVersion} → needs v${requiredVersion}). ` +
-                  `Run the command below to update it — nothing runs as root.`
+                  `Run the command below to update it (nothing runs as root).`
                 : `GNOME Shell Cast needs a small background daemon. It can't be ` +
                   `shipped through extensions.gnome.org, so install it once with the ` +
                   `command below. It downloads a checksum-verified binary to ` +
-                  `~/.local/bin — nothing runs as root.`;
+                  `~/.local/bin (nothing runs as root).`;
 
             this.contentLayout.add_child(new Dialog.MessageDialogContent({ title, description }));
 

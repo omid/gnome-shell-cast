@@ -29,12 +29,12 @@ The two talk over the D-Bus session bus (`org.gnome.ShellCast1`). The daemon is 
 
 Chromecast's Default Media Receiver plays media it pulls over HTTP. When you start a cast:
 
-1. The daemon opens an XDG ScreenCast portal session — GNOME shows its native picker for a monitor or a window.
+1. The daemon opens an XDG ScreenCast portal session - GNOME shows its native picker for a monitor or a window.
 2. A GStreamer pipeline captures the PipeWire stream, encodes H.264 video and AAC system audio, and writes a live HLS stream into `$XDG_RUNTIME_DIR/gnome-shell-cast/`.
 3. A tiny built-in HTTP server serves that stream on your LAN.
 4. The daemon tells the Chromecast (CASTv2 protocol) to play the stream URL.
 
-> **Latency note:** this HTTP/HLS approach — the same one tools like mkchromecast use — has an inherent delay of a few seconds. It is great for presentations, photos, and videos; it is not suitable for gaming.
+> **Latency note:** this HTTP/HLS approach - the same one tools like mkchromecast use - has an inherent delay of a few seconds. It is great for presentations, photos, and videos; it is not suitable for gaming.
 
 ## Requirements
 
@@ -70,7 +70,7 @@ If you got the **extension** from extensions.gnome.org, install the **daemon**
 separately (it can't be shipped there). The extension makes this easy: until the
 daemon is present, its menu shows a **“Set up the cast daemon”** item that opens a
 dialog with a ready-to-copy command. It downloads a checksum-verified binary for
-your CPU from the project's GitHub Releases into `~/.local/bin` — **nothing runs
+your CPU from the project's GitHub Releases into `~/.local/bin` - **nothing runs
 as root**:
 
 ```sh
@@ -81,7 +81,7 @@ curl -fsSL https://raw.githubusercontent.com/omid/gnome-shell-cast/refs/heads/ma
 inspect [`scripts/install.sh`](scripts/install.sh) before running it.
 
 **Updating:** when the extension updates to a version that needs a newer daemon,
-its menu shows **“Update the cast daemon (v… → v…)”** — run the same command from
+its menu shows **“Update the cast daemon (v… → v…)”** - run the same command from
 that dialog and it installs the matching release.
 
 **Uninstall:**
@@ -111,7 +111,7 @@ Then log out and back in (Wayland), and enable the extension:
 gnome-extensions enable gnome-shell-cast@oxygenws.com
 ```
 
-(`make install-daemon` installs only the daemon half — useful on a machine that
+(`make install-daemon` installs only the daemon half - useful on a machine that
 already has the extension from extensions.gnome.org but no supported prebuilt
 binary.)
 
@@ -119,7 +119,7 @@ binary.)
 
 1. Click the cast icon in the top panel.
 2. Pick a Chromecast from the discovered device list.
-3. Choose **Cast screen** or **Cast window** — GNOME's picker dialog opens for the source.
+3. Choose **Cast screen** or **Cast window** - GNOME's picker dialog opens for the source.
    Audio-only devices (speakers, cast groups) show a single **Cast audio** action instead.
 4. To end, click the icon and choose **Stop casting**.
 

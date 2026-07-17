@@ -56,7 +56,7 @@ impl Drop for Capture {
                 handle.spawn(async move {
                     match session.close().await {
                         // Logged so the portal teardown is visible in the
-                        // journal — this is what clears GNOME's sharing icon.
+                        // journal - this is what clears GNOME's sharing icon.
                         Ok(()) => info!("closed screen-cast portal session"),
                         Err(e) => warn!("closing screen-cast portal session: {e}"),
                     }
@@ -68,7 +68,7 @@ impl Drop for Capture {
 }
 
 /// Asks the portal for a screen or window capture. GNOME shows its native
-/// source picker dialog as part of this call — except for screen casts with a
+/// source picker dialog as part of this call - except for screen casts with a
 /// saved restore token, which reuse the previous selection without a dialog.
 pub async fn open(source: SourceKind) -> Result<Capture> {
     let proxy = Screencast::new()

@@ -52,7 +52,7 @@ fn hex(bytes: &[u8; 16]) -> String {
 
 /// The OFFER message body: `{"type": "OFFER", "seqNum": .., "offer": {..}}`.
 /// Audio is optional (video-only cast when no monitor source exists). `videos`
-/// carries one variant per video codec we can encode — the receiver selects
+/// carries one variant per video codec we can encode - the receiver selects
 /// one via the ANSWER's `sendIndexes`; it is empty for an audio-only cast.
 /// Callers pass at least one stream in total.
 pub fn offer(seq_num: u32, audio: Option<&AudioParams>, videos: &[VideoParams]) -> Value {

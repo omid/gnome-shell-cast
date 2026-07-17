@@ -5,7 +5,7 @@
 # separately by this script.
 #
 # It downloads a prebuilt, checksum-verified binary from the project's GitHub
-# Releases and installs it under your home directory — nothing runs as root.
+# Releases and installs it under your home directory - nothing runs as root.
 #
 # Usage:
 #   curl -fsSL <raw-url>/scripts/install.sh | sh            # latest release
@@ -62,15 +62,15 @@ step "Downloading $asset ($tag)"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 curl -fSL --progress-bar -o "$tmp/$asset" "$base/$asset" \
-    || die "download failed — does release $tag exist for $arch? See https://github.com/$REPO/releases"
+    || die "download failed - does release $tag exist for $arch? See https://github.com/$REPO/releases"
 curl -fsSL -o "$tmp/$asset.sha256" "$base/$asset.sha256" \
     || die "checksum file download failed."
 
 step "Verifying checksum"
 if command -v sha256sum >/dev/null 2>&1; then
-    (cd "$tmp" && sha256sum -c "$asset.sha256") || die "checksum verification FAILED — not installing."
+    (cd "$tmp" && sha256sum -c "$asset.sha256") || die "checksum verification FAILED - not installing."
 elif command -v shasum >/dev/null 2>&1; then
-    (cd "$tmp" && shasum -a 256 -c "$asset.sha256") || die "checksum verification FAILED — not installing."
+    (cd "$tmp" && shasum -a 256 -c "$asset.sha256") || die "checksum verification FAILED - not installing."
 else
     warn "no sha256sum/shasum tool found; skipping checksum verification."
 fi
@@ -122,6 +122,6 @@ fi
 cat <<EOF
 
 Done. Open the extension's menu and your Chromecast devices should appear.
-If '$BIN_DIR' is not on your PATH, that's fine — D-Bus activates the daemon by
+If '$BIN_DIR' is not on your PATH, that's fine - D-Bus activates the daemon by
 absolute path.
 EOF

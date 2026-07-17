@@ -54,7 +54,7 @@ pub struct StreamConfig {
 }
 
 /// Initial chunk-queue capacity: both appsinks fully backed up (max-buffers=32
-/// each). Within this depth, sends never allocate — unlike `std::sync::mpsc`,
+/// each). Within this depth, sends never allocate - unlike `std::sync::mpsc`,
 /// which boxes a queue node per message.
 const CHUNK_QUEUE_CAPACITY: usize = 64;
 

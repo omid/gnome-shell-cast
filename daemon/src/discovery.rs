@@ -11,8 +11,8 @@ use crate::{Event, SharedState};
 const SERVICE_TYPE: &str = "_googlecast._tcp.local.";
 
 /// Bit 0 of the Cast `ca` TXT capability mask (Chromium
-/// `CastDeviceCapability::VIDEO_OUT`). Devices without it — Chromecast Audio,
-/// Google/Nest speakers, cast groups — can only receive audio.
+/// `CastDeviceCapability::VIDEO_OUT`). Devices without it - Chromecast Audio,
+/// Google/Nest speakers, cast groups - can only receive audio.
 const CA_VIDEO_OUT: u32 = 1;
 
 /// Parses the `ca` (capabilities) TXT value. Missing or unparseable values

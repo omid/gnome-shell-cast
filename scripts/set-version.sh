@@ -25,14 +25,14 @@ meta="extension/$UUID/metadata.json"
 cargo_toml="daemon/Cargo.toml"
 cargo_lock="daemon/Cargo.lock"
 
-# metadata.json — integer version.
+# metadata.json - integer version.
 tmp=$(mktemp)
 jq --argjson v "$N" '.version = $v' "$meta" >"$tmp" && mv "$tmp" "$meta"
 
-# Cargo.toml — the package version is the only line starting with `version = `.
+# Cargo.toml - the package version is the only line starting with `version = `.
 sed -i "s/^version = \"[^\"]*\"/version = \"$SEMVER\"/" "$cargo_toml"
 
-# Cargo.lock — the `version` line right after the daemon package's name line.
+# Cargo.lock - the `version` line right after the daemon package's name line.
 awk -v ver="$SEMVER" '
     prev == "name = \"gnome-shell-cast-daemon\"" && /^version = / {
         sub(/"[^"]*"/, "\"" ver "\"")
