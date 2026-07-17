@@ -37,10 +37,19 @@ const CAST_IFACE_XML = `
       <arg type="a{sv}" direction="in" name="options"/>
     </method>
     <method name="StopCast"/>
+    <method name="GetVolume">
+      <arg type="d" direction="out" name="level"/>
+    </method>
+    <method name="SetVolume">
+      <arg type="d" direction="in" name="level"/>
+    </method>
     <signal name="DevicesChanged"/>
     <signal name="StateChanged">
       <arg type="s" name="state"/>
       <arg type="s" name="device_id"/>
+    </signal>
+    <signal name="VolumeChanged">
+      <arg type="d" name="level"/>
     </signal>
   </interface>
 </node>`;
@@ -53,9 +62,10 @@ const CastProxy = Gio.DBusProxy.makeProxyWrapper(CAST_IFACE_XML);
  * proxy does not launch it, but any method call does.
  */
 export class CastDaemon {
-    constructor({ onDevicesChanged, onStateChanged, onError, onStartError }) {
+    constructor({ onDevicesChanged, onStateChanged, onVolumeChanged, onError, onStartError }) {
         this._onDevicesChanged = onDevicesChanged;
         this._onStateChanged = onStateChanged;
+        this._onVolumeChanged = onVolumeChanged;
         this._onError = onError;
         this._onStartError = onStartError;
         this._signalIds = [];
@@ -77,6 +87,12 @@ export class CastDaemon {
                     proxy,
                     proxy.connectSignal('StateChanged', (_p, _sender, [state, deviceId]) =>
                         this._onStateChanged?.(state, deviceId),
+                    ),
+                ]);
+                this._signalIds.push([
+                    proxy,
+                    proxy.connectSignal('VolumeChanged', (_p, _sender, [level]) =>
+                        this._onVolumeChanged?.(level),
                     ),
                 ]);
             },
@@ -145,7 +161,7 @@ export class CastDaemon {
 
     /**
      * Fetches the running daemon's version. Passes null to the callback when
-     * the daemon cannot be reached (e.g. it is not installed) — a D-Bus method
+     * the daemon cannot be reached (e.g. it is not installed) - a D-Bus method
      * call auto-starts the daemon, so an error here means activation failed.
      */
     getVersion(callback) {
@@ -166,6 +182,22 @@ export class CastDaemon {
 
     stopCast() {
         this._proxy.StopCastRemote((_result, error) => {
+            if (error) this._onError?.(error.message);
+        });
+    }
+
+    getVolume(callback) {
+        this._proxy.GetVolumeRemote((result, error) => {
+            if (error) {
+                callback(null);
+                return;
+            }
+            callback(result[0]);
+        });
+    }
+
+    setVolume(level) {
+        this._proxy.SetVolumeRemote(level, (_result, error) => {
             if (error) this._onError?.(error.message);
         });
     }

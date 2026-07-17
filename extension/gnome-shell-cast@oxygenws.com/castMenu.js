@@ -44,11 +44,15 @@ export function loadIcons(extension) {
 // Shared between the top-bar indicator and the quick-settings toggle so the
 // two host widgets don't duplicate this logic.
 export class CastMenu {
-    constructor({ extension, menu, icons, setIcon }) {
+    constructor({ extension, menu, icons, setIcon, onCastChanged, onVolume }) {
         this._extension = extension;
         this._menu = menu;
         this._icons = icons;
         this._setIcon = setIcon;
+        // Optional hooks used by the quick-settings host to drive the cast
+        // volume slider; absent for the top-bar indicator.
+        this._onCastChanged = onCastChanged;
+        this._onVolume = onVolume;
 
         this.version = extension.metadata.version;
         this.daemonVersion = `${this.version}.0.0`;
@@ -61,6 +65,7 @@ export class CastMenu {
         this._daemon = new CastDaemon({
             onDevicesChanged: () => this._refreshDevices(),
             onStateChanged: (state, deviceId) => this._setState(state, deviceId),
+            onVolumeChanged: (level) => this._onVolume?.(level),
             onError: (message) => this._notifyError(message),
             onStartError: (message) => this._showError(message),
         });
@@ -87,6 +92,19 @@ export class CastMenu {
 
     stopCast() {
         this._daemon.stopCast();
+    }
+
+    setVolume(level) {
+        this._daemon.setVolume(level);
+    }
+
+    getVolume(callback) {
+        this._daemon.getVolume(callback);
+    }
+
+    // Name of the device the cast is currently going to, for the volume slider.
+    activeDeviceName() {
+        return this._devices.find((d) => d.id === this._activeDeviceId)?.name ?? 'Cast';
     }
 
     refresh() {
@@ -199,7 +217,7 @@ export class CastMenu {
     }
 
     // The one-liner the setup/update dialog shows. Pinned to this
-    // extension's version so it installs the matching daemon release — the
+    // extension's version so it installs the matching daemon release - the
     // same command therefore updates the daemon after an extension update.
     _installCommand() {
         const version = this._extension.metadata.version;
@@ -251,7 +269,7 @@ export class CastMenu {
                 );
                 if (active) {
                     audioItem.label.add_style_class_name('gsc-casting-label');
-                    audioItem.label.text = `${device.name} — casting`;
+                    audioItem.label.text = `${device.name} (casting)`;
                 }
                 audioItem.connect('activate', () => this._startCast(device, SOURCE_AUDIO));
                 this._devicesSection.addMenuItem(audioItem);
@@ -265,7 +283,7 @@ export class CastMenu {
                 // Mark the device we are currently casting to with the
                 // system accent colour.
                 item.label.add_style_class_name('gsc-casting-label');
-                item.label.text = `${device.name} — casting`;
+                item.label.text = `${device.name} (casting)`;
             }
 
             const screenItem = new PopupMenu.PopupImageMenuItem(
@@ -334,6 +352,9 @@ export class CastMenu {
 
         this._setIcon(this.casting);
         this._stopItem.visible = this.casting;
+
+        // Let the quick-settings host show/hide the cast volume slider.
+        this._onCastChanged?.(this.casting, this.activeDeviceName());
 
         // Codecs are known only once a cast is actually running; fetch them
         // then, and rebuild once they arrive. Otherwise clear them.

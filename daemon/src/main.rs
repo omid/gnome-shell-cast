@@ -5,6 +5,7 @@ mod http;
 mod mirror;
 mod pipeline;
 mod session;
+mod volume;
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -33,6 +34,7 @@ const IDLE_EXIT: Duration = Duration::from_mins(10);
 pub enum Event {
     DevicesChanged,
     StateChanged,
+    VolumeChanged,
 }
 
 /// Technical detail of the active cast, surfaced in the extension menu when
@@ -58,6 +60,11 @@ pub struct SharedState {
     pub last_event: Mutex<(String, String)>,
     /// Dropping the sender stops the running cast session.
     pub active: Mutex<Option<oneshot::Sender<()>>>,
+    /// Requests a new receiver volume level (0.0 to 1.0) on the active session's
+    /// dedicated volume connection; `None` when idle.
+    pub volume_tx: Mutex<Option<std::sync::mpsc::Sender<f32>>>,
+    /// Last known receiver volume level (0.0 to 1.0), surfaced to the slider.
+    pub cast_volume: Mutex<f64>,
     pub events: mpsc::UnboundedSender<Event>,
     pub last_activity: Mutex<Instant>,
     pub generation: AtomicU64,
@@ -71,6 +78,8 @@ impl SharedState {
             details: Mutex::new(CastDetails::default()),
             last_event: Mutex::new((String::new(), String::new())),
             active: Mutex::new(None),
+            volume_tx: Mutex::new(None),
+            cast_volume: Mutex::new(1.0),
             events,
             last_activity: Mutex::new(Instant::now()),
             generation: AtomicU64::new(0),
@@ -113,6 +122,29 @@ impl SharedState {
 
     pub fn last_event(&self) -> (String, String) {
         self.last_event.lock().clone()
+    }
+
+    /// Installs (or clears with `None`) the active session's volume channel.
+    pub fn set_volume_channel(&self, tx: Option<std::sync::mpsc::Sender<f32>>) {
+        *self.volume_tx.lock() = tx;
+    }
+
+    /// Asks the active session to set the receiver volume; a no-op when idle.
+    pub fn request_volume(&self, level: f64) {
+        if let Some(tx) = self.volume_tx.lock().as_ref() {
+            let _ = tx.send(level as f32);
+        }
+    }
+
+    /// Records the receiver's current volume and notifies the extension so the
+    /// slider tracks it (initial read and external changes included).
+    pub fn set_cast_volume(&self, level: f64) {
+        *self.cast_volume.lock() = level;
+        let _ = self.events.send(Event::VolumeChanged);
+    }
+
+    pub fn cast_volume(&self) -> f64 {
+        *self.cast_volume.lock()
     }
 }
 
@@ -233,6 +265,19 @@ impl ShellCast {
         }
     }
 
+    /// The active receiver's volume level (0.0 to 1.0); the last known value
+    /// when idle. Lets the extension initialise the cast volume slider.
+    async fn get_volume(&self) -> f64 {
+        self.state.touch();
+        self.state.cast_volume()
+    }
+
+    /// Sets the active receiver's volume level (0.0 to 1.0); a no-op when idle.
+    async fn set_volume(&self, level: f64) {
+        self.state.touch();
+        self.state.request_volume(level.clamp(0.0, 1.0));
+    }
+
     #[zbus(signal)]
     async fn devices_changed(emitter: &SignalEmitter<'_>) -> zbus::Result<()>;
 
@@ -242,6 +287,9 @@ impl ShellCast {
         state: &str,
         device_id: &str,
     ) -> zbus::Result<()>;
+
+    #[zbus(signal)]
+    async fn volume_changed(emitter: &SignalEmitter<'_>, level: f64) -> zbus::Result<()>;
 }
 
 #[tokio::main]
@@ -283,6 +331,10 @@ async fn main() -> Result<()> {
                 Event::StateChanged => {
                     let (s, d) = signal_state.status();
                     ShellCast::state_changed(iface.signal_emitter(), &s, &d).await
+                }
+                Event::VolumeChanged => {
+                    let level = signal_state.cast_volume();
+                    ShellCast::volume_changed(iface.signal_emitter(), level).await
                 }
             };
             if let Err(e) = result {

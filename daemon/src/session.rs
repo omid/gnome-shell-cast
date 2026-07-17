@@ -14,7 +14,7 @@ use tokio::sync::{mpsc, oneshot};
 use crate::capture::{self, SourceKind};
 use crate::discovery::Device;
 use crate::pipeline::{self, PLAYLIST_NAME, StreamSettings};
-use crate::{SharedState, cast, http, mirror};
+use crate::{SharedState, cast, http, mirror, volume};
 
 /// Runs one cast session end to end: portal capture → `GStreamer` HLS encode →
 /// HTTP serve → Chromecast playback, then cleans everything up when `stop_rx`
@@ -47,6 +47,7 @@ pub async fn run(
     if state.generation.load(Ordering::SeqCst) == generation {
         state.active.lock().take();
         state.clear_details();
+        state.set_volume_channel(None);
     }
 }
 
@@ -57,6 +58,15 @@ async fn cast_session(
     settings: StreamSettings,
     mut stop_rx: oneshot::Receiver<()>,
 ) -> Result<()> {
+    // Dedicated receiver-volume connection driving the extension's cast volume
+    // slider; kept for the whole session regardless of transport. Dropping it
+    // when this function returns stops its worker thread.
+    let volume = volume::VolumeControl::start(device.addr, device.port, {
+        let state = state.clone();
+        move |level| state.set_cast_volume(f64::from(level))
+    });
+    state.set_volume_channel(Some(volume.sender()));
+
     // 1. Portal capture (GNOME shows the screen/window picker here).
     // Audio-only casts capture nothing on-screen and never touch the portal,
     // but they cannot work at all without the system audio monitor.
@@ -189,7 +199,7 @@ async fn cast_session(
 }
 
 /// Casts system audio to an audio-only receiver as a progressive HTTP stream
-/// (MP3 or ADTS AAC) played by the Default Media Receiver — the HLS path these
+/// (MP3 or ADTS AAC) played by the Default Media Receiver - the HLS path these
 /// devices reject is skipped entirely.
 async fn cast_audio_stream(
     state: &Arc<SharedState>,
