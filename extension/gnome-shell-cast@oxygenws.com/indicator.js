@@ -23,6 +23,7 @@ export const CastPanelIndicator = GObject.registerClass(
                 extension,
                 menu: this.menu,
                 icons: this._icons,
+                inlineVolume: true,
                 setIcon: (active) => {
                     this._icon.gicon = active ? this._icons.active : this._icons.idle;
                     // Orange (shell privacy-indicator tint) while streaming.

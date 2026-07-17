@@ -6,9 +6,11 @@ import St from 'gi://St';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
+import { Slider } from 'resource:///org/gnome/shell/ui/slider.js';
 import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import { CastDaemon, SOURCE_AUDIO, SOURCE_SCREEN, SOURCE_WINDOW } from './daemon.js';
+import { CastVolumeControl } from './volumeControl.js';
 import { SetupDialog } from './setupDialog.js';
 import { ErrorDialog } from './errorDialog.js';
 
@@ -45,15 +47,17 @@ export function loadIcons(extension) {
 // Shared between the top-bar indicator and the quick-settings toggle so the
 // two host widgets don't duplicate this logic.
 export class CastMenu {
-    constructor({ extension, menu, icons, setIcon, onCastChanged, onVolume }) {
+    constructor({ extension, menu, icons, setIcon, onCastChanged, onVolume, inlineVolume }) {
         this._extension = extension;
         this._menu = menu;
         this._icons = icons;
         this._setIcon = setIcon;
-        // Optional hooks used by the quick-settings host to drive the cast
-        // volume slider; absent for the top-bar indicator.
+        // The quick-settings host drives its own grid slider via these hooks.
+        // The top-bar host instead sets `inlineVolume` to get a slider row
+        // inside this menu (both share CastVolumeControl).
         this._onCastChanged = onCastChanged;
         this._onVolume = onVolume;
+        this._inlineVolume = inlineVolume;
 
         this.version = extension.metadata.version;
         this.daemonVersion = `${this.version}.0.0`;
@@ -66,7 +70,7 @@ export class CastMenu {
         this._daemon = new CastDaemon({
             onDevicesChanged: () => this._refreshDevices(),
             onStateChanged: (state, deviceId) => this._setState(state, deviceId),
-            onVolumeChanged: (level) => this._onVolume?.(level),
+            onVolumeChanged: (level) => this._onVolumeChanged(level),
             onDaemonGone: () => this._onDaemonGone(),
             onError: (message) => this._notifyError(message),
             onStartError: (message) => this._showError(message),
@@ -107,6 +111,13 @@ export class CastMenu {
 
     getVolume(callback) {
         this._daemon.getVolume(callback);
+    }
+
+    // Daemon reported the receiver's volume: update the quick-settings grid
+    // slider (via the hook) and/or this menu's inline slider.
+    _onVolumeChanged(level) {
+        this._onVolume?.(level);
+        this._volumeControl?.setFromDaemon(level);
     }
 
     // Name of the device the cast is currently going to, for the volume slider.
@@ -153,6 +164,10 @@ export class CastMenu {
 
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
+        // Top-bar host: a receiver volume slider row (the quick-settings host
+        // uses a slider in the panel grid instead). Shown only while casting.
+        if (this._inlineVolume) this._buildVolumeItem();
+
         this._stopItem = new PopupMenu.PopupImageMenuItem(
             _('Stop casting'),
             'media-playback-stop-symbolic',
@@ -170,6 +185,26 @@ export class CastMenu {
         this._menu.addMenuItem(prefsItem);
 
         this._rebuildDeviceItems();
+    }
+
+    _buildVolumeItem() {
+        const item = new PopupMenu.PopupBaseMenuItem({ activate: false });
+        const slider = new Slider(0);
+        slider.x_expand = true;
+        item.add_child(
+            new St.Icon({
+                icon_name: 'audio-volume-high-symbolic',
+                style_class: 'popup-menu-icon',
+            }),
+        );
+        item.add_child(slider);
+        item.visible = false;
+        this._menu.addMenuItem(item);
+
+        this._volumeItem = item;
+        this._volumeControl = new CastVolumeControl(slider, (level) =>
+            this._daemon.setVolume(level),
+        );
     }
 
     _checkDaemonVersion() {
@@ -410,6 +445,14 @@ export class CastMenu {
         this._setIcon(this.casting);
         this._stopItem.visible = this.casting;
         this._onCastChanged?.(this.casting, this.activeDeviceName());
+        if (this._volumeItem) {
+            this._volumeItem.visible = this.casting;
+            if (this.casting) {
+                this._daemon.getVolume((level) => {
+                    if (level !== null) this._volumeControl.setFromDaemon(level);
+                });
+            }
+        }
     }
 
     // Daemon gone without a final state update: reset to "not casting" without
@@ -458,6 +501,10 @@ export class CastMenu {
         if (this._openStateId) {
             this._menu.disconnect(this._openStateId);
             this._openStateId = null;
+        }
+        if (this._volumeControl) {
+            this._volumeControl.destroy();
+            this._volumeControl = null;
         }
         this._daemon.destroy();
         this._daemon = null;

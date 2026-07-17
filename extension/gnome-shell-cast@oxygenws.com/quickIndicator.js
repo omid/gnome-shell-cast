@@ -1,13 +1,13 @@
 'use strict';
 
 import GObject from 'gi://GObject';
-import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import { CastMenu, loadIcons } from './castMenu.js';
+import { CastVolumeControl } from './volumeControl.js';
 
 // Volume slider for the active cast device, shown among the Quick Settings
 // volume sliders while casting. Moving it sets the receiver's volume via the
@@ -16,16 +16,9 @@ const CastVolumeSlider = GObject.registerClass(
     class CastVolumeSlider extends QuickSettings.QuickSlider {
         _init(gicon, onChange) {
             super._init({ gicon });
-            this._onChange = onChange;
-            this._fromDaemon = false;
-            this._throttleId = 0;
-            this._pending = 0;
-            this._lastSent = -1;
-
             // Hidden until a cast is active.
             this.visible = false;
-
-            this._changedId = this.slider.connect('notify::value', () => this._onUserChanged());
+            this._control = new CastVolumeControl(this.slider, onChange);
         }
 
         setCasting(casting, deviceName) {
@@ -37,14 +30,8 @@ const CastVolumeSlider = GObject.registerClass(
             }
         }
 
-        // Reflects the receiver's volume without echoing it back. Relies on
-        // `notify::value` firing synchronously (St's slider does) so the
-        // `_fromDaemon` guard is still set when `_onUserChanged` runs.
         setValueFromDaemon(level) {
-            this._fromDaemon = true;
-            this.slider.value = level;
-            this._lastSent = level;
-            this._fromDaemon = false;
+            this._control.setFromDaemon(level);
         }
 
         // Makes the slider full width and moves it below the system output
@@ -81,42 +68,8 @@ const CastVolumeSlider = GObject.registerClass(
             }
         }
 
-        _onUserChanged() {
-            if (this._fromDaemon) return;
-            this._pending = this.slider.value;
-            // Leading edge: apply the first move immediately, then rate-limit
-            // the stream of updates while dragging so we don't flood D-Bus.
-            if (!this._throttleId) {
-                this._send();
-                this._scheduleFlush();
-            }
-        }
-
-        _scheduleFlush() {
-            this._throttleId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
-                if (this._pending !== this._lastSent) {
-                    this._send();
-                    return GLib.SOURCE_CONTINUE;
-                }
-                this._throttleId = 0;
-                return GLib.SOURCE_REMOVE;
-            });
-        }
-
-        _send() {
-            this._lastSent = this._pending;
-            this._onChange?.(this._pending);
-        }
-
         destroy() {
-            if (this._throttleId) {
-                GLib.source_remove(this._throttleId);
-                this._throttleId = 0;
-            }
-            if (this._changedId) {
-                this.slider.disconnect(this._changedId);
-                this._changedId = 0;
-            }
+            this._control.destroy();
             super.destroy();
         }
     },
