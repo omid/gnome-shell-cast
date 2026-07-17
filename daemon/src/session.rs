@@ -139,6 +139,8 @@ async fn cast_session(
     let _ = url_tx.send(cast::LoadMedia {
         url,
         content_type: "application/vnd.apple.mpegurl".to_string(),
+        title: None,
+        artist: None,
     });
 
     // 7. Run until asked to stop, the device disconnects, or the pipeline dies.
@@ -227,6 +229,8 @@ async fn cast_audio_stream(
     let _ = url_tx.send(cast::LoadMedia {
         url,
         content_type: content_type.to_string(),
+        title: Some("GNOME Shell Cast".to_string()),
+        artist: hostname(),
     });
 
     // Run until asked to stop, the device disconnects, or the pipeline dies.
@@ -295,6 +299,14 @@ fn attach_audio_sink(pipeline: &gst::Pipeline, broadcaster: &http::AudioBroadcas
             .build(),
     );
     Ok(())
+}
+
+/// The machine's hostname, shown as the cast's secondary line so a receiver
+/// makes clear which computer it is playing from. `None` if it can't be read.
+fn hostname() -> Option<String> {
+    let name = std::fs::read_to_string("/proc/sys/kernel/hostname").ok()?;
+    let name = name.trim();
+    (!name.is_empty()).then(|| name.to_string())
 }
 
 fn runtime_dir() -> PathBuf {

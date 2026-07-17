@@ -7,7 +7,7 @@ use std::time::Duration;
 use anyhow::{Result, anyhow};
 use log::{debug, info, warn};
 use rust_cast::channels::heartbeat::HeartbeatResponse;
-use rust_cast::channels::media::{Media, StreamType};
+use rust_cast::channels::media::{Media, Metadata, MusicTrackMediaMetadata, StreamType};
 use rust_cast::channels::receiver::CastDeviceApp;
 use rust_cast::{CastDevice, ChannelMessage};
 use tokio::sync::mpsc::UnboundedSender;
@@ -22,6 +22,11 @@ const DESTINATION_ID: &str = "receiver-0";
 pub struct LoadMedia {
     pub url: String,
     pub content_type: String,
+    /// Now-playing title shown by the receiver (the built-in Default Media
+    /// Receiver app's own name can't be changed); `None` leaves it untitled.
+    pub title: Option<String>,
+    /// Secondary line under the title, e.g. the casting computer's hostname.
+    pub artist: Option<String>,
 }
 
 #[derive(Debug)]
@@ -120,6 +125,13 @@ fn run(
     };
 
     info!("loading {} ({})", media.url, media.content_type);
+    let metadata = (media.title.is_some() || media.artist.is_some()).then(|| {
+        Metadata::MusicTrack(MusicTrackMediaMetadata {
+            title: media.title,
+            artist: media.artist,
+            ..Default::default()
+        })
+    });
     device
         .media
         .load(
@@ -130,7 +142,7 @@ fn run(
                 content_type: media.content_type,
                 stream_type: StreamType::Live,
                 duration: None,
-                metadata: None,
+                metadata,
             },
         )
         .map_err(|e| anyhow!("loading media: {e}"))?;
