@@ -4,7 +4,10 @@ import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 import Gio from 'gi://Gio';
 
-import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import {
+    ExtensionPreferences,
+    gettext as _,
+} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 const RESOLUTION_VALUES = ['native', '1080', '720'];
 const RESOLUTION_LABELS = ['Native', '1080p', '720p'];
@@ -17,21 +20,21 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         const settings = this.getSettings();
 
         const page = new Adw.PreferencesPage({
-            title: 'Settings',
+            title: _('Settings'),
             icon_name: 'preferences-system-symbolic',
         });
         window.add(page);
 
         const group = new Adw.PreferencesGroup({
-            title: 'Stream quality',
-            description: 'Applied the next time a cast is started',
+            title: _('Stream quality'),
+            description: _('Applied the next time a cast is started'),
         });
         page.add(group);
 
         const resolutionRow = new Adw.ComboRow({
-            title: 'Maximum resolution',
-            subtitle: 'Lower this if playback stutters on your network',
-            model: new Gtk.StringList({ strings: RESOLUTION_LABELS }),
+            title: _('Maximum resolution'),
+            subtitle: _('Lower this if playback stutters on your network'),
+            model: new Gtk.StringList({ strings: RESOLUTION_LABELS.map((s) => _(s)) }),
             selected: Math.max(0, RESOLUTION_VALUES.indexOf(settings.get_string('resolution'))),
         });
         resolutionRow.connect('notify::selected', (row) => {
@@ -40,8 +43,8 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         group.add(resolutionRow);
 
         const fpsRow = new Adw.SpinRow({
-            title: 'Framerate',
-            subtitle: 'Frames per second',
+            title: _('Framerate'),
+            subtitle: _('Frames per second'),
             adjustment: new Gtk.Adjustment({
                 lower: 10,
                 upper: 60,
@@ -52,8 +55,8 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         group.add(fpsRow);
 
         const bitrateRow = new Adw.SpinRow({
-            title: 'Video bitrate',
-            subtitle: 'kbit/s',
+            title: _('Video bitrate'),
+            subtitle: _('kbit/s'),
             adjustment: new Gtk.Adjustment({
                 lower: 1000,
                 upper: 20000,
@@ -63,13 +66,13 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         settings.bind('bitrate-kbps', bitrateRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         group.add(bitrateRow);
 
-        const menuGroup = new Adw.PreferencesGroup({ title: 'Menu' });
+        const menuGroup = new Adw.PreferencesGroup({ title: _('Menu') });
         page.add(menuGroup);
 
         const locationRow = new Adw.ComboRow({
-            title: 'Indicator location',
-            subtitle: 'Show the cast icon in the top bar, or in the quick settings menu',
-            model: new Gtk.StringList({ strings: LOCATION_LABELS }),
+            title: _('Indicator location'),
+            subtitle: _('Show the cast icon in the top bar, or in the quick settings menu'),
+            model: new Gtk.StringList({ strings: LOCATION_LABELS.map((s) => _(s)) }),
             selected: Math.max(
                 0,
                 LOCATION_VALUES.indexOf(settings.get_string('indicator-location')),
@@ -81,8 +84,8 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         menuGroup.add(locationRow);
 
         const detailsRow = new Adw.SwitchRow({
-            title: 'Show cast details',
-            subtitle: 'Show the transport and codecs under the active device while casting',
+            title: _('Show cast details'),
+            subtitle: _('Show the transport and codecs under the active device while casting'),
         });
         settings.bind('show-details', detailsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         menuGroup.add(detailsRow);
@@ -94,7 +97,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         const url = this.metadata.url ?? 'https://github.com/omid/gnome-shell-cast';
 
         const page = new Adw.PreferencesPage({
-            title: 'About',
+            title: _('About'),
             icon_name: 'help-about-symbolic',
         });
         window.add(page);
@@ -105,7 +108,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         group.add(
             new Adw.ActionRow({
                 title: this.metadata.name,
-                subtitle: `Version ${this.metadata.version}`,
+                subtitle: _('Version %s').replace('%s', String(this.metadata.version)),
             }),
         );
 
@@ -116,7 +119,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             return row;
         };
 
-        group.add(linkRow('Homepage', url));
-        group.add(linkRow('Report an issue', `${url}/issues`));
+        group.add(linkRow(_('Homepage'), url));
+        group.add(linkRow(_('Report an issue'), `${url}/issues`));
     }
 }

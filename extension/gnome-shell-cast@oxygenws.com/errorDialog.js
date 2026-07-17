@@ -8,6 +8,7 @@ import St from 'gi://St';
 
 import * as Dialog from 'resource:///org/gnome/shell/ui/dialog.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
+import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 // Shown when a cast fails. Displays the daemon's error text and helps the user
 // report it: a button that opens a pre-filled GitHub issue and a button that
@@ -25,9 +26,10 @@ export const ErrorDialog = GObject.registerClass(
 
             this.contentLayout.add_child(
                 new Dialog.MessageDialogContent({
-                    title: 'Casting failed',
-                    description:
+                    title: _('Casting failed'),
+                    description: _(
                         'If this keeps happening, please report it (that helps get it fixed).',
+                    ),
                 }),
             );
 
@@ -42,23 +44,24 @@ export const ErrorDialog = GObject.registerClass(
 
             this._status = new St.Label({
                 style_class: 'gsc-setup-status',
-                text:
+                text: _(
                     'The report will include this error, the version, and a ' +
-                    'reminder to attach logs.',
+                        'reminder to attach logs.',
+                ),
             });
             this.contentLayout.add_child(this._status);
 
             this.addButton({
-                label: 'Copy details',
+                label: _('Copy details'),
                 action: () => this._copy(),
             });
             this.addButton({
-                label: 'Close',
+                label: _('Close'),
                 action: () => this.close(),
                 key: Clutter.KEY_Escape,
             });
             this.addButton({
-                label: 'Report an issue',
+                label: _('Report an issue'),
                 action: () => this._report(),
                 default: true,
             });
@@ -66,7 +69,7 @@ export const ErrorDialog = GObject.registerClass(
 
         _copy() {
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._details);
-            this._status.text = 'Copied! Paste it into a new issue.';
+            this._status.text = _('Copied! Paste it into a new issue.');
         }
 
         _report() {

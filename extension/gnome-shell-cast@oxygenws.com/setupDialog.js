@@ -8,6 +8,7 @@ import St from 'gi://St';
 
 import * as Dialog from 'resource:///org/gnome/shell/ui/dialog.js';
 import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
+import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 // Modal shown from the indicator when the daemon is missing (mode 'install')
 // or out of date relative to the extension (mode 'update'). It only shows the
@@ -22,15 +23,21 @@ export const SetupDialog = GObject.registerClass(
             this._url = url;
 
             const isUpdate = mode === 'update';
-            const title = isUpdate ? 'Update the cast daemon' : 'Set up the cast daemon';
+            const title = isUpdate ? _('Update the cast daemon') : _('Set up the cast daemon');
             const description = isUpdate
-                ? `A newer version of the extension needs a matching daemon ` +
-                  `(installed v${currentVersion} → needs v${requiredVersion}). ` +
-                  `Run the command below to update it (nothing runs as root).`
-                : `GNOME Shell Cast needs a small background daemon. It can't be ` +
-                  `shipped through extensions.gnome.org, so install it once with the ` +
-                  `command below. It downloads a checksum-verified binary to ` +
-                  `~/.local/bin (nothing runs as root).`;
+                ? _(
+                      'A newer version of the extension needs a matching daemon ' +
+                          '(installed v%old → needs v%new). ' +
+                          'Run the command below to update it (nothing runs as root).',
+                  )
+                      .replace('%old', currentVersion)
+                      .replace('%new', requiredVersion)
+                : _(
+                      'GNOME Shell Cast needs a small background daemon. It can’t be ' +
+                          'shipped through extensions.gnome.org, so install it once with the ' +
+                          'command below. It downloads a checksum-verified binary to ' +
+                          '~/.local/bin (nothing runs as root).',
+                  );
 
             this.contentLayout.add_child(new Dialog.MessageDialogContent({ title, description }));
 
@@ -46,21 +53,21 @@ export const SetupDialog = GObject.registerClass(
 
             this._status = new St.Label({
                 style_class: 'gsc-setup-status',
-                text: 'Copy the command, then paste it into a terminal and run it.',
+                text: _('Copy the command, then paste it into a terminal and run it.'),
             });
             this.contentLayout.add_child(this._status);
 
             this.addButton({
-                label: 'Homepage',
+                label: _('Homepage'),
                 action: () => this._openInstructions(),
             });
             this.addButton({
-                label: 'Close',
+                label: _('Close'),
                 action: () => this.close(),
                 key: Clutter.KEY_Escape,
             });
             this.addButton({
-                label: 'Copy command',
+                label: _('Copy command'),
                 action: () => this._copy(),
                 default: true,
             });
@@ -68,7 +75,7 @@ export const SetupDialog = GObject.registerClass(
 
         _copy() {
             St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this._command);
-            this._status.text = 'Copied! Paste it into a terminal and run it.';
+            this._status.text = _('Copied! Paste it into a terminal and run it.');
         }
 
         _openInstructions() {
