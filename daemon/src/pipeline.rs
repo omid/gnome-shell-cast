@@ -37,13 +37,14 @@ impl StreamSettings {
             && w > 0
             && h > 0
         {
-            settings.size = Some((w, h));
+            // Capped at 8K so a bad request can't ask for an absurd frame size.
+            settings.size = Some((w.min(7680), h.min(4320)));
         }
         if let Some(fps) = get_i32("fps") {
             settings.fps = fps.clamp(10, 60);
         }
         if let Some(bitrate) = get_i32("bitrate-kbps") {
-            settings.bitrate_kbps = bitrate.clamp(1000, 20_000);
+            settings.bitrate_kbps = bitrate.clamp(1000, 60_000);
         }
         settings
     }
@@ -256,6 +257,28 @@ mod tests {
         let settings = StreamSettings::from_options(&options);
         assert_eq!(settings.fps, 60);
         assert_eq!(settings.bitrate_kbps, 1000);
+    }
+
+    #[test]
+    fn high_resolution_and_bitrate_pass_through() {
+        let mut options = HashMap::new();
+        options.insert("width".to_string(), OwnedValue::from(3840_i32));
+        options.insert("height".to_string(), OwnedValue::from(2160_i32));
+        options.insert("bitrate-kbps".to_string(), OwnedValue::from(30_000_i32));
+        let settings = StreamSettings::from_options(&options);
+        assert_eq!(settings.size, Some((3840, 2160)));
+        assert_eq!(settings.bitrate_kbps, 30_000);
+    }
+
+    #[test]
+    fn absurd_size_and_bitrate_are_capped() {
+        let mut options = HashMap::new();
+        options.insert("width".to_string(), OwnedValue::from(100_000_i32));
+        options.insert("height".to_string(), OwnedValue::from(100_000_i32));
+        options.insert("bitrate-kbps".to_string(), OwnedValue::from(999_999_i32));
+        let settings = StreamSettings::from_options(&options);
+        assert_eq!(settings.size, Some((7680, 4320)));
+        assert_eq!(settings.bitrate_kbps, 60_000);
     }
 
     #[test]
