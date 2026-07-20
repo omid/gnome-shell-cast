@@ -14,7 +14,7 @@ use tokio::sync::{mpsc, oneshot};
 use crate::capture::{self, SourceKind};
 use crate::discovery::Device;
 use crate::pipeline::{self, PLAYLIST_NAME, StreamSettings};
-use crate::{SharedState, cast, http, mirror, volume};
+use crate::{SharedState, cast, http, streaming, volume};
 
 /// Runs one cast session end to end: portal capture → `GStreamer` HLS encode →
 /// HTTP serve → Chromecast playback, then cleans everything up when `stop_rx`
@@ -83,9 +83,9 @@ async fn cast_session(
 
     // 2. Prefer Chrome-style Cast Streaming (sub-second latency); fall back
     // to the HLS path below only when the receiver can't be negotiated with.
-    match mirror::run(state, device, capture.as_ref(), &settings, &mut stop_rx).await {
-        mirror::Outcome::Finished(result) => return result,
-        mirror::Outcome::Unavailable(e) => {
+    match streaming::run(state, device, capture.as_ref(), &settings, &mut stop_rx).await {
+        streaming::Outcome::Finished(result) => return result,
+        streaming::Outcome::Unavailable(e) => {
             warn!("mirroring unavailable, falling back to HLS: {e:#}");
         }
     }

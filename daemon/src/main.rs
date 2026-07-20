@@ -2,9 +2,9 @@ mod capture;
 mod cast;
 mod discovery;
 mod http;
-mod mirror;
 mod pipeline;
 mod session;
+mod streaming;
 mod volume;
 
 use std::collections::HashMap;
@@ -291,9 +291,27 @@ impl ShellCast {
     async fn volume_changed(emitter: &SignalEmitter<'_>, level: f64) -> zbus::Result<()>;
 }
 
+/// Tags every log line with `gnome-shell-cast` so `journalctl --user -g
+/// gnome-shell-cast` finds it regardless of the (unreliable) journal identifier.
+fn init_logging() {
+    use std::io::Write as _;
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .format(|buf, record| {
+            writeln!(
+                buf,
+                "[gnome-shell-cast] {} {} {}: {}",
+                buf.timestamp(),
+                record.level(),
+                record.target(),
+                record.args()
+            )
+        })
+        .init();
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+    init_logging();
     gstreamer::init()?;
 
     let (events_tx, mut events_rx) = mpsc::unbounded_channel();

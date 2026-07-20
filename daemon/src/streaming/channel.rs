@@ -18,7 +18,7 @@ use rustls::{ClientConnection, StreamOwned};
 use serde_json::{Value, json};
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::messages::{self, Answer};
+use super::openscreen::messages::{self, Answer};
 
 const SENDER_ID: &str = "sender-0";
 const RECEIVER_ID: &str = "receiver-0";

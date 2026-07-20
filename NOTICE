@@ -1,0 +1,15 @@
+GNOME Shell Cast
+Copyright (c) 2026 Omid Rad
+
+This project is licensed under the MIT License (see LICENSE).
+
+It includes third-party material under a different licence:
+
+  daemon/src/streaming/openscreen/ is a Rust port of Chromium's Open Screen
+  Library (openscreen) `cast/streaming` and is used under the BSD-3-Clause
+  licence. The full copyright notice and disclaimer are in that directory's
+  NOTICE file: daemon/src/streaming/openscreen/NOTICE
+
+"Google Cast" and "Chromecast" are trademarks of Google LLC. This project is
+not affiliated with, endorsed by, or sponsored by Google LLC; the names are
+used only to describe interoperability.

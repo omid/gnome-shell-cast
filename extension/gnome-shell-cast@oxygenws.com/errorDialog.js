@@ -22,7 +22,7 @@ export const ErrorDialog = GObject.registerClass(
             this._details =
                 `${message}\n\nVersion ${version}\n\n` +
                 'Please also paste the output of: ' +
-                'journalctl --user -g gnome_shell_cast';
+                'journalctl --user -g gnome-shell-cast';
 
             this.contentLayout.add_child(
                 new Dialog.MessageDialogContent({

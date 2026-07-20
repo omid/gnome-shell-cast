@@ -1,14 +1,14 @@
 //! Chrome-style Cast Streaming ("mirroring"): sub-second screen casting via
 //! the 0F5096E8 receiver app, AES-encrypted RTP over UDP, and RTCP feedback.
-//! Protocol ported from Chromium's openscreen `cast/streaming`.
+//!
+//! The wire protocol itself (OFFER/ANSWER, RTP, RTCP, crypto) is a port of
+//! Chromium's openscreen and lives in the [`openscreen`] submodule under its
+//! own BSD-3-Clause licence; this module and [`channel`]/[`encoder`] are the
+//! original glue that drives it.
 
 mod channel;
-mod crypto;
 mod encoder;
-mod messages;
-mod rtcp;
-mod rtp;
-mod sender;
+mod openscreen;
 
 use std::net::UdpSocket;
 use std::os::fd::AsRawFd;
@@ -27,7 +27,10 @@ use crate::capture::Capture;
 use crate::discovery::Device;
 use crate::pipeline::{self, StreamSettings};
 use channel::{ChannelControl, ChannelEvent, MirrorChannel};
-use sender::{ChunkSender, EncodedChunk, MediaSender, StreamConfig, StreamKind, chunk_channel};
+use openscreen::sender::{
+    ChunkSender, EncodedChunk, MediaSender, StreamConfig, StreamKind, chunk_channel,
+};
+use openscreen::{messages, rtcp};
 
 const AUDIO_INDEX: u32 = 0;
 /// First video stream index; each offered codec gets the next one up.
@@ -66,8 +69,8 @@ pub async fn run(
     settings: &StreamSettings,
     stop_rx: &mut oneshot::Receiver<()>,
 ) -> Outcome {
-    // 1. Stream parameters. Mirroring caps at 1080p; VP8 software encoding
-    // above that is not realtime, and receivers scale anyway.
+    // 1. Stream parameters. The OFFER needs a frame size, so "native" (no
+    // explicit size) is advertised as 1080p; receivers scale anyway.
     let (width, height) = settings.size.unwrap_or((1920, 1080));
     let fps = settings.fps;
     let video_bps = (settings.bitrate_kbps as u32) * 1000;

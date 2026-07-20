@@ -133,8 +133,8 @@ Preferences (resolution cap, framerate, bitrate) are under the ⚙ menu entry or
 # Extension logs
 journalctl -f -o cat /usr/bin/gnome-shell
 
-# Daemon logs
-journalctl --user -f | grep gnome-shell-cast
+# Daemon logs (every line is tagged "gnome-shell-cast")
+journalctl --user -f -g gnome-shell-cast
 # or run it by hand with verbose logging:
 RUST_LOG=debug ~/.local/bin/gnome-shell-cast-daemon
 ```
@@ -155,10 +155,23 @@ RUST_LOG=debug ~/.local/bin/gnome-shell-cast-daemon
 
 - A few seconds of latency on the HTTP/HLS fallback (low-latency Cast Streaming
   is used when the receiver supports it).
+- Resolutions above 1080p realistically need a hardware encoder (VA-API or
+  NVENC); software encoding above 1080p will not keep up in realtime. Raise the
+  bitrate to match the resolution — the default 4000 kbit/s suits 720p.
+- With resolution set to *Native*, Cast Streaming advertises 1080p to the
+  receiver regardless of the captured size.
 - Sender and Chromecast must be on the same LAN.
 - DRM-protected content will be black in the capture.
 - Audio is the full system mix (no per-app capture).
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE).
+
+The Cast Streaming protocol code in `daemon/src/streaming/openscreen/` is a port
+of Chromium's [openscreen](https://chromium.googlesource.com/openscreen)
+`cast/streaming` and is used under its BSD-3-Clause licence — see
+[NOTICE](NOTICE) and
+[`daemon/src/streaming/openscreen/NOTICE`](daemon/src/streaming/openscreen/NOTICE)
+for the required attribution. "Google Cast" and "Chromecast" are trademarks of
+Google LLC; this project is not affiliated with Google.
