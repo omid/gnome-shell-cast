@@ -25,47 +25,11 @@ const CastVolumeSlider = GObject.registerClass(
             this.visible = casting;
             if (casting) {
                 this.accessible_name = _('%s volume').replace('%s', deviceName);
-                // Position now that the item is in the grid (a cast is active).
-                this._placeInVolumeSection();
             }
         }
 
         setValueFromDaemon(level) {
             this._control.setFromDaemon(level);
-        }
-
-        // Makes the slider full width and moves it below the system output
-        // slider. Reaches into private Quick Settings internals (GNOME 48-50
-        // layout), so every step is guarded to degrade to a plain half-width
-        // tile rather than throw; width and position fail independently.
-        _placeInVolumeSection() {
-            const grid = this.get_parent();
-            if (!grid) return;
-
-            // Span both columns (external items default to a single column).
-            try {
-                grid.layout_manager?.child_set_property(grid, this, 'column-span', 2);
-            } catch {
-                // No column-span child property on this layout; keep the default.
-            }
-
-            // Move directly below the system output volume slider, once.
-            if (this._positioned) return;
-            try {
-                const qs = Main.panel.statusArea.quickSettings;
-                const output =
-                    qs?._volumeOutput?.quickSettingsItems?.[0] ??
-                    qs?._volume?._output ??
-                    grid
-                        .get_children()
-                        .find((child) => child.constructor?.name === 'OutputStreamSlider');
-                if (output && output.get_parent() === grid) {
-                    grid.set_child_above_sibling(this, output);
-                    this._positioned = true;
-                }
-            } catch {
-                // Unknown layout; leave the slider where it was added.
-            }
         }
 
         destroy() {
@@ -158,11 +122,19 @@ export const CastQuickIndicator = GObject.registerClass(
             });
 
             this.quickSettingsItems.push(this._toggle);
-            this.quickSettingsItems.push(this._slider);
+
+            // Between the system output and input volume sliders — the two grid
+            // items after getFirstItem() — via public sibling navigation.
+            const qsMenu = Main.panel.statusArea.quickSettings.menu;
+            const output = qsMenu.getFirstItem()?.get_next_sibling();
+            const anchor = output?.get_next_sibling() ?? qsMenu.getFirstItem();
+            qsMenu.insertItemBefore(this._slider, anchor, 2);
         }
 
         destroy() {
             this._toggle.disconnect(this._checkedId);
+            // Destroyed explicitly because it isn't in quickSettingsItems.
+            this._slider.destroy();
             this.quickSettingsItems.forEach((item) => item.destroy());
             super.destroy();
         }
