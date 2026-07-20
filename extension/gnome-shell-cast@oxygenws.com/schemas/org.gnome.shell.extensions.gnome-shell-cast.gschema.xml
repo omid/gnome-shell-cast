@@ -5,12 +5,14 @@
     <key name="resolution" type="s">
       <choices>
         <choice value="native"/>
+        <choice value="2160"/>
+        <choice value="1440"/>
         <choice value="1080"/>
         <choice value="720"/>
       </choices>
       <default>'720'</default>
       <summary>Maximum stream resolution</summary>
-      <description>Scale the captured video down to this size before encoding. "native" keeps the captured size.</description>
+      <description>Scale the captured video down to this size before encoding. "native" keeps the captured size. Above 1080p, raise the bitrate to match and expect a hardware encoder to be needed for a smooth stream.</description>
     </key>
     <key name="fps" type="i">
       <range min="10" max="60"/>
@@ -18,9 +20,10 @@
       <summary>Stream framerate</summary>
     </key>
     <key name="bitrate-kbps" type="i">
-      <range min="1000" max="20000"/>
+      <range min="1000" max="60000"/>
       <default>4000</default>
       <summary>Video bitrate in kbit/s</summary>
+      <description>Roughly 4000 for 720p, 8000 for 1080p, 16000 for 1440p and 30000 for 4K; more for fast-moving content.</description>
     </key>
     <key name="show-details" type="b">
       <default>false</default>

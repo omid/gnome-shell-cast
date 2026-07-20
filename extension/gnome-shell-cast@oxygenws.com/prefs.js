@@ -9,15 +9,17 @@ import {
     gettext as _,
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-const RESOLUTION_VALUES = ['native', '1080', '720'];
-const RESOLUTION_LABELS = ['Native', '1080p', '720p'];
-
+const RESOLUTION_VALUES = ['native', '2160', '1440', '1080', '720'];
 const LOCATION_VALUES = ['tray', 'quick-settings'];
-const LOCATION_LABELS = ['Top bar', 'Quick settings'];
 
 export default class GnomeShellCastPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
+
+        // Built here (not at module scope) so each label is a literal `_()`
+        // call that xgettext can extract and the gettext domain is bound.
+        const resolutionLabels = [_('Native'), _('4K (2160p)'), _('1440p'), _('1080p'), _('720p')];
+        const locationLabels = [_('Top bar'), _('Quick settings')];
 
         const page = new Adw.PreferencesPage({
             title: _('Settings'),
@@ -33,8 +35,8 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
 
         const resolutionRow = new Adw.ComboRow({
             title: _('Maximum resolution'),
-            subtitle: _('Lower this if playback stutters on your network'),
-            model: new Gtk.StringList({ strings: RESOLUTION_LABELS.map((s) => _(s)) }),
+            subtitle: _('Above 1080p needs a hardware encoder and a matching bitrate'),
+            model: new Gtk.StringList({ strings: resolutionLabels }),
             selected: Math.max(0, RESOLUTION_VALUES.indexOf(settings.get_string('resolution'))),
         });
         resolutionRow.connect('notify::selected', (row) => {
@@ -56,10 +58,10 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
 
         const bitrateRow = new Adw.SpinRow({
             title: _('Video bitrate'),
-            subtitle: _('kbit/s'),
+            subtitle: _('kbit/s — about 4000 for 720p, 8000 for 1080p, 30000 for 4K'),
             adjustment: new Gtk.Adjustment({
                 lower: 1000,
-                upper: 20000,
+                upper: 60000,
                 step_increment: 500,
             }),
         });
@@ -72,7 +74,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         const locationRow = new Adw.ComboRow({
             title: _('Indicator location'),
             subtitle: _('Show the cast icon in the top bar, or in the quick settings menu'),
-            model: new Gtk.StringList({ strings: LOCATION_LABELS.map((s) => _(s)) }),
+            model: new Gtk.StringList({ strings: locationLabels }),
             selected: Math.max(
                 0,
                 LOCATION_VALUES.indexOf(settings.get_string('indicator-location')),

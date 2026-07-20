@@ -1,14 +1,14 @@
 {
   "uuid": "gnome-shell-cast@oxygenws.com",
   "name": "GNOME Shell Cast",
-  "description": "Cast your whole screen or a single window to a Chromecast device from the top panel.\n\nRequires the bundled gnome-shell-cast-daemon to be installed (see the project README).",
+  "description": "Cast your whole screen or a single window to a Chromecast device from the top panel, with system audio. Audio-only receivers (speakers, cast groups) are detected and offered as an audio share.\n\nKeywords: chromecast, cast, google cast, screencast, screen mirroring, screen sharing, wireless display, tv, nest hub, speakers, hls, av1, vp9.\n\nCopies to the clipboard only when you press \"Copy command\" or \"Copy details\" in its dialogs.\n\nRequires the gnome-shell-cast-daemon to be installed (see the project README).",
   "shell-version": [
     "48",
     "49",
     "50"
   ],
   "settings-schema": "org.gnome.shell.extensions.gnome-shell-cast",
-  "gettext-domain": "gnome-shell-cast@oxygenws.com",
+  "gettext-domain": "gnome-shell-cast",
   "url": "https://github.com/omid/gnome-shell-cast",
   "version": 1
 }

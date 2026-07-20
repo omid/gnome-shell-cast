@@ -78,11 +78,18 @@ export class CastDaemon {
         this._onStartError = onStartError;
         this._signalIds = [];
 
+        // Aborts in-flight calls on destroy(); D-Bus replies can outlive
+        // disable() and touch already-destroyed widgets.
+        this._cancellable = new Gio.Cancellable();
+
         this._proxy = new CastProxy(
             Gio.DBus.session,
             BUS_NAME,
             OBJECT_PATH,
             (proxy, error) => {
+                // Cancelling init_async still invokes this callback, with a
+                // "cancelled" error we must not report as a daemon failure.
+                if (this._cancellable.is_cancelled()) return;
                 if (error) {
                     this._onError?.(error.message);
                     return;
@@ -104,7 +111,7 @@ export class CastDaemon {
                     ),
                 ]);
             },
-            null,
+            this._cancellable,
             Gio.DBusProxyFlags.DO_NOT_AUTO_START_AT_CONSTRUCTION |
                 Gio.DBusProxyFlags.DO_NOT_LOAD_PROPERTIES,
         );
@@ -122,32 +129,44 @@ export class CastDaemon {
         );
     }
 
-    listDevices(callback) {
-        this._proxy.ListDevicesRemote((result, error) => {
-            if (error) {
-                // A transient failure (e.g. the daemon still activating just
-                // after login) yields an empty list and the "Searching…"
-                // placeholder; a genuinely missing daemon is reported by the
-                // version check, so don't also raise a notification here.
-                callback([]);
-                return;
-            }
-            const [devices] = result;
-            // Bit 0 of the Cast capability mask = video out; devices without
-            // it (speakers, cast groups) can only receive audio.
-            callback(
-                devices.map(([id, name, address, capabilities]) => ({
-                    id,
-                    name,
-                    address,
-                    hasVideo: (capabilities & 1) !== 0,
-                })),
-            );
-        });
+    // Drops a reply handler once destroy() has cancelled — a cancelled call
+    // still fires its callback, into now-destroyed menu items.
+    _reply(handler) {
+        return (...args) => {
+            if (!this._cancellable.is_cancelled()) handler(...args);
+        };
     }
 
-    getStatus(callback) {
-        this._proxy.GetStatusRemote((result, error) => {
+    listDevices(callback) {
+        this._proxy?.ListDevicesRemote(
+            this._reply((result, error) => {
+                if (error) {
+                    // A transient failure (e.g. the daemon still activating just
+                    // after login) yields an empty list and the "Searching…"
+                    // placeholder; a genuinely missing daemon is reported by the
+                    // version check, so don't also raise a notification here.
+                    callback([]);
+                    return;
+                }
+                const [devices] = result;
+                // Bit 0 of the Cast capability mask = video out; devices without
+                // it (speakers, cast groups) can only receive audio.
+                callback(
+                    devices.map(([id, name, address, capabilities]) => ({
+                        id,
+                        name,
+                        address,
+                        hasVideo: (capabilities & 1) !== 0,
+                    })),
+                );
+            }),
+            this._cancellable,
+        );
+    }
+
+    // `noAutoStart` queries status without D-Bus-activating an idle daemon.
+    getStatus(callback, { noAutoStart = false } = {}) {
+        const reply = this._reply((result, error) => {
             if (error) {
                 callback('idle', '');
                 return;
@@ -155,28 +174,40 @@ export class CastDaemon {
             const [state, deviceId] = result;
             callback(state, deviceId);
         });
+        // The generated *Remote wrapper reads a trailing number as call flags.
+        if (noAutoStart) {
+            this._proxy?.GetStatusRemote(reply, Gio.DBusCallFlags.NO_AUTO_START, this._cancellable);
+        } else {
+            this._proxy?.GetStatusRemote(reply, this._cancellable);
+        }
     }
 
     getDetails(callback) {
-        this._proxy.GetDetailsRemote((result, error) => {
-            if (error) {
-                callback(null);
-                return;
-            }
-            const [transport, codec, receiverCodecs] = result;
-            callback({ transport, codec, receiverCodecs });
-        });
+        this._proxy?.GetDetailsRemote(
+            this._reply((result, error) => {
+                if (error) {
+                    callback(null);
+                    return;
+                }
+                const [transport, codec, receiverCodecs] = result;
+                callback({ transport, codec, receiverCodecs });
+            }),
+            this._cancellable,
+        );
     }
 
     getLastEvent(callback) {
-        this._proxy.GetLastEventRemote((result, error) => {
-            if (error) {
-                callback({ kind: '', message: '' });
-                return;
-            }
-            const [kind, message] = result;
-            callback({ kind, message });
-        });
+        this._proxy?.GetLastEventRemote(
+            this._reply((result, error) => {
+                if (error) {
+                    callback({ kind: '', message: '' });
+                    return;
+                }
+                const [kind, message] = result;
+                callback({ kind, message });
+            }),
+            this._cancellable,
+        );
     }
 
     /**
@@ -185,44 +216,65 @@ export class CastDaemon {
      * call auto-starts the daemon, so an error here means activation failed.
      */
     getVersion(callback) {
-        this._proxy.GetVersionRemote((result, error) => {
-            if (error) {
-                callback(null);
-                return;
-            }
-            callback(result[0]);
-        });
+        this._proxy?.GetVersionRemote(
+            this._reply((result, error) => {
+                if (error) {
+                    callback(null);
+                    return;
+                }
+                callback(result[0]);
+            }),
+            this._cancellable,
+        );
     }
 
     startCast(deviceId, source, options) {
-        this._proxy.StartCastRemote(deviceId, source, options, (_result, error) => {
-            if (error) (this._onStartError ?? this._onError)?.(error.message);
-        });
+        this._proxy?.StartCastRemote(
+            deviceId,
+            source,
+            options,
+            this._reply((_result, error) => {
+                if (error) (this._onStartError ?? this._onError)?.(error.message);
+            }),
+            this._cancellable,
+        );
     }
 
     stopCast() {
-        this._proxy.StopCastRemote((_result, error) => {
-            if (error) this._onError?.(error.message);
-        });
+        this._proxy?.StopCastRemote(
+            this._reply((_result, error) => {
+                if (error) this._onError?.(error.message);
+            }),
+            this._cancellable,
+        );
     }
 
     getVolume(callback) {
-        this._proxy.GetVolumeRemote((result, error) => {
-            if (error) {
-                callback(null);
-                return;
-            }
-            callback(result[0]);
-        });
+        this._proxy?.GetVolumeRemote(
+            this._reply((result, error) => {
+                if (error) {
+                    callback(null);
+                    return;
+                }
+                callback(result[0]);
+            }),
+            this._cancellable,
+        );
     }
 
     setVolume(level) {
-        this._proxy.SetVolumeRemote(level, (_result, error) => {
-            if (error) this._onError?.(error.message);
-        });
+        this._proxy?.SetVolumeRemote(
+            level,
+            this._reply((_result, error) => {
+                if (error) this._onError?.(error.message);
+            }),
+            this._cancellable,
+        );
     }
 
     destroy() {
+        // Cancel first: aborts in-flight calls and makes _reply() drop queued ones.
+        this._cancellable.cancel();
         for (const [proxy, id] of this._signalIds) proxy.disconnectSignal(id);
         this._signalIds = [];
         if (this._watchId) {
@@ -230,5 +282,11 @@ export class CastDaemon {
             this._watchId = 0;
         }
         this._proxy = null;
+        this._onDevicesChanged = null;
+        this._onStateChanged = null;
+        this._onVolumeChanged = null;
+        this._onDaemonGone = null;
+        this._onError = null;
+        this._onStartError = null;
     }
 }

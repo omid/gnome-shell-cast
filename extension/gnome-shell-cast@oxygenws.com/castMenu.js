@@ -15,6 +15,8 @@ import { SetupDialog } from './setupDialog.js';
 import { ErrorDialog } from './errorDialog.js';
 
 const RESOLUTIONS = {
+    2160: [3840, 2160],
+    1440: [2560, 1440],
     1080: [1920, 1080],
     720: [1280, 720],
 };
@@ -94,6 +96,11 @@ export class CastMenu {
         // Refresh the device list and daemon state each time the menu opens.
         this._openStateId = menu.connect('open-state-changed', (_menu, open) => {
             if (open) this.refresh();
+        });
+
+        // Reflect an already-running cast right away, without waking an idle daemon.
+        this._daemon.getStatus((state, deviceId) => this._setState(state, deviceId), {
+            noAutoStart: true,
         });
     }
 
@@ -277,12 +284,24 @@ export class CastMenu {
 
     _openSetupDialog() {
         const setup = this._daemonSetup ?? { mode: 'install', currentVersion: null };
-        const dialog = new SetupDialog({
-            mode: setup.mode,
-            command: this._installCommand(),
-            currentVersion: setup.currentVersion,
-            requiredVersion: this.daemonVersion,
-            url: this._daemonRepoUrl(),
+        this._showDialog(
+            new SetupDialog({
+                mode: setup.mode,
+                command: this._installCommand(),
+                currentVersion: setup.currentVersion,
+                requiredVersion: this.daemonVersion,
+                url: this._daemonRepoUrl(),
+            }),
+        );
+    }
+
+    // Tracks the open modal so destroy() can close it — a dialog is parented to
+    // the shell, not to us, so it would otherwise outlive disable().
+    _showDialog(dialog) {
+        this._dialog?.close();
+        this._dialog = dialog;
+        dialog.connect('closed', () => {
+            if (this._dialog === dialog) this._dialog = null;
         });
         dialog.open();
     }
@@ -298,7 +317,7 @@ export class CastMenu {
         this._devicesSection.removeAll();
 
         if (this._devices.length === 0) {
-            const empty = new PopupMenu.PopupMenuItem('Searching for Chromecast devices…');
+            const empty = new PopupMenu.PopupMenuItem(_('Searching for Chromecast devices…'));
             empty.setSensitive(false);
             this._devicesSection.addMenuItem(empty);
             return;
@@ -478,7 +497,7 @@ export class CastMenu {
         dialog.connect('closed', () => {
             this._lastErrorShown = null;
         });
-        dialog.open();
+        this._showDialog(dialog);
     }
 
     _notifyError(message) {
@@ -486,6 +505,9 @@ export class CastMenu {
     }
 
     destroy() {
+        // close() pops the modal grab; ModalDialog destroys itself on close.
+        this._dialog?.close();
+        this._dialog = null;
         if (this._versionRetryId) {
             GLib.source_remove(this._versionRetryId);
             this._versionRetryId = 0;
