@@ -71,10 +71,7 @@ ego-zip: export _VERSION=$(shell jq '.version' $(_EXT_DIR)/metadata.json)
 ego-zip: eslint
 	@rm -f $(_EXT_DIR)/schemas/gschemas.compiled
 	@gnome-extensions pack --force --out-dir=. \
-		--extra-source=indicator.js --extra-source=daemon.js \
-		--extra-source=setupDialog.js --extra-source=errorDialog.js \
-		--extra-source=castMenu.js --extra-source=quickIndicator.js \
-		--extra-source=icons \
+		--extra-source=lib --extra-source=icons \
 		--schema=schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml \
 		$(_EXT_DIR)
 	@mv "$(_UUID).shell-extension.zip" "$(_UUID).v$(_VERSION).zip"

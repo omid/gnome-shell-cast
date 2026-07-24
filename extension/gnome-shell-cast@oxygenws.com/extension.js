@@ -3,8 +3,8 @@
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import { CastPanelIndicator } from './indicator.js';
-import { CastQuickIndicator } from './quickIndicator.js';
+import { CastPanelIndicator } from './lib/indicator.js';
+import { CastQuickIndicator } from './lib/quickIndicator.js';
 
 export default class GnomeShellCastExtension extends Extension {
     enable() {
