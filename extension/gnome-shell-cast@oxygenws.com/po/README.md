@@ -21,9 +21,9 @@ po/
 - Never edit this file manually
 
 ### `.po` (Portable Object Files)
-- **de.po** - German (Deutsch) translation
-- **en_US.po** - English translation
-- **fa.po** - Persian/Farsi translation
+- **de_DE.po** - German (Germany) translation
+- **en_US.po** - English (United States) translation
+- **fa_IR.po** - Persian (Iran) translation
 - Edit these files to add/update translations
 - Can be edited with any text editor or tools like Poedit
 
@@ -48,25 +48,20 @@ Open a .po file and add translations for each msgid:
 
 ```bash
 # Using text editor
-nano po/de.po
+nano extension/gnome-shell-cast@oxygenws.com/po/de_DE.po
 
 # Or use Poedit GUI
-poedit po/de.po
+poedit extension/gnome-shell-cast@oxygenws.com/po/de_DE.po
 ```
 
-### 4. Compile to Binary Format
-Convert .po files to .mo (gettext machine format):
+### 4. Install and Test
+GNOME Shell automatically compiles .po → .mo files when the extension is installed:
 
 ```bash
-make compile-translations
+make install-extension
 ```
 
-### 5. Full Workflow (Recommended)
-Extract → Update → Compile all at once:
-
-```bash
-make translations
-```
+Change system language in Settings → Region & Language and verify translations appear.
 
 ## .PO File Format
 
@@ -114,33 +109,35 @@ msgstr "Casting stoppen"
 
 ## Adding a New Language
 
-1. Create the .po file:
+1. Create the .po file from the .pot template:
    ```bash
-   scripts/init-locale.py it
+   msginit -i extension/gnome-shell-cast@oxygenws.com/po/gnome-shell-cast@oxygenws.com.pot \
+           -o extension/gnome-shell-cast@oxygenws.com/po/it_IT.po \
+           -l it_IT --no-translator
    ```
 
 2. Edit the file header with translator info:
    ```po
-   "Language: it\n"
+   "Language: it_IT\n"
    "Last-Translator: Your Name <your.email@example.com>\n"
    "Language-Team: Italian <team@example.com>\n"
    ```
 
 3. Translate all strings
-4. Compile: `make compile-translations`
-5. Test by changing system language
+4. Install extension: `make install-extension` (GNOME Shell auto-compiles)
+5. Test by changing system language in Settings → Region & Language
 
 ## Compiled Files
 
-The `.mo` (Machine Object) files are in:
+The `.mo` (Machine Object) files are auto-compiled by GNOME Shell in:
 ```
-../locale/
-├── de/LC_MESSAGES/gnome-shell-cast@oxygenws.com.mo
+~/.local/share/gnome-shell/extensions/gnome-shell-cast@oxygenws.com/locale/
+├── de_DE/LC_MESSAGES/gnome-shell-cast@oxygenws.com.mo
 ├── en_US/LC_MESSAGES/gnome-shell-cast@oxygenws.com.mo
-└── fa/LC_MESSAGES/gnome-shell-cast@oxygenws.com.mo
+└── fa_IR/LC_MESSAGES/gnome-shell-cast@oxygenws.com.mo
 ```
 
-These are **auto-generated** from .po files. Never edit directly!
+These are **auto-generated** from .po files when the extension is installed. Never edit directly!
 
 ## Tools
 
@@ -160,27 +157,26 @@ These are **auto-generated** from .po files. Never edit directly!
 
 Current translation coverage:
 - English (en_US): Complete
-- German (de): Ready for translation
-- Persian (fa): Ready for translation
+- German (de_DE): Ready for translation
+- Persian (fa_IR): Ready for translation
 
-Run `msgfmt --statistics po/LANG.po` to see coverage.
+Run `msgfmt --statistics extension/gnome-shell-cast@oxygenws.com/po/LANG.po` to see coverage.
 
 ## Testing Translations
 
-1. Compile translations: `make compile-translations`
-2. Install extension: `make install-extension`
-3. Restart GNOME Shell (Ctrl+Alt+F2, `r`, Enter)
-4. Change system language in Settings → Region & Language
-5. Verify translations appear in the UI
+1. Install extension: `make install-extension` (this compiles all translations)
+2. Restart GNOME Shell (Ctrl+Alt+F2, `r`, Enter)
+3. Change system language in Settings → Region & Language
+4. Verify translations appear in the UI
 
 ## Contributing
 
 To contribute translations:
 
 1. Fork the repository
-2. Add/update translations in `po/LANG.po`
-3. Run `make compile-translations`
-4. Test thoroughly
+2. Add/update translations in `extension/gnome-shell-cast@oxygenws.com/po/LANG.po`
+3. Run `make install-extension` to test
+4. Verify translations appear with system language change
 5. Submit a pull request
 
 Thank you for helping localize GNOME Shell Cast! 🌍
