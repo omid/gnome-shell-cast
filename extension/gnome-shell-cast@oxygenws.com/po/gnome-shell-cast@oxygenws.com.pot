@@ -1,0 +1,172 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR GNOME Shell Cast contributors
+# This file is distributed under the same license as the GNOME Shell Cast package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: GNOME Shell Cast 1\n"
+"Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
+"POT-Creation-Date: 2026-08-01 12:02+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:12
+#: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
+msgid "GNOME Shell Cast"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:28
+#, javascript-format
+msgid "%s volume"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:54
+msgid "Cast"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:16
+msgid "Casting failed"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:18
+msgid "If this keeps happening, please report it (that helps get it fixed)."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:31
+msgid ""
+"The report will include this error, the version, and a reminder to attach "
+"logs."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:36
+msgid "Copy details"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:37
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:44
+msgid "Close"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
+msgid "Report an issue"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:47
+msgid "Copied! Paste it into a new issue."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:191
+msgid "Stop casting"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:199
+msgid "Preferences"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:245
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:16
+msgid "Set up the cast daemon"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:247
+msgid ""
+"The cast daemon isn’t installed yet. Open the menu and click “Set up the "
+"cast daemon” to install it."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:254
+msgid "Update the cast daemon (v%old → v%new)"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:258
+msgid ""
+"The cast daemon (v%old) doesn’t match this version of the extension (needs "
+"v%new). Open the menu to update it."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:328
+#, javascript-format
+msgid "%s (casting)"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:336
+msgid "Searching for Chromecast devices…"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:360
+msgid "Cast screen"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:364
+msgid "Cast window"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:380
+msgid "Cast streaming"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:380
+msgid "Audio stream"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:381
+msgid "HLS"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:385
+#, javascript-format
+msgid "Receiver supports: %s"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:443
+msgid "The cast failed."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:450
+#, javascript-format
+msgid "The device ended the session (%s)."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:451
+msgid "The device ended the session."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:16
+msgid "Update the cast daemon"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:19
+msgid ""
+"A newer version of the extension needs a matching daemon (installed v%old → "
+"needs v%new). Run the command below to update it (nothing runs as root)."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:26
+msgid ""
+"GNOME Shell Cast needs a small background daemon. It can't be shipped "
+"through extensions.gnome.org, so install it once with the command below. It "
+"downloads a checksum-verified binary to ~/.local/bin (nothing runs as root)."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:41
+msgid "Copy the command, then paste it into a terminal and run it."
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
+msgid "Homepage"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:47
+msgid "Copy command"
+msgstr ""
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:54
+msgid "Copied! Paste it into a terminal and run it."
+msgstr ""

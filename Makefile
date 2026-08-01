@@ -157,6 +157,37 @@ sort-toml: ## Sort Cargo.toml fields in-place (requires cargo-sort).
 sort-check: ## Verify Cargo.toml is sorted without modifying it (requires cargo-sort).
 	@(cd daemon && cargo sort -cg) || exit 1;
 
+# ---------------------------------------------------------------- translations
+
+.PHONY: extract-translations
+extract-translations: ## Extract translatable strings from source files.
+	@mkdir -p $(_EXT_DIR)/po
+	@xgettext \
+		--copyright-holder="GNOME Shell Cast contributors" \
+		--package-name="GNOME Shell Cast" \
+		--package-version="$$(jq -r '.version' $(_EXT_DIR)/metadata.json)" \
+		--msgid-bugs-address="https://github.com/omid/gnome-shell-cast/issues" \
+		--default-domain="gnome-shell-cast@oxygenws.com" \
+		--output="$(_EXT_DIR)/po/gnome-shell-cast@oxygenws.com.pot" \
+		--from-code=UTF-8 \
+		--add-comments=translators: \
+		--keyword=_ \
+		--keyword=_:1,2 \
+		$$(find $(_EXT_DIR)/lib -name "*.js" -type f)
+	@echo "✓ Extracted strings to $(_EXT_DIR)/po/gnome-shell-cast@oxygenws.com.pot"
+
+.PHONY: update-translations
+update-translations: ## Update .po files from .pot template (preserves existing translations).
+	@for po_file in $(_EXT_DIR)/po/*.po; do \
+		if [ -f "$$po_file" ]; then \
+			msgmerge --update --backup=none "$$po_file" "$(_EXT_DIR)/po/$(_UUID).pot"; \
+		fi \
+	done
+	@echo "✓ Updated .po files from .pot template"
+
+.PHONY: translations
+translations: extract-translations update-translations ## Full translation workflow: extract → update. (GNOME Shell compiles .mo files automatically on install)
+
 # ---------------------------------------------------------------- everything
 
 .PHONY: check-all
