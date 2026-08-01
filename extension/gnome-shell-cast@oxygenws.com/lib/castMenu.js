@@ -21,8 +21,6 @@ const RESOLUTIONS = {
     720: [1280, 720],
 };
 
-// Display names for the lowercase codec ids the daemon reports (Cast
-// protocol / GStreamer element names).
 const CODEC_LABELS = {
     h264: 'H.264',
     vp8: 'VP8',
@@ -35,6 +33,21 @@ const CODEC_LABELS = {
 
 function formatCodec(codec) {
     return CODEC_LABELS[codec] ?? codec;
+}
+
+function createMenuItem(label, icon, styleClass = null) {
+    const item = new PopupMenu.PopupImageMenuItem(label, icon);
+    if (styleClass) item.label.add_style_class_name(styleClass);
+    return item;
+}
+
+function createStyledMenu(label, icon, styleClass) {
+    return createMenuItem(label, icon, styleClass);
+}
+
+function toggleStyleClass(element, className, enabled = true) {
+    if (enabled) element.add_style_class_name(className);
+    else element.remove_style_class_name(className);
 }
 
 export function loadIcons(extension) {
@@ -154,14 +167,15 @@ export class CastMenu {
 
     _updateColorScheme() {
         const light = this._stSettings.color_scheme === St.SystemColorScheme?.PREFER_LIGHT;
-        if (light) this._menu.box.add_style_class_name('gsc-light');
-        else this._menu.box.remove_style_class_name('gsc-light');
+        toggleStyleClass(this._menu.box, 'gsc-light', light);
     }
 
     _buildMenu() {
-        // Shown only when the daemon is missing or a different version.
-        this._daemonWarningItem = new PopupMenu.PopupImageMenuItem('', 'dialog-warning-symbolic');
-        this._daemonWarningItem.label.add_style_class_name('gsc-warning-label');
+        this._daemonWarningItem = createStyledMenu(
+            '',
+            'dialog-warning-symbolic',
+            'gsc-warning-label',
+        );
         this._daemonWarningItem.visible = false;
         this._daemonWarningItem.connect('activate', () => this._openSetupDialog());
         this._menu.addMenuItem(this._daemonWarningItem);
@@ -171,23 +185,18 @@ export class CastMenu {
 
         this._menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
-        // Top-bar host: a receiver volume slider row (the quick-settings host
-        // uses a slider in the panel grid instead). Shown only while casting.
         if (this._inlineVolume) this._buildVolumeItem();
 
-        this._stopItem = new PopupMenu.PopupImageMenuItem(
+        this._stopItem = createStyledMenu(
             _('Stop casting'),
             'media-playback-stop-symbolic',
+            'gsc-destructive-label',
         );
-        this._stopItem.label.add_style_class_name('gsc-destructive-label');
         this._stopItem.connect('activate', () => this._daemon.stopCast());
         this._stopItem.visible = false;
         this._menu.addMenuItem(this._stopItem);
 
-        const prefsItem = new PopupMenu.PopupImageMenuItem(
-            _('Preferences'),
-            'preferences-system-symbolic',
-        );
+        const prefsItem = createMenuItem(_('Preferences'), 'preferences-system-symbolic');
         prefsItem.connect('activate', () => this._extension.openPreferences());
         this._menu.addMenuItem(prefsItem);
 
@@ -313,6 +322,13 @@ export class CastMenu {
         });
     }
 
+    _markCastingDevice(item, active, deviceName) {
+        if (active) {
+            toggleStyleClass(item.label, 'gsc-casting-label', true);
+            item.label.text = _('%s (casting)').replace('%s', deviceName);
+        }
+    }
+
     _rebuildDeviceItems() {
         this._devicesSection.removeAll();
 
@@ -328,18 +344,9 @@ export class CastMenu {
         for (const device of this._devices) {
             const active = casting && device.id === this._activeDeviceId;
 
-            // Audio-only devices (speakers, cast groups) get a single
-            // item that shares system audio; a screen/window submenu
-            // would be meaningless for them.
             if (!device.hasVideo) {
-                const audioItem = new PopupMenu.PopupImageMenuItem(
-                    device.name,
-                    'audio-speakers-symbolic',
-                );
-                if (active) {
-                    audioItem.label.add_style_class_name('gsc-casting-label');
-                    audioItem.label.text = _('%s (casting)').replace('%s', device.name);
-                }
+                const audioItem = createMenuItem(device.name, 'audio-speakers-symbolic');
+                this._markCastingDevice(audioItem, active, device.name);
                 audioItem.connect('activate', () => this._startCast(device, SOURCE_AUDIO));
                 this._devicesSection.addMenuItem(audioItem);
                 if (active) this._addDetailLines();
@@ -348,24 +355,13 @@ export class CastMenu {
 
             const item = new PopupMenu.PopupSubMenuMenuItem(device.name, true);
             item.icon.gicon = active ? this._icons.active : this._icons.idle;
-            if (active) {
-                // Mark the device we are currently casting to with the
-                // system accent colour.
-                item.label.add_style_class_name('gsc-casting-label');
-                item.label.text = _('%s (casting)').replace('%s', device.name);
-            }
+            this._markCastingDevice(item, active, device.name);
 
-            const screenItem = new PopupMenu.PopupImageMenuItem(
-                _('Cast screen'),
-                'video-display-symbolic',
-            );
+            const screenItem = createMenuItem(_('Cast screen'), 'video-display-symbolic');
             screenItem.connect('activate', () => this._startCast(device, SOURCE_SCREEN));
             item.menu.addMenuItem(screenItem);
 
-            const windowItem = new PopupMenu.PopupImageMenuItem(
-                _('Cast window'),
-                'window-new-symbolic',
-            );
+            const windowItem = createMenuItem(_('Cast window'), 'window-new-symbolic');
             windowItem.connect('activate', () => this._startCast(device, SOURCE_WINDOW));
             item.menu.addMenuItem(windowItem);
 

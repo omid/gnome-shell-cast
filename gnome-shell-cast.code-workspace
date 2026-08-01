@@ -1,0 +1,17 @@
+{
+    "folders": [
+        {
+            "name": "gnome-shell-cast",
+            "path": "."
+        },
+        {
+            "name": "daemon",
+            "path": "daemon"
+        }
+    ],
+    "settings": {
+        "rust-analyzer.linkedProjects": [
+            "./daemon/Cargo.toml"
+        ]
+    }
+}

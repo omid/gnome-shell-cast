@@ -98,7 +98,7 @@ rm -f ~/.local/bin/gnome-shell-cast-daemon \
 To build and install both halves from this repository:
 
 ```sh
-make install-local
+make install
 ```
 
 This builds the daemon (`cargo build --release`) and installs:
@@ -145,7 +145,7 @@ RUST_LOG=debug ~/.local/bin/gnome-shell-cast-daemon
 
 ## Manual test plan
 
-1. `make install-local`, re-login, enable the extension.
+1. `make install`, re-login, enable the extension.
 2. Panel shows the cast icon; menu lists your Chromecast within ~5 s.
 3. *Cast Screen* → portal picker → picture appears on the TV in a few seconds, with system audio.
 4. *Cast Window* → portal shows only windows; only that window is streamed.

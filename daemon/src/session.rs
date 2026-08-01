@@ -58,13 +58,7 @@ async fn cast_session(
     settings: StreamSettings,
     mut stop_rx: oneshot::Receiver<()>,
 ) -> Result<()> {
-    // Receiver-volume connection for the extension's slider, kept for the whole
-    // session; dropped (stopping its thread) when this function returns.
-    let volume = volume::VolumeControl::start(device.addr, device.port, {
-        let state = state.clone();
-        move |level| state.set_cast_volume(f64::from(level))
-    });
-    state.set_volume_channel(Some(volume.sender()));
+    setup_volume(state, device).await;
 
     // 1. Portal capture (GNOME shows the screen/window picker here).
     // Audio-only casts capture nothing on-screen and never touch the portal,
@@ -96,23 +90,13 @@ async fn cast_session(
         return cast_audio_stream(state, device, stop_rx).await;
     }
 
-    // 3. Connect to the Chromecast and launch its receiver app in parallel
-    // with the encoder warm-up below; the URL is delivered once the first
-    // HLS segment exists. Declared before `control` so an early error drops
-    // `control` (whose join needs the poll loop to see a closed channel or
-    // the stop flag) before the sender.
-    let (url_tx, url_rx) = oneshot::channel();
-    let (cast_events_tx, mut cast_events) = mpsc::unbounded_channel();
-    let control = cast::start(device.addr, device.port, url_rx, cast_events_tx);
-
-    // 3. A private runtime directory for the HLS playlist and segments.
+    // 3. Build HLS pipeline and serve it.
     let hls_dir = runtime_dir();
     tokio::fs::create_dir_all(&hls_dir)
         .await
         .with_context(|| format!("creating {}", hls_dir.display()))?;
     let _cleanup = DirCleanup(hls_dir.clone());
 
-    // 4. Encode into the directory and serve it.
     let audio_monitor = pipeline::default_audio_monitor().await;
     if audio_monitor.is_none() {
         warn!("no audio monitor found, casting video only");
@@ -129,13 +113,6 @@ async fn cast_session(
     let _pipeline_stop = PipelineStop(pipeline.clone());
 
     let server = http::serve(hls_dir.clone())?;
-
-    // 5. Wait for a full playlist window before pointing the device at it.
-    // Loading earlier makes the player stall while segments trickle in, and
-    // every stalled second becomes permanent lag behind live: the Default
-    // Media Receiver never re-seeks to the live edge. With the whole window
-    // available it fills its buffer instantly and starts one window (~3s)
-    // behind.
     wait_for_playlist(&hls_dir).await?;
 
     let local_ip = http::local_ip_towards(device.addr)?;
@@ -145,33 +122,21 @@ async fn cast_session(
     );
     info!("stream ready at {url}");
 
-    // 6. Hand the URL to the already-connected cast thread; a send error
-    // means the connection died, which the event loop below will report.
-    let _ = url_tx.send(cast::LoadMedia {
-        url,
-        content_type: "application/vnd.apple.mpegurl".to_string(),
-        title: None,
-        artist: None,
-    });
-
-    // 7. Run until asked to stop, the device disconnects, or the pipeline dies.
-    // HLS isn't negotiated, so no receiver codecs; this path is always H.264.
-    let bus = pipeline
-        .bus()
-        .ok_or_else(|| anyhow!("pipeline has no bus"))?;
-    let result = run_cast_loop(
+    run_cast_to_device(
         state,
         device,
         &mut stop_rx,
-        &mut cast_events,
-        &bus,
+        &pipeline,
+        cast::LoadMedia {
+            url,
+            content_type: "application/vnd.apple.mpegurl".to_string(),
+            title: None,
+            artist: None,
+        },
         "hls",
         "h264",
     )
-    .await;
-
-    drop(control); // Stops the receiver app and joins the control thread.
-    result
+    .await
 }
 
 /// Drives a launched cast until stop, device disconnect, or a pipeline error,
@@ -220,6 +185,47 @@ async fn run_cast_loop(
     }
 }
 
+async fn setup_volume(state: &Arc<SharedState>, device: &Device) {
+    let volume = volume::VolumeControl::start(device.addr, device.port, {
+        let state = state.clone();
+        move |level| state.set_cast_volume(f64::from(level))
+    });
+    state.set_volume_channel(Some(volume.sender()));
+}
+
+async fn run_cast_to_device(
+    state: &Arc<SharedState>,
+    device: &Device,
+    stop_rx: &mut oneshot::Receiver<()>,
+    pipeline: &gst::Pipeline,
+    media: cast::LoadMedia,
+    transport: &str,
+    codec: &str,
+) -> Result<()> {
+    let (url_tx, url_rx) = oneshot::channel();
+    let (cast_events_tx, mut cast_events) = mpsc::unbounded_channel();
+    let control = cast::start(device.addr, device.port, url_rx, cast_events_tx);
+
+    let _ = url_tx.send(media);
+
+    let bus = pipeline
+        .bus()
+        .ok_or_else(|| anyhow!("pipeline has no bus"))?;
+    let result = run_cast_loop(
+        state,
+        device,
+        stop_rx,
+        &mut cast_events,
+        &bus,
+        transport,
+        codec,
+    )
+    .await;
+
+    drop(control);
+    result
+}
+
 /// Casts system audio to an audio-only receiver as a progressive HTTP stream
 /// (MP3 or ADTS AAC), which its Default Media Receiver plays where HLS fails.
 async fn cast_audio_stream(
@@ -230,12 +236,6 @@ async fn cast_audio_stream(
     let monitor = pipeline::default_audio_monitor()
         .await
         .ok_or_else(|| anyhow!("no system audio monitor found (pactl get-default-sink)"))?;
-
-    // Connect and launch the Default Media Receiver in parallel with the
-    // encoder warm-up; the URL is delivered once audio is flowing.
-    let (url_tx, url_rx) = oneshot::channel();
-    let (cast_events_tx, mut cast_events) = mpsc::unbounded_channel();
-    let control = cast::start(device.addr, device.port, url_rx, cast_events_tx);
 
     let (pipeline, content_type) = pipeline::build_audio_stream(&monitor)?;
     let broadcaster = http::AudioBroadcaster::new();
@@ -253,37 +253,27 @@ async fn cast_audio_stream(
     };
 
     let local_ip = http::local_ip_towards(device.addr)?;
-    // A filename with a plausible extension; the receiver keys playback off the
-    // LOAD content type, but some are pickier when the URL has no extension.
     let url = format!(
         "http://{local_ip}:{}/{}/audio.{codec}",
         server.port, server.token
     );
     info!("audio stream ready at {url}");
-    let _ = url_tx.send(cast::LoadMedia {
-        url,
-        content_type: content_type.to_string(),
-        title: Some("GNOME Shell Cast".to_string()),
-        artist: hostname(),
-    });
 
-    // Run until asked to stop, the device disconnects, or the pipeline dies.
-    let bus = pipeline
-        .bus()
-        .ok_or_else(|| anyhow!("pipeline has no bus"))?;
-    let result = run_cast_loop(
+    run_cast_to_device(
         state,
         device,
         &mut stop_rx,
-        &mut cast_events,
-        &bus,
+        &pipeline,
+        cast::LoadMedia {
+            url,
+            content_type: content_type.to_string(),
+            title: Some("GNOME Shell Cast".to_string()),
+            artist: hostname(),
+        },
         "audio",
         codec,
     )
-    .await;
-
-    drop(control); // Stops the receiver app and joins the control thread.
-    result
+    .await
 }
 
 /// Feeds every encoded audio buffer from the pipeline's `asink` appsink into

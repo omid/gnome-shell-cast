@@ -4,13 +4,22 @@ import GObject from 'gi://GObject';
 import St from 'gi://St';
 
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
+import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import { CastMenu, loadIcons } from './castMenu.js';
+
+function createIconUpdater(icon, icons) {
+    return (active) => {
+        icon.gicon = active ? icons.active : icons.idle;
+        if (active) icon.add_style_class_name('privacy-indicator');
+        else icon.remove_style_class_name('privacy-indicator');
+    };
+}
 
 export const CastPanelIndicator = GObject.registerClass(
     class CastPanelIndicator extends PanelMenu.Button {
         _init(extension) {
-            super._init(0.5, 'GNOME Shell Cast');
+            super._init(0.5, _('GNOME Shell Cast'));
 
             this._icons = loadIcons(extension);
             this._icon = new St.Icon({
@@ -24,12 +33,7 @@ export const CastPanelIndicator = GObject.registerClass(
                 menu: this.menu,
                 icons: this._icons,
                 inlineVolume: true,
-                setIcon: (active) => {
-                    this._icon.gicon = active ? this._icons.active : this._icons.idle;
-                    // Orange (shell privacy-indicator tint) while streaming.
-                    if (active) this._icon.add_style_class_name('privacy-indicator');
-                    else this._icon.remove_style_class_name('privacy-indicator');
-                },
+                setIcon: createIconUpdater(this._icon, this._icons),
             });
         }
 

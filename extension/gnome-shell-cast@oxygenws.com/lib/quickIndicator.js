@@ -9,6 +9,8 @@ import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.j
 import { CastMenu, loadIcons } from './castMenu.js';
 import { CastVolumeControl } from './volumeControl.js';
 
+const GNOME_SHELL_CAST = _('GNOME Shell Cast');
+
 // Volume slider for the active cast device, shown among the Quick Settings
 // volume sliders while casting. Moving it sets the receiver's volume via the
 // daemon, which reports it back to keep the slider in sync.
@@ -16,7 +18,6 @@ const CastVolumeSlider = GObject.registerClass(
     class CastVolumeSlider extends QuickSettings.QuickSlider {
         _init(gicon, onChange) {
             super._init({ gicon });
-            // Hidden until a cast is active.
             this.visible = false;
             this._control = new CastVolumeControl(this.slider, onChange);
         }
@@ -39,6 +40,13 @@ const CastVolumeSlider = GObject.registerClass(
     },
 );
 
+function createToggleIconUpdater(toggle, icons) {
+    return (active) => {
+        toggle.gicon = active ? icons.active : icons.idle;
+        toggle.checked = active;
+    };
+}
+
 const CastToggle = GObject.registerClass(
     class CastToggle extends QuickSettings.QuickMenuToggle {
         _init(extension, icons, hooks) {
@@ -48,22 +56,17 @@ const CastToggle = GObject.registerClass(
                 toggleMode: false,
             });
 
-            this.menu.setHeader(icons.idle, 'GNOME Shell Cast');
+            this.menu.setHeader(icons.idle, GNOME_SHELL_CAST);
 
             this._cast = new CastMenu({
                 extension,
                 menu: this.menu,
                 icons,
-                setIcon: (active) => {
-                    this.gicon = active ? icons.active : icons.idle;
-                    this.checked = active;
-                },
+                setIcon: createToggleIconUpdater(this, icons),
                 onCastChanged: hooks.onCastChanged,
                 onVolume: hooks.onVolume,
             });
 
-            // Casting: a click is a quick "stop". Idle: nothing to toggle, so
-            // open the menu to pick a device.
             this.connect('clicked', () => {
                 if (this._cast.casting) this._cast.stopCast();
                 else this.menu.open();

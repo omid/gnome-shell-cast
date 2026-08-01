@@ -13,14 +13,14 @@ else
 	_DBUS_SERVICE_DIR = $(DESTDIR)/usr/share/dbus-1/services
 endif
 
-.PHONY: all daemon install-local install-extension install-daemon uninstall-local set-version release clean eslint eslint-fix ego-zip zip shexli tailLog check check_nightly check_strictly
+.PHONY: all daemon install install-extension install-daemon uninstall-local set-version release clean eslint eslint-fix ego-zip zip shexli tailLog check check_nightly check_strictly
 
 all: daemon
 
 daemon:
 	@cd daemon && cargo build --release
 
-install-local: install-extension install-daemon
+install: install-extension install-daemon
 
 install-extension:
 	@glib-compile-schemas $(_EXT_DIR)/schemas/
@@ -86,7 +86,7 @@ shexli: export _VERSION=$(shell jq '.version' $(_EXT_DIR)/metadata.json)
 shexli: zip
 	@uv venv --allow-existing
 	@uv pip install shexli
-	@uv run shexli "$(_UUID).v$(_VERSION).zip"
+	@.venv/bin/shexli "$(_UUID).v$(_VERSION).zip"
 
 
 .PHONY: check

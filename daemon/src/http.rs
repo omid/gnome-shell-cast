@@ -24,7 +24,60 @@ pub struct HlsServer {
     handle: Option<thread::JoinHandle<()>>,
 }
 
-pub fn serve(dir: PathBuf) -> Result<HlsServer> {
+trait ServerHandler: Send + Sync + 'static {
+    fn handle(&self, url: &str, name: &str) -> Option<ServerResponse>;
+}
+
+enum ServerResponse {
+    File(Vec<u8>, Vec<(&'static str, &'static str)>),
+    Stream(Box<dyn Read + Send>, &'static str),
+}
+
+struct FileServerHandler {
+    dir: PathBuf,
+}
+
+impl ServerHandler for FileServerHandler {
+    fn handle(&self, _url: &str, name: &str) -> Option<ServerResponse> {
+        let data = std::fs::read(self.dir.join(name)).ok()?;
+        let mut processed_data = data;
+        if has_extension(name, "m3u8") {
+            processed_data = inject_start_tag(processed_data);
+        }
+        debug!("GET /{name} -> {} bytes", processed_data.len());
+        Some(ServerResponse::File(
+            processed_data,
+            vec![
+                ("Content-Type", content_type(name)),
+                ("Access-Control-Allow-Origin", "*"),
+                ("Cache-Control", "no-cache, no-store"),
+            ],
+        ))
+    }
+}
+
+struct AudioServerHandler {
+    broadcaster: AudioBroadcaster,
+    content_type: &'static str,
+}
+
+impl ServerHandler for AudioServerHandler {
+    fn handle(&self, url: &str, _name: &str) -> Option<ServerResponse> {
+        debug!("audio client connected: {url}");
+        let reader = ChannelReader {
+            rx: self.broadcaster.subscribe(),
+            cur: Arc::from(Vec::new()),
+            pos: 0,
+        };
+        Some(ServerResponse::Stream(Box::new(reader), self.content_type))
+    }
+}
+
+fn start_http_server<H: ServerHandler>(
+    handler: H,
+    thread_name: &str,
+    log_msg: &str,
+) -> Result<HlsServer> {
     let server =
         Server::http("0.0.0.0:0").map_err(|e| anyhow::anyhow!("starting HTTP server: {e}"))?;
     let port = server
@@ -33,13 +86,15 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
         .context("HTTP server has no IP address")?
         .port();
     let token = random_token();
-    info!("serving {} on port {port}", dir.display());
+    info!("{log_msg} on port {port}");
 
     let stop = Arc::new(AtomicBool::new(false));
     let stop_flag = stop.clone();
     let route_token = token.clone();
+    let handler = Arc::new(handler);
+
     let handle = thread::Builder::new()
-        .name("hls-http".into())
+        .name(thread_name.into())
         .spawn(move || {
             while !stop_flag.load(Ordering::Relaxed) {
                 let Ok(Some(request)) = server.recv_timeout(Duration::from_millis(200)) else {
@@ -51,27 +106,30 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
                     continue;
                 };
 
-                match std::fs::read(dir.join(name)) {
-                    Ok(mut data) => {
-                        if has_extension(name, "m3u8") {
-                            data = inject_start_tag(data);
-                        }
-                        debug!("GET /{name} -> {} bytes", data.len());
-                        let mut response = Response::from_data(data);
-                        for (key, value) in [
-                            ("Content-Type", content_type(name)),
-                            // CAF/HLS playback on the Chromecast requires CORS.
-                            ("Access-Control-Allow-Origin", "*"),
-                            ("Cache-Control", "no-cache, no-store"),
-                        ] {
+                match handler.handle(request.url(), name) {
+                    Some(ServerResponse::File(data, headers)) => {
+                        let mut resp = Response::from_data(data);
+                        for (key, value) in headers {
                             if let Ok(h) = Header::from_bytes(key.as_bytes(), value.as_bytes()) {
-                                response.add_header(h);
+                                resp.add_header(h);
                             }
                         }
-                        let _ = request.respond(response);
+                        let _ = request.respond(resp);
                     }
-                    Err(e) => {
-                        warn!("GET /{name} failed: {e}");
+                    Some(ServerResponse::Stream(reader, content_type)) => {
+                        let headers = vec![
+                            ("Content-Type", content_type),
+                            ("Cache-Control", "no-cache, no-store"),
+                            ("Access-Control-Allow-Origin", "*"),
+                        ]
+                        .into_iter()
+                        .filter_map(|(k, v)| Header::from_bytes(k.as_bytes(), v.as_bytes()).ok())
+                        .collect();
+                        let resp = Response::new(StatusCode(200), headers, reader, None, None);
+                        let _ = request.respond(resp);
+                    }
+                    None => {
+                        warn!("GET /{name} failed");
                         let _ = request.respond(Response::empty(404));
                     }
                 }
@@ -84,6 +142,14 @@ pub fn serve(dir: PathBuf) -> Result<HlsServer> {
         stop,
         handle: Some(handle),
     })
+}
+
+pub fn serve(dir: PathBuf) -> Result<HlsServer> {
+    start_http_server(
+        FileServerHandler { dir: dir.clone() },
+        "hls-http",
+        &format!("serving {} on port", dir.display()),
+    )
 }
 
 /// A random URL-path token guarding the stream so only the Chromecast (which we
@@ -178,58 +244,14 @@ impl Read for ChannelReader {
 /// request gets its own streaming thread so one long-lived response doesn't
 /// block the accept loop.
 pub fn serve_audio(broadcaster: AudioBroadcaster, content_type: &'static str) -> Result<HlsServer> {
-    let server =
-        Server::http("0.0.0.0:0").map_err(|e| anyhow::anyhow!("starting HTTP server: {e}"))?;
-    let port = server
-        .server_addr()
-        .to_ip()
-        .context("HTTP server has no IP address")?
-        .port();
-    let token = random_token();
-    info!("serving live audio ({content_type}) on port {port}");
-
-    let stop = Arc::new(AtomicBool::new(false));
-    let stop_flag = stop.clone();
-    let route_token = token.clone();
-    let handle = thread::Builder::new()
-        .name("audio-http".into())
-        .spawn(move || {
-            while !stop_flag.load(Ordering::Relaxed) {
-                let Ok(Some(request)) = server.recv_timeout(Duration::from_millis(200)) else {
-                    continue;
-                };
-                if file_after_token(request.url(), &route_token).is_none() {
-                    let _ = request.respond(Response::empty(404));
-                    continue;
-                }
-                debug!("audio client connected: {}", request.url());
-                let reader = ChannelReader {
-                    rx: broadcaster.subscribe(),
-                    cur: Arc::from(Vec::new()),
-                    pos: 0,
-                };
-                let headers = [
-                    ("Content-Type", content_type),
-                    ("Cache-Control", "no-cache, no-store"),
-                    ("Access-Control-Allow-Origin", "*"),
-                ]
-                .into_iter()
-                .filter_map(|(k, v)| Header::from_bytes(k.as_bytes(), v.as_bytes()).ok())
-                .collect();
-                // No content length: tiny_http streams the endless body chunked.
-                let response = Response::new(StatusCode(200), headers, reader, None, None);
-                thread::spawn(move || {
-                    let _ = request.respond(response);
-                });
-            }
-        })?;
-
-    Ok(HlsServer {
-        port,
-        token,
-        stop,
-        handle: Some(handle),
-    })
+    start_http_server(
+        AudioServerHandler {
+            broadcaster,
+            content_type,
+        },
+        "audio-http",
+        &format!("serving live audio ({content_type})"),
+    )
 }
 
 /// Tells the player to start 2s from the live edge. Without this, HLS players
