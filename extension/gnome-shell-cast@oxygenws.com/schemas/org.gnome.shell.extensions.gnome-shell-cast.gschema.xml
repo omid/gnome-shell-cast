@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist gettext-domain="gnome-shell-cast">
+<schemalist gettext-domain="gnome-shell-cast@oxygenws.com">
   <schema id="org.gnome.shell.extensions.gnome-shell-cast"
           path="/org/gnome/shell/extensions/gnome-shell-cast/">
     <key name="resolution" type="s">
@@ -11,7 +11,7 @@
         <choice value="720"/>
       </choices>
       <default>'720'</default>
-      <summary>Maximum stream resolution</summary>
+      <summary>Maximum resolution</summary>
       <description>Scale the captured video down to this size before encoding. "native" keeps the captured size. Above 1080p, raise the bitrate to match and expect a hardware encoder to be needed for a smooth stream.</description>
     </key>
     <key name="fps" type="i">
@@ -28,7 +28,7 @@
     <key name="show-details" type="b">
       <default>false</default>
       <summary>Show cast details</summary>
-      <description>Show the transport and negotiated codecs under the active device while casting.</description>
+      <description>Show the transport and codecs under the active device while casting</description>
     </key>
     <key name="indicator-location" type="s">
       <choices>

@@ -91,23 +91,23 @@ export class CastDaemon {
                 // "cancelled" error we must not report as a daemon failure.
                 if (this._cancellable.is_cancelled()) return;
                 if (error) {
-                    this._onError?.(error.message);
+                    this._onError(error.message);
                     return;
                 }
                 this._signalIds.push([
                     proxy,
-                    proxy.connectSignal('DevicesChanged', () => this._onDevicesChanged?.()),
+                    proxy.connectSignal('DevicesChanged', () => this._onDevicesChanged()),
                 ]);
                 this._signalIds.push([
                     proxy,
                     proxy.connectSignal('StateChanged', (_p, _sender, [state, deviceId]) =>
-                        this._onStateChanged?.(state, deviceId),
+                        this._onStateChanged(state, deviceId),
                     ),
                 ]);
                 this._signalIds.push([
                     proxy,
                     proxy.connectSignal('VolumeChanged', (_p, _sender, [level]) =>
-                        this._onVolumeChanged?.(level),
+                        this._onVolumeChanged(level),
                     ),
                 ]);
             },
@@ -125,7 +125,7 @@ export class CastDaemon {
             BUS_NAME,
             Gio.BusNameWatcherFlags.NONE,
             null,
-            () => this._onDaemonGone?.(),
+            () => this._onDaemonGone(),
         );
     }
 
@@ -138,7 +138,7 @@ export class CastDaemon {
     }
 
     listDevices(callback) {
-        this._proxy?.ListDevicesRemote(
+        this._proxy.ListDevicesRemote(
             this._reply((result, error) => {
                 if (error) {
                     // A transient failure (e.g. the daemon still activating just
@@ -176,14 +176,14 @@ export class CastDaemon {
         });
         // The generated *Remote wrapper reads a trailing number as call flags.
         if (noAutoStart) {
-            this._proxy?.GetStatusRemote(reply, Gio.DBusCallFlags.NO_AUTO_START, this._cancellable);
+            this._proxy.GetStatusRemote(reply, Gio.DBusCallFlags.NO_AUTO_START, this._cancellable);
         } else {
-            this._proxy?.GetStatusRemote(reply, this._cancellable);
+            this._proxy.GetStatusRemote(reply, this._cancellable);
         }
     }
 
     getDetails(callback) {
-        this._proxy?.GetDetailsRemote(
+        this._proxy.GetDetailsRemote(
             this._reply((result, error) => {
                 if (error) {
                     callback(null);
@@ -197,7 +197,7 @@ export class CastDaemon {
     }
 
     getLastEvent(callback) {
-        this._proxy?.GetLastEventRemote(
+        this._proxy.GetLastEventRemote(
             this._reply((result, error) => {
                 if (error) {
                     callback({ kind: '', message: '' });
@@ -216,7 +216,7 @@ export class CastDaemon {
      * call auto-starts the daemon, so an error here means activation failed.
      */
     getVersion(callback) {
-        this._proxy?.GetVersionRemote(
+        this._proxy.GetVersionRemote(
             this._reply((result, error) => {
                 if (error) {
                     callback(null);
@@ -229,28 +229,28 @@ export class CastDaemon {
     }
 
     startCast(deviceId, source, options) {
-        this._proxy?.StartCastRemote(
+        this._proxy.StartCastRemote(
             deviceId,
             source,
             options,
             this._reply((_result, error) => {
-                if (error) (this._onStartError ?? this._onError)?.(error.message);
+                if (error) this._onStartError(error.message);
             }),
             this._cancellable,
         );
     }
 
     stopCast() {
-        this._proxy?.StopCastRemote(
+        this._proxy.StopCastRemote(
             this._reply((_result, error) => {
-                if (error) this._onError?.(error.message);
+                if (error) this._onError(error.message);
             }),
             this._cancellable,
         );
     }
 
     getVolume(callback) {
-        this._proxy?.GetVolumeRemote(
+        this._proxy.GetVolumeRemote(
             this._reply((result, error) => {
                 if (error) {
                     callback(null);
@@ -263,10 +263,10 @@ export class CastDaemon {
     }
 
     setVolume(level) {
-        this._proxy?.SetVolumeRemote(
+        this._proxy.SetVolumeRemote(
             level,
             this._reply((_result, error) => {
-                if (error) this._onError?.(error.message);
+                if (error) this._onError(error.message);
             }),
             this._cancellable,
         );

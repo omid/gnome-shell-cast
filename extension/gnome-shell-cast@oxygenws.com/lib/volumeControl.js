@@ -31,15 +31,11 @@ export class CastVolumeControl {
     _onUserChanged() {
         if (this._fromDaemon) return;
         this._pending = this._slider.value;
-        // Leading edge: apply the first move immediately, then rate-limit the
-        // stream of updates while dragging so we don't flood D-Bus.
-        if (!this._throttleId) {
-            this._send();
-            this._scheduleFlush();
-        }
-    }
+        // Leading edge: apply the first move immediately, then let the running
+        // timer rate-limit the rest of the drag so we don't flood D-Bus.
+        if (this._throttleId) return;
 
-    _scheduleFlush() {
+        this._send();
         this._throttleId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 80, () => {
             if (this._pending !== this._lastSent) {
                 this._send();
@@ -52,7 +48,7 @@ export class CastVolumeControl {
 
     _send() {
         this._lastSent = this._pending;
-        this._onChange?.(this._pending);
+        this._onChange(this._pending);
     }
 
     destroy() {

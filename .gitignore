@@ -8,3 +8,6 @@ yarn.lock
 gschemas.compiled
 # Machine-local Claude Code settings.
 /.claude/settings.local.json
+# Local AI working notes.
+/ai.cases
+/ai.tasks

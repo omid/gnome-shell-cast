@@ -1,229 +1,313 @@
-# Persian translations for GNOME Shell package.
-# This file is put in the public domain.
-# Automatically generated, 2026.
+# Persian translation for GNOME Shell Cast.
+# This file is distributed under the same license as the GNOME Shell Cast package.
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: GNOME Shell Cast\n"
-"Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-17 20:58+0200\n"
-"PO-Revision-Date: 2026-07-17 20:58+0200\n"
-"Last-Translator: Automatically generated\n"
-"Language-Team: none\n"
-"Language: fa\n"
+"Project-Id-Version: GNOME Shell Cast 1\n"
+"Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
+"POT-Creation-Date: 2026-08-04 00:22+0200\n"
+"PO-Revision-Date: 2026-08-04 00:22\n"
+"Last-Translator: \n"
+"Language-Team: Persian <https://github.com/omid/gnome-shell-cast>\n"
+"Language: fa_IR\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:152
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:148
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:52
+msgid "Cast"
+msgstr "پخش"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:194
 msgid "Stop casting"
-msgstr ""
+msgstr "توقف پخش"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:161
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:202
 msgid "Preferences"
-msgstr ""
+msgstr "ترجیحات"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:189
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:26
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:250
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:16
 msgid "Set up the cast daemon"
-msgstr ""
+msgstr "راه‌اندازی سرویس پخش"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:191
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:252
 msgid ""
 "The cast daemon isn’t installed yet. Open the menu and click “Set up the "
 "cast daemon” to install it."
 msgstr ""
+"سرویس پخش هنوز نصب نشده است. منو را باز کنید و روی «راه‌اندازی سرویس پخش» "
+"کلیک کنید تا نصب شود."
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:198
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:259
 msgid "Update the cast daemon (v%old → v%new)"
-msgstr ""
+msgstr "به‌روزرسانی سرویس پخش (v%old → v%new)"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:202
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:263
 msgid ""
 "The cast daemon (v%old) doesn’t match this version of the extension (needs "
 "v%new). Open the menu to update it."
 msgstr ""
+"سرویس پخش (v%old) با این نسخه از افزونه (نیازمند v%new) مطابقت ندارد. برای "
+"به‌روزرسانی، منو را باز کنید."
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:282
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:296
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:332
 #, javascript-format
 msgid "%s (casting)"
-msgstr ""
+msgstr "%s (در حال پخش)"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:300
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:340
+msgid "Searching for Chromecast devices…"
+msgstr "در حال جست‌وجوی دستگاه‌های کروم‌کست…"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:364
 msgid "Cast screen"
-msgstr ""
+msgstr "پخش صفحه"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:307
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:368
 msgid "Cast window"
-msgstr ""
+msgstr "پخش پنجره"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:325
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:384
 msgid "Cast streaming"
-msgstr ""
+msgstr "جریان کست"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:325
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:384
 msgid "Audio stream"
-msgstr ""
+msgstr "جریان صدا"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:326
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:385
 msgid "HLS"
-msgstr ""
+msgstr "HLS"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:330
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:389
 #, javascript-format
 msgid "Receiver supports: %s"
-msgstr ""
+msgstr "گیرنده پشتیبانی می‌کند: %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:392
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:446
 msgid "The cast failed."
-msgstr ""
+msgstr "پخش ناموفق بود."
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:399
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:453
 #, javascript-format
 msgid "The device ended the session (%s)."
-msgstr ""
+msgstr "دستگاه نشست را پایان داد (%s)."
 
-#: extension/gnome-shell-cast@oxygenws.com/castMenu.js:400
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:454
 msgid "The device ended the session."
-msgstr ""
+msgstr "دستگاه نشست را پایان داد."
 
-#: extension/gnome-shell-cast@oxygenws.com/errorDialog.js:29
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:502
+#: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:57
+msgid "GNOME Shell Cast"
+msgstr "GNOME Shell Cast"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:16
 msgid "Casting failed"
-msgstr ""
+msgstr "پخش ناموفق بود"
 
-#: extension/gnome-shell-cast@oxygenws.com/errorDialog.js:31
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:18
 msgid "If this keeps happening, please report it (that helps get it fixed)."
-msgstr ""
+msgstr "اگر این مشکل تکرار شد، لطفاً گزارش دهید (این به رفع آن کمک می‌کند)."
 
-#: extension/gnome-shell-cast@oxygenws.com/errorDialog.js:48
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:31
 msgid ""
 "The report will include this error, the version, and a reminder to attach "
 "logs."
-msgstr ""
+msgstr "گزارش شامل این خطا، نسخه و یادآوری برای پیوست کردن گزارش‌ها خواهد بود."
 
-#: extension/gnome-shell-cast@oxygenws.com/errorDialog.js:55
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:36
 msgid "Copy details"
-msgstr ""
+msgstr "رونوشت جزئیات"
 
-#: extension/gnome-shell-cast@oxygenws.com/errorDialog.js:59
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:65
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:37
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:44
 msgid "Close"
-msgstr ""
+msgstr "بستن"
 
-#: extension/gnome-shell-cast@oxygenws.com/errorDialog.js:64
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:123
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
 msgid "Report an issue"
-msgstr ""
+msgstr "گزارش مشکل"
 
-#: extension/gnome-shell-cast@oxygenws.com/errorDialog.js:72
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:47
 msgid "Copied! Paste it into a new issue."
-msgstr ""
+msgstr "رونوشت شد! آن را در یک گزارش مشکل جدید بچسبانید."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:23
-msgid "Settings"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
-msgid "Stream quality"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:30
-msgid "Applied the next time a cast is started"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:35
-msgid "Maximum resolution"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
-msgid "Lower this if playback stutters on your network"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:46
-msgid "Framerate"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:47
-msgid "Frames per second"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:58
-msgid "Video bitrate"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:59
-msgid "kbit/s"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:69
-msgid "Menu"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:73
-msgid "Indicator location"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
-msgid "Show the cast icon in the top bar, or in the quick settings menu"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:87
-msgid "Show cast details"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:88
-msgid "Show the transport and codecs under the active device while casting"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:100
-msgid "About"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:111
-#, javascript-format
-msgid "Version %s"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:122
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:61
-msgid "Homepage"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/quickIndicator.js:37
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:26
 #, javascript-format
 msgid "%s volume"
-msgstr ""
+msgstr "بلندی صدای %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/quickIndicator.js:141
-msgid "Cast"
-msgstr ""
-
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:26
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:16
 msgid "Update the cast daemon"
-msgstr ""
+msgstr "به‌روزرسانی سرویس پخش"
 
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:29
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:19
 msgid ""
 "A newer version of the extension needs a matching daemon (installed v%old → "
 "needs v%new). Run the command below to update it (nothing runs as root)."
 msgstr ""
+"نسخهٔ جدیدتر افزونه به سرویس متناسبی نیاز دارد (نصب‌شده v%old → نیازمند "
+"v%new). برای به‌روزرسانی، فرمان زیر را اجرا کنید (چیزی با دسترسی ریشه اجرا "
+"نمی‌شود)."
 
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:36
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:26
 msgid ""
 "GNOME Shell Cast needs a small background daemon. It can’t be shipped "
 "through extensions.gnome.org, so install it once with the command below. It "
 "downloads a checksum-verified binary to ~/.local/bin (nothing runs as root)."
 msgstr ""
+"GNOME Shell Cast به یک سرویس پس‌زمینهٔ کوچک نیاز دارد. این سرویس نمی‌تواند از "
+"راه extensions.gnome.org ارائه شود، بنابراین یک‌بار آن را با فرمان زیر نصب "
+"کنید. این کار یک فایل اجرایی با جمع کنترلی تأییدشده را در ~/.local/bin "
+"بارگیری می‌کند (چیزی با دسترسی ریشه اجرا نمی‌شود)."
 
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:56
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:41
 msgid "Copy the command, then paste it into a terminal and run it."
-msgstr ""
+msgstr "فرمان را رونوشت کنید، سپس آن را در یک پایانه بچسبانید و اجرا کنید."
 
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:70
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:124
+msgid "Homepage"
+msgstr "صفحهٔ خانگی"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:47
 msgid "Copy command"
-msgstr ""
+msgstr "رونوشت فرمان"
 
-#: extension/gnome-shell-cast@oxygenws.com/setupDialog.js:78
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:54
 msgid "Copied! Paste it into a terminal and run it."
+msgstr "رونوشت شد! آن را در یک پایانه بچسبانید و اجرا کنید."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+msgid "Native"
+msgstr "بومی"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+msgid "4K (2160p)"
+msgstr "4K (2160p)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+msgid "1440p"
+msgstr "1440p"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+msgid "1080p"
+msgstr "1080p"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+msgid "720p"
+msgstr "720p"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:22
+msgid "Top bar"
+msgstr "نوار بالا"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:22
+msgid "Quick settings"
+msgstr "تنظیمات سریع"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:25
+msgid "Settings"
+msgstr "تنظیمات"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:31
+msgid "Stream quality"
+msgstr "کیفیت جریان"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
+msgid "Applied the next time a cast is started"
+msgstr "در پخش بعدی اعمال می‌شود"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:14
+msgid "Maximum resolution"
+msgstr "بیشینهٔ تفکیک‌پذیری"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:38
+msgid "Above 1080p needs a hardware encoder and a matching bitrate"
+msgstr "بالاتر از 1080p به رمزگذار سخت‌افزاری و نرخ بیت متناسب نیاز دارد"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
+msgid "Framerate"
+msgstr "نرخ فریم"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:49
+msgid "Frames per second"
+msgstr "فریم بر ثانیه"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:60
+msgid "Video bitrate"
+msgstr "نرخ بیت ویدیو"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
+msgid "kbit/s — about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
+msgstr "kbit/s — حدود 4000 برای 720p، 8000 برای 1080p، 30000 برای 4K"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
+msgid "Menu"
+msgstr "منو"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:39
+msgid "Indicator location"
+msgstr "موقعیت نشانگر"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
+msgid "Show the cast icon in the top bar, or in the quick settings menu"
+msgstr "نمایش نماد پخش در نوار بالا یا در منوی تنظیمات سریع"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:89
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:30
+msgid "Show cast details"
+msgstr "نمایش جزئیات پخش"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:31
+msgid "Show the transport and codecs under the active device while casting"
+msgstr "نمایش انتقال و کدک‌ها زیر دستگاه فعال هنگام پخش"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:102
+msgid "About"
+msgstr "درباره"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:113
+#, javascript-format
+msgid "Version %s"
+msgstr "نسخهٔ %s"
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
+msgid ""
+"Scale the captured video down to this size before encoding. \"native\" keeps "
+"the captured size. Above 1080p, raise the bitrate to match and expect a "
+"hardware encoder to be needed for a smooth stream."
 msgstr ""
+"پیش از رمزگذاری، ویدیوی گرفته‌شده به این اندازه کوچک می‌شود. «native» اندازهٔ "
+"اصلی را نگه می‌دارد. بالاتر از 1080p، نرخ بیت را متناسب افزایش دهید و در نظر "
+"داشته باشید که برای جریان روان به رمزگذار سخت‌افزاری نیاز است."
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:20
+msgid "Stream framerate"
+msgstr "نرخ فریم جریان"
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:25
+msgid "Video bitrate in kbit/s"
+msgstr "نرخ بیت ویدیو بر حسب kbit/s"
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:26
+msgid ""
+"Roughly 4000 for 720p, 8000 for 1080p, 16000 for 1440p and 30000 for 4K; "
+"more for fast-moving content."
+msgstr ""
+"تقریباً 4000 برای 720p، 8000 برای 1080p، 16000 برای 1440p و 30000 برای 4K؛ "
+"برای محتوای پرتحرک بیشتر."
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:40
+msgid ""
+"Where to show the cast indicator: the top-bar tray, or the quick settings "
+"menu."
+msgstr "اینکه نشانگر پخش کجا نمایش داده شود: نوار بالا یا منوی تنظیمات سریع."

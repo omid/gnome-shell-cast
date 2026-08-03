@@ -15,27 +15,27 @@ export default class GnomeShellCastExtension extends Extension {
         this._buildIndicator();
     }
 
+    disable() {
+        this._indicator.destroy();
+        this._indicator = null;
+        this._settings.disconnect(this._locationId);
+        this._locationId = null;
+        this._settings = null;
+    }
+
     _buildIndicator() {
         if (this._settings.get_string('indicator-location') === 'quick-settings') {
-            this._indicator = new CastQuickIndicator(this);
+            this._indicator = new CastQuickIndicator(this, this._settings);
             Main.panel.statusArea.quickSettings.addExternalIndicator(this._indicator);
         } else {
-            this._indicator = new CastPanelIndicator(this);
+            this._indicator = new CastPanelIndicator(this, this._settings);
             Main.panel.addToStatusArea(this.uuid, this._indicator);
         }
     }
 
     _rebuildIndicator() {
-        this._indicator?.destroy();
+        this._indicator.destroy();
         this._indicator = null;
         this._buildIndicator();
-    }
-
-    disable() {
-        this._settings.disconnect(this._locationId);
-        this._locationId = null;
-        this._settings = null;
-        this._indicator?.destroy();
-        this._indicator = null;
     }
 }

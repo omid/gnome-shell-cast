@@ -96,7 +96,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
     }
 
     _addAboutPage(window) {
-        const url = this.metadata.url ?? 'https://github.com/omid/gnome-shell-cast';
+        const url = this.metadata.url;
 
         const page = new Adw.PreferencesPage({
             title: _('About'),
@@ -110,7 +110,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         group.add(
             new Adw.ActionRow({
                 title: this.metadata.name,
-                subtitle: _('Version %s').replace('%s', String(this.metadata.version)),
+                subtitle: _('Version %s').replace('%s', `${this.metadata.version}.0.0`),
             }),
         );
 

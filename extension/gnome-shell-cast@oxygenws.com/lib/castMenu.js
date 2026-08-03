@@ -41,10 +41,6 @@ function createMenuItem(label, icon, styleClass = null) {
     return item;
 }
 
-function createStyledMenu(label, icon, styleClass) {
-    return createMenuItem(label, icon, styleClass);
-}
-
 function toggleStyleClass(element, className, enabled = true) {
     if (enabled) element.add_style_class_name(className);
     else element.remove_style_class_name(className);
@@ -62,8 +58,18 @@ export function loadIcons(extension) {
 // Shared between the top-bar indicator and the quick-settings toggle so the
 // two host widgets don't duplicate this logic.
 export class CastMenu {
-    constructor({ extension, menu, icons, setIcon, onCastChanged, onVolume, inlineVolume }) {
+    constructor({
+        extension,
+        settings,
+        menu,
+        icons,
+        setIcon,
+        onCastChanged,
+        onVolume,
+        inlineVolume,
+    }) {
         this._extension = extension;
+        this._settings = settings;
         this._menu = menu;
         this._icons = icons;
         this._setIcon = setIcon;
@@ -77,7 +83,6 @@ export class CastMenu {
         this.version = extension.metadata.version;
         this.daemonVersion = `${this.version}.0.0`;
 
-        this._settings = extension.getSettings();
         this._devices = [];
         this._state = 'idle';
         this._activeDeviceId = '';
@@ -106,7 +111,6 @@ export class CastMenu {
             this._onShowDetailsChanged(),
         );
 
-        // Refresh the device list and daemon state each time the menu opens.
         this._openStateId = menu.connect('open-state-changed', (_menu, open) => {
             if (open) this.refresh();
         });
@@ -140,9 +144,8 @@ export class CastMenu {
         this._volumeControl?.setFromDaemon(level);
     }
 
-    // Name of the device the cast is currently going to, for the volume slider.
     activeDeviceName() {
-        return this._devices.find((d) => d.id === this._activeDeviceId)?.name ?? 'Cast';
+        return this._devices.find((d) => d.id === this._activeDeviceId)?.name ?? _('Cast');
     }
 
     refresh() {
@@ -166,12 +169,12 @@ export class CastMenu {
     }
 
     _updateColorScheme() {
-        const light = this._stSettings.color_scheme === St.SystemColorScheme?.PREFER_LIGHT;
+        const light = this._stSettings.color_scheme === St.SystemColorScheme.PREFER_LIGHT;
         toggleStyleClass(this._menu.box, 'gsc-light', light);
     }
 
     _buildMenu() {
-        this._daemonWarningItem = createStyledMenu(
+        this._daemonWarningItem = createMenuItem(
             '',
             'dialog-warning-symbolic',
             'gsc-warning-label',
@@ -187,7 +190,7 @@ export class CastMenu {
 
         if (this._inlineVolume) this._buildVolumeItem();
 
-        this._stopItem = createStyledMenu(
+        this._stopItem = createMenuItem(
             _('Stop casting'),
             'media-playback-stop-symbolic',
             'gsc-destructive-label',
@@ -231,13 +234,15 @@ export class CastMenu {
                 // missing so we don't flash a spurious warning at boot.
                 if (!this._daemonCheckRetried) {
                     this._daemonCheckRetried = true;
-                    if (!this._versionRetryId) {
-                        this._versionRetryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
-                            this._versionRetryId = 0;
-                            this._checkDaemonVersion();
-                            return GLib.SOURCE_REMOVE;
-                        });
+                    if (this._versionRetryId) {
+                        GLib.source_remove(this._versionRetryId);
+                        this._versionRetryId = 0;
                     }
+                    this._versionRetryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
+                        this._versionRetryId = 0;
+                        this._checkDaemonVersion();
+                        return GLib.SOURCE_REMOVE;
+                    });
                     return;
                 }
                 this._daemonSetup = { mode: 'install', currentVersion: null };
@@ -279,16 +284,15 @@ export class CastMenu {
     }
 
     _daemonRepoUrl() {
-        return this._extension.metadata?.url ?? 'https://github.com/omid/gnome-shell-cast';
+        return this._extension.metadata.url;
     }
 
     // The one-liner the setup/update dialog shows. Pinned to this
     // extension's version so it installs the matching daemon release - the
     // same command therefore updates the daemon after an extension update.
     _installCommand() {
-        const version = this._extension.metadata.version;
         const raw = this._daemonRepoUrl().replace('github.com', 'raw.githubusercontent.com');
-        return `curl -fsSL ${raw}/refs/tags/v${version}/scripts/install.sh | sh -s -- v${version}`;
+        return `curl -fsSL ${raw}/refs/tags/v${this.version}/scripts/install.sh | sh -s -- v${this.version}`;
     }
 
     _openSetupDialog() {
@@ -380,7 +384,7 @@ export class CastMenu {
         const TRANSPORT_LABELS = { mirror: _('Cast streaming'), audio: _('Audio stream') };
         const transportLabel = TRANSPORT_LABELS[transport] ?? _('HLS');
         this._addDetailLine(codec ? `${transportLabel} · ${formatCodec(codec)}` : transportLabel);
-        if (receiverCodecs && receiverCodecs.length > 0)
+        if (receiverCodecs.length > 0)
             this._addDetailLine(
                 _('Receiver supports: %s').replace(
                     '%s',
@@ -433,7 +437,6 @@ export class CastMenu {
             this._details = null;
         }
 
-        // Reflect the active device highlight in the device list.
         this._rebuildDeviceItems();
 
         // A genuine failure pops the error window with the real reason; a
@@ -455,7 +458,6 @@ export class CastMenu {
         }
     }
 
-    // Reflects the current cast state on the icon, stop item and volume slider.
     _reflectState() {
         this._setIcon(this.casting);
         this._stopItem.visible = this.casting;
@@ -487,23 +489,20 @@ export class CastMenu {
         this._lastErrorShown = message;
         const dialog = new ErrorDialog({
             message,
-            version: this._extension.metadata.version,
+            version: this.version,
             url: this._daemonRepoUrl(),
         });
         dialog.connect('closed', () => {
-            this._lastErrorShown = null;
+            if (this._lastErrorShown === message) this._lastErrorShown = null;
         });
         this._showDialog(dialog);
     }
 
     _notifyError(message) {
-        Main.notify('GNOME Shell Cast', message);
+        Main.notify(_('GNOME Shell Cast'), message);
     }
 
     destroy() {
-        // close() pops the modal grab; ModalDialog destroys itself on close.
-        this._dialog?.close();
-        this._dialog = null;
         if (this._versionRetryId) {
             GLib.source_remove(this._versionRetryId);
             this._versionRetryId = 0;
@@ -520,6 +519,9 @@ export class CastMenu {
             this._menu.disconnect(this._openStateId);
             this._openStateId = null;
         }
+        // close() pops the modal grab; ModalDialog destroys itself on close.
+        this._dialog?.close();
+        this._dialog = null;
         if (this._volumeControl) {
             this._volumeControl.destroy();
             this._volumeControl = null;

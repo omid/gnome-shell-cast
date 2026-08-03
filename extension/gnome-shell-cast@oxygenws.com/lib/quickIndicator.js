@@ -9,8 +9,6 @@ import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.j
 import { CastMenu, loadIcons } from './castMenu.js';
 import { CastVolumeControl } from './volumeControl.js';
 
-const GNOME_SHELL_CAST = _('GNOME Shell Cast');
-
 // Volume slider for the active cast device, shown among the Quick Settings
 // volume sliders while casting. Moving it sets the receiver's volume via the
 // daemon, which reports it back to keep the slider in sync.
@@ -49,17 +47,18 @@ function createToggleIconUpdater(toggle, icons) {
 
 const CastToggle = GObject.registerClass(
     class CastToggle extends QuickSettings.QuickMenuToggle {
-        _init(extension, icons, hooks) {
+        _init(extension, settings, icons, hooks) {
             super._init({
                 title: _('Cast'),
                 gicon: icons.idle,
                 toggleMode: false,
             });
 
-            this.menu.setHeader(icons.idle, GNOME_SHELL_CAST);
+            this.menu.setHeader(icons.idle, _('GNOME Shell Cast'));
 
             this._cast = new CastMenu({
                 extension,
+                settings,
                 menu: this.menu,
                 icons,
                 setIcon: createToggleIconUpdater(this, icons),
@@ -91,7 +90,7 @@ const CastToggle = GObject.registerClass(
 
 export const CastQuickIndicator = GObject.registerClass(
     class CastQuickIndicator extends QuickSettings.SystemIndicator {
-        _init(extension) {
+        _init(extension, settings) {
             super._init();
 
             const icons = loadIcons(extension);
@@ -106,7 +105,7 @@ export const CastQuickIndicator = GObject.registerClass(
                 this._toggle.setVolume(level),
             );
 
-            this._toggle = new CastToggle(extension, icons, {
+            this._toggle = new CastToggle(extension, settings, icons, {
                 onCastChanged: (casting, deviceName) => {
                     this._slider.setCasting(casting, deviceName);
                     // Fetch the current level when a cast begins, in case the

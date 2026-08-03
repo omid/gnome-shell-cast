@@ -22,11 +22,12 @@ daemon:
 
 install: install-extension install-daemon
 
-install-extension:
+install-extension: compile-translations
 	@glib-compile-schemas $(_EXT_DIR)/schemas/
 	@rm -rf $(_EXT_INSTALL_BASE)/$(_UUID)
 	@mkdir -p $(_EXT_INSTALL_BASE)/$(_UUID)
 	@cp -r $(_EXT_DIR)/* $(_EXT_INSTALL_BASE)/$(_UUID)/
+	@rm -rf $(_EXT_INSTALL_BASE)/$(_UUID)/po
 
 # Standalone daemon install, for users who got the extension itself from
 # extensions.gnome.org (the daemon cannot be distributed there).
@@ -53,7 +54,7 @@ release:
 	@sh scripts/release.sh
 
 clean:
-	@rm -rf build/ daemon/target/ $(_EXT_DIR)/schemas/gschemas.compiled
+	@rm -rf build/ daemon/target/ $(_EXT_DIR)/schemas/gschemas.compiled $(_EXT_DIR)/locale
 
 eslint:
 	@yarn install
@@ -73,6 +74,7 @@ ego-zip: eslint
 	@gnome-extensions pack --force --out-dir=. \
 		--extra-source=lib --extra-source=icons \
 		--schema=schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml \
+		--podir=po --gettext-domain=$(_UUID) \
 		$(_EXT_DIR)
 	@mv "$(_UUID).shell-extension.zip" "$(_UUID).v$(_VERSION).zip"
 	@echo "Upload $(_UUID).v$(_VERSION).zip at https://extensions.gnome.org/upload/"
@@ -173,7 +175,8 @@ extract-translations: ## Extract translatable strings from source files.
 		--add-comments=translators: \
 		--keyword=_ \
 		--keyword=_:1,2 \
-		$$(find $(_EXT_DIR)/lib -name "*.js" -type f)
+		$$(find $(_EXT_DIR) -name "*.js" -type f | sort) \
+		$(_EXT_DIR)/schemas/*.gschema.xml
 	@echo "✓ Extracted strings to $(_EXT_DIR)/po/gnome-shell-cast@oxygenws.com.pot"
 
 .PHONY: update-translations
@@ -185,8 +188,19 @@ update-translations: ## Update .po files from .pot template (preserves existing 
 	done
 	@echo "✓ Updated .po files from .pot template"
 
+.PHONY: compile-translations
+compile-translations: ## Compile .po files into the locale/ tree shipped with the extension.
+	@rm -rf $(_EXT_DIR)/locale
+	@for po_file in $(_EXT_DIR)/po/*.po; do \
+		[ -f "$$po_file" ] || continue; \
+		lang=$$(basename "$$po_file" .po); \
+		mkdir -p "$(_EXT_DIR)/locale/$$lang/LC_MESSAGES"; \
+		msgfmt "$$po_file" -o "$(_EXT_DIR)/locale/$$lang/LC_MESSAGES/$(_UUID).mo"; \
+	done
+	@echo "✓ Compiled .po files into $(_EXT_DIR)/locale/"
+
 .PHONY: translations
-translations: extract-translations update-translations ## Full translation workflow: extract → update. (GNOME Shell compiles .mo files automatically on install)
+translations: extract-translations update-translations compile-translations ## Full translation workflow: extract → update → compile.
 
 # ---------------------------------------------------------------- everything
 
