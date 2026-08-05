@@ -10,5 +10,5 @@
   "settings-schema": "org.gnome.shell.extensions.gnome-shell-cast",
   "gettext-domain": "gnome-shell-cast@oxygenws.com",
   "url": "https://github.com/omid/gnome-shell-cast",
-  "version": 1
+  "version": 2
 }

@@ -9,8 +9,8 @@ import * as ModalDialog from 'resource:///org/gnome/shell/ui/modalDialog.js';
 
 export const BaseDialog = GObject.registerClass(
     class BaseDialog extends ModalDialog.ModalDialog {
-        _init({ title, description, content, contentStyle = 'gsc-setup-command' }) {
-            super._init({ styleClass: 'gsc-setup-dialog' });
+        constructor({ title, description, content, contentStyle = 'gsc-setup-command' }) {
+            super({ styleClass: 'gsc-setup-dialog' });
 
             this.contentLayout.add_child(new Dialog.MessageDialogContent({ title, description }));
 

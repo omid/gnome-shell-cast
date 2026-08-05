@@ -11,7 +11,7 @@ import { BaseDialog } from './baseDialog.js';
 
 export const SetupDialog = GObject.registerClass(
     class SetupDialog extends BaseDialog {
-        _init({ mode, command, currentVersion, requiredVersion, url }) {
+        constructor({ mode, command, currentVersion, requiredVersion, url }) {
             const isUpdate = mode === 'update';
             const title = isUpdate ? _('Update the cast daemon') : _('Set up the cast daemon');
             const description = isUpdate
@@ -23,13 +23,13 @@ export const SetupDialog = GObject.registerClass(
                       .replace('%old', currentVersion)
                       .replace('%new', requiredVersion)
                 : _(
-                      'GNOME Shell Cast needs a small background daemon. It can’t be ' +
+                      "GNOME Shell Cast needs a small background daemon. It can't be " +
                           'shipped through extensions.gnome.org, so install it once with the ' +
                           'command below. It downloads a checksum-verified binary to ' +
                           '~/.local/bin (nothing runs as root).',
                   );
 
-            super._init({
+            super({
                 title,
                 description,
                 content: command,

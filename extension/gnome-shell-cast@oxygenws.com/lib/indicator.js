@@ -18,8 +18,8 @@ function createIconUpdater(icon, icons) {
 
 export const CastPanelIndicator = GObject.registerClass(
     class CastPanelIndicator extends PanelMenu.Button {
-        _init(extension, settings) {
-            super._init(0.5, _('GNOME Shell Cast'));
+        constructor(extension, settings) {
+            super(0.5, _('GNOME Shell Cast'));
 
             this._icons = loadIcons(extension);
             this._icon = new St.Icon({

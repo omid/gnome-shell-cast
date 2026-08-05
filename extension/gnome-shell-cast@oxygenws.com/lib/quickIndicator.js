@@ -14,8 +14,8 @@ import { CastVolumeControl } from './volumeControl.js';
 // daemon, which reports it back to keep the slider in sync.
 const CastVolumeSlider = GObject.registerClass(
     class CastVolumeSlider extends QuickSettings.QuickSlider {
-        _init(gicon, onChange) {
-            super._init({ gicon });
+        constructor(gicon, onChange) {
+            super({ gicon });
             this.visible = false;
             this._control = new CastVolumeControl(this.slider, onChange);
         }
@@ -47,8 +47,8 @@ function createToggleIconUpdater(toggle, icons) {
 
 const CastToggle = GObject.registerClass(
     class CastToggle extends QuickSettings.QuickMenuToggle {
-        _init(extension, settings, icons, hooks) {
-            super._init({
+        constructor(extension, settings, icons, hooks) {
+            super({
                 title: _('Cast'),
                 gicon: icons.idle,
                 toggleMode: false,
@@ -90,8 +90,8 @@ const CastToggle = GObject.registerClass(
 
 export const CastQuickIndicator = GObject.registerClass(
     class CastQuickIndicator extends QuickSettings.SystemIndicator {
-        _init(extension, settings) {
-            super._init();
+        constructor(extension, settings) {
+            super();
 
             const icons = loadIcons(extension);
             this._indicatorIcon = this._addIndicator();

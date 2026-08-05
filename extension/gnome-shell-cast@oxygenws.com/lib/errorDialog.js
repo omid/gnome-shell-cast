@@ -11,8 +11,8 @@ import { BaseDialog } from './baseDialog.js';
 
 export const ErrorDialog = GObject.registerClass(
     class ErrorDialog extends BaseDialog {
-        _init({ message, version, url }) {
-            super._init({
+        constructor({ message, version, url }) {
+            super({
                 title: _('Casting failed'),
                 description: _(
                     'If this keeps happening, please report it (that helps get it fixed).',

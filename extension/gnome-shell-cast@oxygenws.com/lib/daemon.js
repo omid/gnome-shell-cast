@@ -54,8 +54,6 @@ const CAST_IFACE_XML = `
   </interface>
 </node>`;
 
-const CastProxy = Gio.DBusProxy.makeProxyWrapper(CAST_IFACE_XML);
-
 /**
  * Thin wrapper around the org.gnome.ShellCast1 D-Bus service provided by
  * gnome-shell-cast-daemon. The daemon is D-Bus activatable: constructing the
@@ -76,11 +74,12 @@ export class CastDaemon {
         this._onDaemonGone = onDaemonGone;
         this._onError = onError;
         this._onStartError = onStartError;
-        this._signalIds = [];
 
         // Aborts in-flight calls on destroy(); D-Bus replies can outlive
         // disable() and touch already-destroyed widgets.
         this._cancellable = new Gio.Cancellable();
+
+        const CastProxy = Gio.DBusProxy.makeProxyWrapper(CAST_IFACE_XML);
 
         this._proxy = new CastProxy(
             Gio.DBus.session,
@@ -94,22 +93,21 @@ export class CastDaemon {
                     this._onError(error.message);
                     return;
                 }
-                this._signalIds.push([
-                    proxy,
-                    proxy.connectSignal('DevicesChanged', () => this._onDevicesChanged()),
-                ]);
-                this._signalIds.push([
-                    proxy,
-                    proxy.connectSignal('StateChanged', (_p, _sender, [state, deviceId]) =>
-                        this._onStateChanged(state, deviceId),
-                    ),
-                ]);
-                this._signalIds.push([
-                    proxy,
-                    proxy.connectSignal('VolumeChanged', (_p, _sender, [level]) =>
-                        this._onVolumeChanged(level),
-                    ),
-                ]);
+                proxy.connectObject(
+                    'g-signal::DevicesChanged',
+                    () => this._onDevicesChanged(),
+                    this,
+                );
+                proxy.connectObject(
+                    'g-signal::StateChanged',
+                    (_p, _sender, [state, deviceId]) => this._onStateChanged(state, deviceId),
+                    this,
+                );
+                proxy.connectObject(
+                    'g-signal::VolumeChanged',
+                    (_p, _sender, [level]) => this._onVolumeChanged(level),
+                    this,
+                );
             },
             this._cancellable,
             Gio.DBusProxyFlags.DO_NOT_AUTO_START_AT_CONSTRUCTION |
@@ -275,13 +273,14 @@ export class CastDaemon {
     destroy() {
         // Cancel first: aborts in-flight calls and makes _reply() drop queued ones.
         this._cancellable.cancel();
-        for (const [proxy, id] of this._signalIds) proxy.disconnectSignal(id);
-        this._signalIds = [];
+        if (this._proxy) {
+            this._proxy.disconnectObject(this);
+            this._proxy = null;
+        }
         if (this._watchId) {
             Gio.bus_unwatch_name(this._watchId);
             this._watchId = 0;
         }
-        this._proxy = null;
         this._onDevicesChanged = null;
         this._onStateChanged = null;
         this._onVolumeChanged = null;
