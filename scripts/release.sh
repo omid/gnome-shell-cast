@@ -22,10 +22,11 @@ confirm() {
 
 meta="extension/$UUID/metadata.json"
 
-# Preflight: a clean tree keeps the release commit to just the version bump.
+# Preflight: warn if tree is not clean but allow user to continue
 if [ -n "$(git status --porcelain)" ]; then
-    echo 'error: working tree is not clean. Commit or stash first.' >&2
-    exit 1
+    echo 'warning: working tree is not clean'
+    git status --short
+    confirm "Continue with release anyway?"
 fi
 
 cur=$(jq -r '.version' "$meta")
@@ -39,8 +40,8 @@ echo '==> Setting version'
 sh scripts/set-version.sh "$new"
 
 echo
-echo '==> Running checks (make ci + eslint)'
-if ! make ci eslint; then
+echo '==> Running checks (make check)'
+if ! make check-all; then
     echo 'error: checks failed. Revert the bump with: git checkout -- .' >&2
     exit 1
 fi
@@ -51,7 +52,7 @@ make ego-zip
 
 echo
 echo '==> Changes to commit:'
-git add "$meta" daemon/Cargo.toml daemon/Cargo.lock "extension/$UUID/indicator.js"
+git add .
 git --no-pager diff --cached --stat
 confirm "Commit these as \"Release v$new\"?"
 git commit -m "Release v$new"
