@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 1\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-04 00:22+0200\n"
+"POT-Creation-Date: 2026-08-04 13:42+0200\n"
 "PO-Revision-Date: 2026-08-04 00:22\n"
 "Last-Translator: \n"
 "Language-Team: German <https://github.com/omid/gnome-shell-cast>\n"
@@ -52,54 +52,54 @@ msgstr ""
 "Der Cast-Dienst (v%old) passt nicht zu dieser Version der Erweiterung "
 "(benötigt v%new). Öffnen Sie das Menü, um ihn zu aktualisieren."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:332
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:334
 #, javascript-format
 msgid "%s (casting)"
 msgstr "%s (überträgt)"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:340
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:342
 msgid "Searching for Chromecast devices…"
 msgstr "Chromecast-Geräte werden gesucht …"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:364
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:366
 msgid "Cast screen"
 msgstr "Bildschirm übertragen"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:368
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:370
 msgid "Cast window"
 msgstr "Fenster übertragen"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:384
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:386
 msgid "Cast streaming"
 msgstr "Cast-Streaming"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:384
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:386
 msgid "Audio stream"
 msgstr "Audio-Stream"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:385
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:387
 msgid "HLS"
 msgstr "HLS"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:389
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:391
 #, javascript-format
 msgid "Receiver supports: %s"
 msgstr "Empfänger unterstützt: %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:446
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:448
 msgid "The cast failed."
 msgstr "Die Übertragung ist fehlgeschlagen."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:453
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:455
 #, javascript-format
 msgid "The device ended the session (%s)."
 msgstr "Das Gerät hat die Sitzung beendet (%s)."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:454
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:456
 msgid "The device ended the session."
 msgstr "Das Gerät hat die Sitzung beendet."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:502
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:504
 #: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:57
 msgid "GNOME Shell Cast"
@@ -133,7 +133,7 @@ msgid "Close"
 msgstr "Schließen"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:122
 msgid "Report an issue"
 msgstr "Fehler melden"
 
@@ -178,7 +178,7 @@ msgstr ""
 "ihn aus."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:124
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:121
 msgid "Homepage"
 msgstr "Webseite"
 
@@ -253,8 +253,8 @@ msgid "Video bitrate"
 msgstr "Video-Bitrate"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
-msgid "kbit/s — about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
-msgstr "kbit/s – etwa 4000 für 720p, 8000 für 1080p, 30000 für 4K"
+msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
+msgstr "kbit/s: etwa 4000 für 720p, 8000 für 1080p, 30000 für 4K"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
 msgid "Menu"
@@ -270,22 +270,22 @@ msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr ""
 "Das Cast-Symbol in der oberen Leiste oder im Schnelleinstellungsmenü anzeigen"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:89
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:86
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:30
 msgid "Show cast details"
 msgstr "Übertragungsdetails anzeigen"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:87
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:31
 msgid "Show the transport and codecs under the active device while casting"
 msgstr ""
 "Während der Übertragung Transport und Codecs unter dem aktiven Gerät anzeigen"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:102
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:99
 msgid "About"
 msgstr "Info"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:113
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:110
 #, javascript-format
 msgid "Version %s"
 msgstr "Version %s"

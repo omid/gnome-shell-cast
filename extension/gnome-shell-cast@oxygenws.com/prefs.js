@@ -37,7 +37,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             title: _('Maximum resolution'),
             subtitle: _('Above 1080p needs a hardware encoder and a matching bitrate'),
             model: new Gtk.StringList({ strings: resolutionLabels }),
-            selected: Math.max(0, RESOLUTION_VALUES.indexOf(settings.get_string('resolution'))),
+            selected: RESOLUTION_VALUES.indexOf(settings.get_string('resolution')),
         });
         resolutionRow.connect('notify::selected', (row) => {
             settings.set_string('resolution', RESOLUTION_VALUES[row.selected]);
@@ -58,7 +58,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
 
         const bitrateRow = new Adw.SpinRow({
             title: _('Video bitrate'),
-            subtitle: _('kbit/s — about 4000 for 720p, 8000 for 1080p, 30000 for 4K'),
+            subtitle: _('kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K'),
             adjustment: new Gtk.Adjustment({
                 lower: 1000,
                 upper: 60000,
@@ -75,10 +75,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             title: _('Indicator location'),
             subtitle: _('Show the cast icon in the top bar, or in the quick settings menu'),
             model: new Gtk.StringList({ strings: locationLabels }),
-            selected: Math.max(
-                0,
-                LOCATION_VALUES.indexOf(settings.get_string('indicator-location')),
-            ),
+            selected: LOCATION_VALUES.indexOf(settings.get_string('indicator-location')),
         });
         locationRow.connect('notify::selected', (row) => {
             settings.set_string('indicator-location', LOCATION_VALUES[row.selected]);

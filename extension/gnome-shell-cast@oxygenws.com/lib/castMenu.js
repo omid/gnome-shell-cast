@@ -296,7 +296,9 @@ export class CastMenu {
     }
 
     _openSetupDialog() {
-        const setup = this._daemonSetup ?? { mode: 'install', currentVersion: null };
+        // Only reachable from the warning item, which is made visible after
+        // _checkDaemonVersion() has assigned _daemonSetup.
+        const setup = this._daemonSetup;
         this._showDialog(
             new SetupDialog({
                 mode: setup.mode,
@@ -308,7 +310,7 @@ export class CastMenu {
         );
     }
 
-    // Tracks the open modal so destroy() can close it — a dialog is parented to
+    // Tracks the open modal so destroy() can close it: a dialog is parented to
     // the shell, not to us, so it would otherwise outlive disable().
     _showDialog(dialog) {
         this._dialog?.close();

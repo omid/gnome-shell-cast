@@ -129,7 +129,7 @@ export class CastDaemon {
         );
     }
 
-    // Drops a reply handler once destroy() has cancelled — a cancelled call
+    // Drops a reply handler once destroy() has cancelled: a cancelled call
     // still fires its callback, into now-destroyed menu items.
     _reply(handler) {
         return (...args) => {

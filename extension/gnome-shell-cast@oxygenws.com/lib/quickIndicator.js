@@ -125,11 +125,11 @@ export const CastQuickIndicator = GObject.registerClass(
 
             this.quickSettingsItems.push(this._toggle);
 
-            // Between the system output and input volume sliders — the two grid
-            // items after getFirstItem() — via public sibling navigation.
+            // Between the system output and input volume sliders (the two grid
+            // items after getFirstItem()) via public sibling navigation. Both
+            // sliders always exist in the shell versions we target (48-50).
             const qsMenu = Main.panel.statusArea.quickSettings.menu;
-            const output = qsMenu.getFirstItem()?.get_next_sibling();
-            const anchor = output?.get_next_sibling() ?? qsMenu.getFirstItem();
+            const anchor = qsMenu.getFirstItem().get_next_sibling().get_next_sibling();
             qsMenu.insertItemBefore(this._slider, anchor, 2);
         }
 
