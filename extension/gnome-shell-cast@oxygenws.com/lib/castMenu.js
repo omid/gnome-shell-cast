@@ -45,12 +45,8 @@ function createRowButton(iconName, label, onClick) {
     const button = new St.Button({
         style_class: 'icon-button flat gsc-row-button',
         can_focus: true,
-        // Off by default on St.Button; without it `hover` never changes.
-        track_hover: true,
         child: new St.Icon({ icon_name: iconName, style_class: 'popup-menu-icon' }),
     });
-    // No tooltip: the shell has no API for one, and a hand-rolled label
-    // would not follow the user's theme. Screen readers still get this.
     button.accessible_name = label;
     button.connect('clicked', onClick);
     return button;

@@ -62,5 +62,6 @@ was. `TROUBLESHOOTING.md` has the user-facing versions.
 - **`g-signal` hands the handler `(proxy, sender, signalName, parameters)`** —
   the payload is the *fourth* argument and a GVariant. Destructuring the third
   silently yields the characters of the signal name.
-- **`St.Button` does not track hover by default**; pass `track_hover: true` or
-  `notify::hover` never fires.
+- **GNOME Shell has no tooltip API.** The dash and the screenshot UI each
+  hand-roll a label in the uiGroup. Anything built that way positions itself by
+  hand and hardcodes its colours, so it will not follow the user's theme.
