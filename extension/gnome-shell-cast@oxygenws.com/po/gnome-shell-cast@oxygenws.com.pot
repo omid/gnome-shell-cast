@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 2\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-13 08:26+0200\n"
+"POT-Creation-Date: 2026-08-13 23:02+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,270 +17,270 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:227
-#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:49
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:168
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:57
 msgid "Cast"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:271
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:212
 msgid "Stop casting"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:279
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:220
 msgid "Preferences"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:336
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:277
 #, javascript-format
 msgid "%s (casting)"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:344
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:285
 msgid "Searching for Chromecast devices…"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:395
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:334
 msgid "Cast screen"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:402
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:339
 msgid "Choose what to cast"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:416
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:352
 msgid "Cast streaming"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:416
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:352
 msgid "Audio stream"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:417
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:353
 msgid "HLS"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:421
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:357
 #, javascript-format
 msgid "Receiver supports: %s"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:480
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:416
 msgid "The cast failed."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:487
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:423
 #, javascript-format
 msgid "The device ended the session (%s)."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:488
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:424
 msgid "The device ended the session."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:536
-#: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:20
-#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:54
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:472
+#: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:62
 msgid "GNOME Shell Cast"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:53
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:14
+#: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:55
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:16
 msgid "Set up the cast daemon"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:55
+#: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:57
 msgid ""
 "The cast daemon isn’t installed yet. Open the menu and click “Set up the "
 "cast daemon” to install it."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:62
+#: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:64
 msgid "Update the cast daemon (v%old → v%new)"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:66
+#: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:68
 msgid ""
 "The cast daemon (v%old) doesn’t match this version of the extension (needs "
 "v%new). Open the menu to update it."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:14
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:16
 msgid "Casting failed"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:16
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:18
 msgid "If this keeps happening, please report it (that helps get it fixed)."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:29
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:31
 msgid ""
 "The report will include this error, the version, and a reminder to attach "
 "logs."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:34
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:36
 msgid "Copy details"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:35
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:42
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:37
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:44
 msgid "Close"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:38
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:120
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:122
 msgid "Report an issue"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:45
+#: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:47
 msgid "Copied! Paste it into a new issue."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:23
+#: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:26
 #, javascript-format
 msgid "%s volume"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:14
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:16
 msgid "Update the cast daemon"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:17
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:19
 msgid ""
 "A newer version of the extension needs a matching daemon (installed v%old → "
 "needs v%new). Run the command below to update it (nothing runs as root)."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:24
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:26
 msgid ""
 "GNOME Shell Cast needs a small background daemon. It can’t be shipped "
 "through extensions.gnome.org, so install it once with the command below. It "
 "downloads a checksum-verified binary to ~/.local/bin (nothing runs as root)."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:39
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:41
 msgid "Copy the command, then paste it into a terminal and run it."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:41
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:119
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:121
 msgid "Homepage"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:45
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:47
 msgid "Copy command"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:52
+#: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:54
 msgid "Copied! Paste it into a terminal and run it."
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:19
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "Native"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:19
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "4K (2160p)"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:19
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "1440p"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:19
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "1080p"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:19
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "720p"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:20
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:22
 msgid "Top bar"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:20
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:22
 msgid "Quick settings"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:23
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:25
 msgid "Settings"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:31
 msgid "Stream quality"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:30
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
 msgid "Applied the next time a cast is started"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:35
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:14
 msgid "Maximum resolution"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:38
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:46
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
 msgid "Framerate"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:47
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:49
 msgid "Frames per second"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:58
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:60
 msgid "Video bitrate"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:59
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:69
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
 msgid "Menu"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:73
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:39
 msgid "Indicator location"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:84
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:86
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:30
 msgid "Show cast details"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:85
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:87
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:31
 msgid "Show the transport and codecs under the active device while casting"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:99
 msgid "About"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:110
 #, javascript-format
 msgid "Version %s"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:123
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
 msgid "Help"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:124
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:126
 msgid "Common problems and their fixes"
 msgstr ""
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:127
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
 msgid "Troubleshooting guide"
 msgstr ""
 
