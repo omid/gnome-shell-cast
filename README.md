@@ -129,22 +129,7 @@ Preferences (resolution cap, framerate, bitrate) are under the ⚙ menu entry or
 
 ## Troubleshooting
 
-```sh
-# Extension logs
-journalctl -f -o cat /usr/bin/gnome-shell
-
-# Daemon logs (every line is tagged "gnome-shell-cast")
-journalctl --user -f -g gnome-shell-cast
-# or run it by hand with verbose logging:
-RUST_LOG=debug ~/.local/bin/gnome-shell-cast-daemon
-```
-
-- **No devices found:** the Chromecast must be on the same network/VLAN, and mDNS (UDP 5353) must not be blocked.
-- **No audio:** system audio is captured from the default sink's monitor via `pactl get-default-sink`. Check `pactl` is installed and audio isn't going to a different sink.
-- **The picture is cut off on all four sides:** that's your TV's overscan, not the cast. Set the picture size to *Just Scan* / *Screen Fit* / *Unscaled*.
-
-See **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for the full list, including
-black screens, HLS fallbacks, IPv6 routing failures, and notes for developers.
+See **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for the full list.
 
 ## Manual test plan
 
