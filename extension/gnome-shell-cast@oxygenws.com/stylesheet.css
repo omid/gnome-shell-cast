@@ -56,3 +56,60 @@
     font-size: 0.85em;
     color: #9a9a9a;
 }
+
+/*
+ * Cast actions sitting at the end of a device row. Qualified with
+ * `.icon-button` so these beat the shell's own `.icon-button.flat` rules,
+ * which drop the background and leave the buttons looking bare.
+ */
+.icon-button.gsc-row-button {
+    padding: 8px;
+    margin-left: 6px;
+    color: #ffffff;
+    border: 2px solid rgba(255, 255, 255, 0.18);
+    border-radius: 9px;
+    background-color: rgba(255, 255, 255, 0.07);
+    transition-duration: 150ms;
+}
+
+.icon-button.gsc-row-button:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    background-color: rgba(255, 255, 255, 0.17);
+}
+
+.icon-button.gsc-row-button:active {
+    border-color: rgba(255, 255, 255, 0.5);
+    background-color: rgba(255, 255, 255, 0.28);
+}
+
+/* Keyboard focus: accent ring, matching the shell's focused buttons. */
+.icon-button.gsc-row-button:focus {
+    border-color: #3584e4;
+    border-color: -st-accent-color;
+}
+
+.gsc-light .icon-button.gsc-row-button {
+    color: #000000;
+    border-color: rgba(0, 0, 0, 0.18);
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+.gsc-light .icon-button.gsc-row-button:hover {
+    border-color: rgba(0, 0, 0, 0.35);
+    background-color: rgba(0, 0, 0, 0.14);
+}
+
+.gsc-light .icon-button.gsc-row-button:active {
+    border-color: rgba(0, 0, 0, 0.45);
+    background-color: rgba(0, 0, 0, 0.22);
+}
+
+/* Hover text for the row buttons; mirrors the shell's own tooltip look. */
+.gsc-tooltip {
+    background-color: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 999px;
+    color: #ffffff;
+    padding: 6px 12px;
+    text-align: center;
+}
