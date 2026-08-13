@@ -141,7 +141,10 @@ RUST_LOG=debug ~/.local/bin/gnome-shell-cast-daemon
 
 - **No devices found:** the Chromecast must be on the same network/VLAN, and mDNS (UDP 5353) must not be blocked.
 - **No audio:** system audio is captured from the default sink's monitor via `pactl get-default-sink`. Check `pactl` is installed and audio isn't going to a different sink.
-- **Playback fails on the TV:** confirm `gst-inspect-1.0 x264enc hlssink2` finds both elements.
+- **The picture is cut off on all four sides:** that's your TV's overscan, not the cast. Set the picture size to *Just Scan* / *Screen Fit* / *Unscaled*.
+
+See **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** for the full list, including
+black screens, HLS fallbacks, IPv6 routing failures, and notes for developers.
 
 ## Manual test plan
 
