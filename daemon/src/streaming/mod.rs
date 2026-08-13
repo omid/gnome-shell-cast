@@ -14,7 +14,7 @@ use std::os::fd::AsRawFd;
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context, Result, anyhow, bail};
 use gstreamer as gst;
 use gstreamer::prelude::*;
 use gstreamer_app::AppSink;
@@ -51,7 +51,7 @@ struct StreamKeys {
 
 fn generate_keys(ssrc_base: u32) -> StreamKeys {
     StreamKeys {
-        ssrc: ssrc_base + rand::random::<u32>() % 1000,
+        ssrc: ssrc_base.wrapping_add(rand::random::<u32>() % 1000),
         aes_key: rand::random(),
         aes_iv_mask: rand::random(),
     }
@@ -68,11 +68,12 @@ pub async fn run(
     settings: &StreamSettings,
     stop_rx: &mut oneshot::Receiver<()>,
 ) -> Outcome {
-    // 1. Stream parameters. The OFFER needs a frame size, so "native" (no
-    // explicit size) is advertised as 1080p; receivers scale anyway.
+    // 1. Stream parameters. "Native" (no explicit size) is advertised to the
+    // receiver as 1080p; it scales anyway.
     let (width, height) = settings.size.unwrap_or((1920, 1080));
-    let fps = settings.fps;
-    let video_bps = (settings.bitrate_kbps as u32) * 1000;
+    let video_bps = u32::try_from(settings.bitrate_kbps)
+        .unwrap_or(0)
+        .saturating_mul(1000);
 
     let audio_monitor = pipeline::default_audio_monitor().await;
     match (capture, &audio_monitor) {
@@ -104,24 +105,7 @@ pub async fn run(
     if capture.is_some() && codecs.is_empty() {
         return Outcome::Unavailable(anyhow!("no video encoder is installed"));
     }
-    let video_params: Vec<messages::VideoParams> = codecs
-        .iter()
-        .enumerate()
-        .map(|(i, codec)| {
-            let keys = generate_keys(50_000 + (i as u32) * 1_000);
-            messages::VideoParams {
-                index: VIDEO_INDEX_BASE + i as u32,
-                ssrc: keys.ssrc,
-                aes_key: keys.aes_key,
-                aes_iv_mask: keys.aes_iv_mask,
-                codec_name: codec.codec_name(),
-                max_bit_rate: video_bps,
-                max_fps: fps as u32,
-                width: width as u32,
-                height: height as u32,
-            }
-        })
-        .collect();
+    let video_params = video_params(&codecs, settings, video_bps);
     let offer = messages::offer(1, audio_params.as_ref(), &video_params);
 
     // 2. Launch the mirroring app and negotiate (blocking I/O on a worker).
@@ -132,7 +116,7 @@ pub async fn run(
         device.name
     );
     let negotiation =
-        tokio::task::spawn_blocking(move || MirrorChannel::negotiate(addr, port, offer)).await;
+        tokio::task::spawn_blocking(move || MirrorChannel::negotiate(addr, port, &offer)).await;
     let (mirror_channel, answer) = match negotiation {
         Ok(Ok(result)) => result,
         Ok(Err(e)) => return Outcome::Unavailable(e),
@@ -141,154 +125,62 @@ pub async fn run(
     // The receiver accepts one video variant; take our highest-priority one
     // (video_params is already in preference order). Keep only the scalar
     // stream data so nothing borrows video_params past here.
-    let chosen_video = video_params
-        .iter()
-        .position(|p| answer.send_indexes.contains(&p.index))
-        .map(|i| {
-            (
-                codecs[i],
-                video_params[i].ssrc,
-                video_params[i].aes_key,
-                video_params[i].aes_iv_mask,
-            )
-        });
-    if capture.is_some() && chosen_video.is_none() {
-        return Outcome::Unavailable(anyhow!(
-            "receiver accepted none of the offered video codecs"
-        ));
-    }
-    let audio_accepted = audio_params.is_some() && answer.send_indexes.contains(&AUDIO_INDEX);
-    if capture.is_none() && !audio_accepted {
-        return Outcome::Unavailable(anyhow!("receiver did not accept the audio stream"));
-    }
-
-    // The encoder for the negotiated codec (None for an audio-only cast):
-    // (launch fragment, is-hardware).
-    let video_encoder = match chosen_video {
-        Some((codec, ..)) => match encoder::video_encoder(codec, video_bps, fps as u32) {
-            Some(picked) => Some(picked),
-            None => {
-                return Outcome::Unavailable(anyhow!("no encoder for the negotiated video codec"));
-            }
-        },
-        None => None,
+    let selected = match select_streams(
+        &answer,
+        &video_params,
+        &codecs,
+        (audio_params.is_some(), capture.is_some()),
+        settings,
+    ) {
+        Ok(selected) => selected,
+        Err(e) => return Outcome::Unavailable(e),
     };
+    let (chosen_video, audio_accepted, video_encoder) =
+        (selected.video, selected.audio, selected.encoder);
 
     // From here on the app is running; ChannelControl's Drop stops it again.
     let (channel_events_tx, mut channel_events) = mpsc::unbounded_channel();
     let channel_control = ChannelControl::spawn(mirror_channel, channel_events_tx);
 
-    // 3. Media transport socket.
-    let socket = match crate::net::connected_udp(addr, answer.udp_port)
-        .context("connecting the RTP socket")
-    {
-        Ok(s) => s,
-        Err(e) => return Outcome::Unavailable(e),
-    };
-
-    // 4. Encoder pipeline feeding the sender thread through a channel.
-    let (chunks_tx, chunks_rx) = chunk_channel();
-    let pipeline_result = build_pipeline(
+    // 3+4. RTP socket, then the encoder pipeline feeding the sender thread.
+    let media = start_media(
+        (addr, answer.udp_port),
         capture,
         settings,
         (width, height),
-        video_encoder.as_ref().map(|(desc, _)| desc.as_str()),
-        audio_monitor.as_deref().filter(|_| audio_accepted),
-        &chunks_tx,
+        &MediaStreams {
+            video: chosen_video,
+            audio: audio_accepted.then_some(&audio_keys),
+            encoder: video_encoder.as_ref().map(|(desc, _)| desc.as_str()),
+            audio_monitor: audio_monitor.as_deref().filter(|_| audio_accepted),
+        },
     );
-    drop(chunks_tx); // the appsink callbacks hold their own clones
-    let pipeline = match pipeline_result {
-        Ok(p) => p,
-        Err(e) => return Outcome::Unavailable(e.context("building mirroring pipeline")),
+    let (pipeline, media_sender) = match media {
+        Ok(started) => started,
+        Err(e) => return Outcome::Unavailable(e),
     };
-
-    let mut stream_configs = Vec::with_capacity(2);
-    if let Some((_, ssrc, aes_key, aes_iv_mask)) = chosen_video {
-        stream_configs.push(StreamConfig {
-            kind: StreamKind::Video,
-            ssrc,
-            payload_type: messages::VIDEO_PAYLOAD_TYPE,
-            aes_key,
-            aes_iv_mask,
-        });
-    }
-    if audio_accepted {
-        stream_configs.push(StreamConfig {
-            kind: StreamKind::Audio,
-            ssrc: audio_keys.ssrc,
-            payload_type: messages::AUDIO_PAYLOAD_TYPE,
-            aes_key: audio_keys.aes_key,
-            aes_iv_mask: audio_keys.aes_iv_mask,
-        });
-    }
-
-    let encoder = pipeline.by_name("venc");
-    let request_keyframe: Box<dyn Fn() + Send> = Box::new(move || {
-        if let Some(enc) = &encoder {
-            let s = gst::Structure::builder("GstForceKeyUnit")
-                .field("all-headers", true)
-                .build();
-            enc.send_event(gst::event::CustomUpstream::new(s));
-        }
-    });
-    let media_sender = MediaSender::spawn(socket, stream_configs, chunks_rx, request_keyframe);
 
     // 5. Run.
     if let Err(e) = pipeline.set_state(gst::State::Playing) {
         return Outcome::Finished(Err(anyhow!("starting mirroring pipeline: {e}")));
     }
     let _pipeline_stop = PipelineStop(pipeline.clone());
-    // Codecs the receiver accepted from our OFFER, for the "show details" line.
-    let receiver_codecs: Vec<String> = video_params
-        .iter()
-        .enumerate()
-        .filter(|(_, p)| answer.send_indexes.contains(&p.index))
-        .map(|(i, _)| codecs[i].codec_name().to_owned())
-        .collect();
-    if let Some((codec, ..)) = chosen_video {
-        let hw = video_encoder.as_ref().is_some_and(|(_, hw)| *hw);
-        info!(
-            "mirroring started ({} {}, {width}x{height} @{fps}fps, {video_bps} bps)",
-            codec.codec_name(),
-            if hw { "hardware" } else { "software" }
-        );
-        state.set_details("mirror", codec.codec_name(), receiver_codecs);
-    } else {
-        info!("audio-only mirroring started ({AUDIO_BIT_RATE} bps)");
-        state.set_details("mirror", "opus", Vec::new());
-    }
-    state.set_status("casting", &device.id);
+    announce(
+        state,
+        device,
+        chosen_video.map(|(codec, ..)| codec),
+        video_encoder.as_ref().is_some_and(|(_, hw)| *hw),
+        // Codecs the receiver accepted from our OFFER, for "show details".
+        video_params
+            .iter()
+            .zip(codecs.iter())
+            .filter(|(p, _)| answer.send_indexes.contains(&p.index))
+            .map(|(_, codec)| codec.codec_name().to_owned())
+            .collect(),
+        settings,
+    );
 
-    let bus = pipeline.bus();
-    // Subscribed once, outside the loop: re-creating it each iteration would
-    // resubscribe every tick and could miss the signal in between.
-    let capture_closed = capture_closed(capture);
-    tokio::pin!(capture_closed);
-    let result = loop {
-        tokio::select! {
-            _ = &mut *stop_rx => {
-                info!("stop requested");
-                break Ok(());
-            }
-            () = &mut capture_closed => {
-                info!("screen sharing was stopped from the system menu");
-                break Ok(());
-            }
-            event = channel_events.recv() => match event {
-                Some(ChannelEvent::Ended(reason)) => {
-                    info!("device ended the mirroring session: {reason}");
-                    state.set_last_event("ended", &reason);
-                    break Ok(());
-                }
-                None => break Ok(()),
-            },
-            () = tokio::time::sleep(Duration::from_millis(500)) => {
-                if let Some(error) = bus.as_ref().and_then(pop_bus_error) {
-                    break Err(error);
-                }
-            }
-        }
-    };
+    let result = run_until_stopped(state, capture, &pipeline, stop_rx, &mut channel_events).await;
 
     // Stop the encoder first so no more frames are produced, then the sender
     // (explicit stop flag; it can't wait on the appsink channel closing), then
@@ -297,6 +189,229 @@ pub async fn run(
     drop(media_sender);
     drop(channel_control);
     Outcome::Finished(result)
+}
+
+/// What `start_media` needs to know about the negotiated streams.
+struct MediaStreams<'a> {
+    video: Option<(encoder::VideoCodec, u32, [u8; 16], [u8; 16])>,
+    audio: Option<&'a StreamKeys>,
+    encoder: Option<&'a str>,
+    audio_monitor: Option<&'a str>,
+}
+
+/// Opens the RTP socket and builds the encoder pipeline that feeds it.
+fn start_media(
+    peer: (std::net::IpAddr, u16),
+    capture: Option<&Capture>,
+    settings: &StreamSettings,
+    size: (i32, i32),
+    streams: &MediaStreams<'_>,
+) -> Result<(gst::Pipeline, MediaSender)> {
+    let socket = crate::net::connected_udp(peer.0, peer.1).context("connecting the RTP socket")?;
+
+    let (chunks_tx, chunks_rx) = chunk_channel();
+    let pipeline = build_pipeline(
+        capture,
+        settings,
+        size,
+        streams.encoder,
+        streams.audio_monitor,
+        &chunks_tx,
+    );
+    drop(chunks_tx); // the appsink callbacks hold their own clones
+    let pipeline = pipeline.context("building mirroring pipeline")?;
+
+    let configs = stream_configs(streams.video, streams.audio);
+    let sender = MediaSender::spawn(socket, configs, chunks_rx, keyframe_forcer(&pipeline));
+    Ok((pipeline, sender))
+}
+
+/// What the receiver accepted from the OFFER, and the encoder to feed it.
+struct Selected {
+    video: Option<(encoder::VideoCodec, u32, [u8; 16], [u8; 16])>,
+    audio: bool,
+    encoder: Option<(String, bool)>,
+}
+
+/// Matches the ANSWER against what was offered. `offered` is
+/// (audio was offered, this is a screen cast).
+fn select_streams(
+    answer: &messages::Answer,
+    video_params: &[messages::VideoParams],
+    codecs: &[encoder::VideoCodec],
+    offered: (bool, bool),
+    settings: &StreamSettings,
+) -> Result<Selected> {
+    let (audio_offered, has_capture) = offered;
+    // The receiver accepts one video variant; take our highest-priority one
+    // (video_params is already in preference order).
+    let video = video_params
+        .iter()
+        .zip(codecs.iter())
+        .find(|(p, _)| answer.send_indexes.contains(&p.index))
+        .map(|(p, codec)| (*codec, p.ssrc, p.aes_key, p.aes_iv_mask));
+    if has_capture && video.is_none() {
+        bail!("receiver accepted none of the offered video codecs");
+    }
+    let audio = audio_offered && answer.send_indexes.contains(&AUDIO_INDEX);
+    if !has_capture && !audio {
+        bail!("receiver did not accept the audio stream");
+    }
+
+    let video_bps = u32::try_from(settings.bitrate_kbps)
+        .unwrap_or(0)
+        .saturating_mul(1000);
+    let fps = u32::try_from(settings.fps).unwrap_or(30);
+    let encoder = match video {
+        // (launch fragment, is-hardware)
+        Some((codec, ..)) => match encoder::video_encoder(codec, video_bps, fps) {
+            Some(picked) => Some(picked),
+            None => bail!("no encoder for the negotiated video codec"),
+        },
+        None => None,
+    };
+    Ok(Selected {
+        video,
+        audio,
+        encoder,
+    })
+}
+
+/// Logs what was negotiated and moves the session to "casting".
+fn announce(
+    state: &Arc<SharedState>,
+    device: &Device,
+    codec: Option<encoder::VideoCodec>,
+    hardware: bool,
+    receiver_codecs: Vec<String>,
+    settings: &StreamSettings,
+) {
+    if let Some(codec) = codec {
+        let (width, height) = settings.size.unwrap_or((1920, 1080));
+        info!(
+            "mirroring started ({} {}, {width}x{height} @{}fps, {} kbit/s)",
+            codec.codec_name(),
+            if hardware { "hardware" } else { "software" },
+            settings.fps,
+            settings.bitrate_kbps,
+        );
+        state.set_details("mirror", codec.codec_name(), receiver_codecs);
+    } else {
+        info!("audio-only mirroring started ({AUDIO_BIT_RATE} bps)");
+        state.set_details("mirror", "opus", Vec::new());
+    }
+    state.set_status("casting", &device.id);
+}
+
+/// One OFFER variant per codec we can encode, each with its own SSRC and key.
+fn video_params(
+    codecs: &[encoder::VideoCodec],
+    settings: &StreamSettings,
+    video_bps: u32,
+) -> Vec<messages::VideoParams> {
+    // The OFFER needs a frame size, so "native" (no explicit size) is
+    // advertised as 1080p; receivers scale anyway.
+    let (width, height) = settings.size.unwrap_or((1920, 1080));
+    codecs
+        .iter()
+        .enumerate()
+        .map(|(i, codec)| {
+            let index = u32::try_from(i).unwrap_or(0);
+            let keys = generate_keys(50_000_u32.saturating_add(index.saturating_mul(1_000)));
+            messages::VideoParams {
+                index: VIDEO_INDEX_BASE.saturating_add(index),
+                ssrc: keys.ssrc,
+                aes_key: keys.aes_key,
+                aes_iv_mask: keys.aes_iv_mask,
+                codec_name: codec.codec_name(),
+                max_bit_rate: video_bps,
+                max_fps: u32::try_from(settings.fps).unwrap_or(0),
+                width: u32::try_from(width).unwrap_or(0),
+                height: u32::try_from(height).unwrap_or(0),
+            }
+        })
+        .collect()
+}
+
+/// The RTP streams the receiver accepted, in the order the sender expects.
+fn stream_configs(
+    video: Option<(encoder::VideoCodec, u32, [u8; 16], [u8; 16])>,
+    audio: Option<&StreamKeys>,
+) -> Vec<StreamConfig> {
+    let mut configs = Vec::with_capacity(2);
+    if let Some((_, ssrc, aes_key, aes_iv_mask)) = video {
+        configs.push(StreamConfig {
+            kind: StreamKind::Video,
+            ssrc,
+            payload_type: messages::VIDEO_PAYLOAD_TYPE,
+            aes_key,
+            aes_iv_mask,
+        });
+    }
+    if let Some(keys) = audio {
+        configs.push(StreamConfig {
+            kind: StreamKind::Audio,
+            ssrc: keys.ssrc,
+            payload_type: messages::AUDIO_PAYLOAD_TYPE,
+            aes_key: keys.aes_key,
+            aes_iv_mask: keys.aes_iv_mask,
+        });
+    }
+    configs
+}
+
+/// Asks the encoder for a key frame; the sender calls this on picture loss.
+fn keyframe_forcer(pipeline: &gst::Pipeline) -> Box<dyn Fn() + Send> {
+    let encoder = pipeline.by_name("venc");
+    Box::new(move || {
+        if let Some(enc) = &encoder {
+            let forced = gst::Structure::builder("GstForceKeyUnit")
+                .field("all-headers", true)
+                .build();
+            enc.send_event(gst::event::CustomUpstream::new(forced));
+        }
+    })
+}
+
+/// Runs until the user stops the cast, the compositor ends the screen share,
+/// the device drops the session, or the pipeline errors.
+async fn run_until_stopped(
+    state: &Arc<SharedState>,
+    capture: Option<&Capture>,
+    pipeline: &gst::Pipeline,
+    stop_rx: &mut oneshot::Receiver<()>,
+    channel_events: &mut mpsc::UnboundedReceiver<ChannelEvent>,
+) -> Result<()> {
+    let bus = pipeline.bus();
+    // Subscribed once, outside the loop: re-creating it each iteration would
+    // resubscribe every tick and could miss the signal in between.
+    let capture_closed = capture_closed(capture);
+    tokio::pin!(capture_closed);
+    loop {
+        tokio::select! {
+            _ = &mut *stop_rx => {
+                info!("stop requested");
+                return Ok(());
+            }
+            () = &mut capture_closed => {
+                info!("screen sharing was stopped from the system menu");
+                return Ok(());
+            }
+            event = channel_events.recv() => match event {
+                Some(ChannelEvent::Ended(reason)) => {
+                    info!("device ended the mirroring session: {reason}");
+                    state.set_last_event("ended", &reason);
+                    return Ok(());
+                }
+                None => return Ok(()),
+            },
+            () = tokio::time::sleep(Duration::from_millis(500)) => {
+                if let Some(error) = bus.as_ref().and_then(pop_bus_error) {
+                    return Err(error);
+                }
+            }
+        }
+    }
 }
 
 /// Pends forever for an audio-only cast, which has no portal session to lose.
@@ -404,8 +519,11 @@ fn attach_appsink(
                     return Ok(gst::FlowSuccess::Ok);
                 };
                 let pts_ns = buffer.pts().map_or(0, gstreamer::ClockTime::nseconds);
-                let rtp_timestamp =
-                    ((u128::from(pts_ns) * u128::from(timebase)) / 1_000_000_000) as u32;
+                let rtp_timestamp = u128::from(pts_ns)
+                    .saturating_mul(u128::from(timebase))
+                    .checked_div(1_000_000_000)
+                    .and_then(|ticks| u32::try_from(ticks & u128::from(u32::MAX)).ok())
+                    .unwrap_or(0);
                 let is_key_frame = !buffer.flags().contains(gst::BufferFlags::DELTA_UNIT);
                 // Ship the mapped buffer itself; the sender thread reads the
                 // encoded bytes in place instead of from a copy.

@@ -33,7 +33,7 @@ type Manager = MessageManager<StreamOwned<ClientConnection, TcpStream>>;
 /// answers heartbeats so the device keeps the connection alive; dropping this
 /// stops the worker thread.
 pub struct VolumeControl {
-    tx: Sender<f32>,
+    tx: Sender<f64>,
     stop: Arc<AtomicBool>,
     handle: Option<JoinHandle<()>>,
 }
@@ -41,7 +41,7 @@ pub struct VolumeControl {
 impl VolumeControl {
     /// Starts the worker. `on_level` reports the receiver's volume (0.0-1.0) on
     /// the initial read and after each change, for the daemon to push to the slider.
-    pub fn start<F: Fn(f32) + Send + 'static>(addr: IpAddr, port: u16, on_level: F) -> Self {
+    pub fn start<F: Fn(f64) + Send + 'static>(addr: IpAddr, port: u16, on_level: F) -> Self {
         let (tx, rx) = channel();
         let stop = Arc::new(AtomicBool::new(false));
         let stop_flag = Arc::clone(&stop);
@@ -53,7 +53,7 @@ impl VolumeControl {
     }
 
     /// A handle for requesting volume levels; sending never blocks.
-    pub fn sender(&self) -> Sender<f32> {
+    pub fn sender(&self) -> Sender<f64> {
         self.tx.clone()
     }
 }
@@ -70,9 +70,9 @@ impl Drop for VolumeControl {
 fn run(
     addr: IpAddr,
     port: u16,
-    rx: &Receiver<f32>,
+    rx: &Receiver<f64>,
     stop: &AtomicBool,
-    on_level: &(dyn Fn(f32) + Send),
+    on_level: &(dyn Fn(f64) + Send),
 ) {
     let mut manager: Option<Manager> = None;
     let mut request_id: u32 = 0;
@@ -83,7 +83,7 @@ fn run(
         if manager.is_none() {
             match connect(addr, port) {
                 Ok(m) => {
-                    request_id += 1;
+                    request_id = request_id.wrapping_add(1);
                     let _ = send(
                         &m,
                         NS_RECEIVER,
@@ -116,7 +116,7 @@ fn run(
             level = Some(next);
         }
         if let Some(level) = level {
-            request_id += 1;
+            request_id = request_id.wrapping_add(1);
             if let Err(e) = send(
                 m,
                 NS_RECEIVER,
@@ -153,13 +153,13 @@ fn run(
     }
 }
 
-fn handle(manager: &Manager, message: &CastMessage, on_level: &(dyn Fn(f32) + Send)) {
+fn handle(manager: &Manager, message: &CastMessage, on_level: &(dyn Fn(f64) + Send)) {
     let Some(payload) = json_payload(message) else {
         return;
     };
     match (
         message.namespace.as_str(),
-        payload["type"].as_str().unwrap_or(""),
+        payload.get("type").and_then(Value::as_str).unwrap_or(""),
     ) {
         (NS_HEARTBEAT, "PING") => {
             let _ = send(
@@ -170,8 +170,13 @@ fn handle(manager: &Manager, message: &CastMessage, on_level: &(dyn Fn(f32) + Se
             );
         }
         (NS_RECEIVER, "RECEIVER_STATUS") => {
-            if let Some(level) = payload["status"]["volume"]["level"].as_f64() {
-                on_level(level as f32);
+            if let Some(level) = payload
+                .get("status")
+                .and_then(|status| status.get("volume"))
+                .and_then(|volume| volume.get("level"))
+                .and_then(Value::as_f64)
+            {
+                on_level(level);
             }
         }
         _ => {}

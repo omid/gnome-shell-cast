@@ -142,14 +142,14 @@ pub async fn open(source: SourceKind) -> Result<Capture> {
                 .set_restore_token(restore_token.as_deref()),
         )
         .await
-        .map_err(map_cancel)?;
+        .map_err(|e| map_cancel(&e))?;
 
     let response = proxy
         .start(&session, None, StartCastOptions::default())
         .await
-        .map_err(map_cancel)?
+        .map_err(|e| map_cancel(&e))?
         .response()
-        .map_err(map_cancel)?;
+        .map_err(|e| map_cancel(&e))?;
 
     if source == SourceKind::Screen
         && let Some(token) = response.restore_token()
@@ -178,10 +178,11 @@ pub async fn open(source: SourceKind) -> Result<Capture> {
 
 /// Maps a portal error, turning a user cancellation into the `Cancelled`
 /// sentinel (so the session ends quietly) and anything else into a real error.
-fn map_cancel(error: ashpd::Error) -> anyhow::Error {
-    match error {
-        ashpd::Error::Response(ResponseError::Cancelled) => Cancelled.into(),
-        other => anyhow!("portal request failed: {other}"),
+fn map_cancel(error: &ashpd::Error) -> anyhow::Error {
+    if matches!(error, &ashpd::Error::Response(ResponseError::Cancelled)) {
+        Cancelled.into()
+    } else {
+        anyhow!("portal request failed: {error}")
     }
 }
 

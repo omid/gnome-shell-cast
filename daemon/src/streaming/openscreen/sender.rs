@@ -291,7 +291,9 @@ fn run(
 
         // 2. Receiver RTCP.
         while let Ok(size) = socket.recv(&mut receive_buffer) {
-            let packet = &receive_buffer[..size];
+            let Some(packet) = receive_buffer.get(..size) else {
+                continue;
+            };
             for stream in &mut streams {
                 rtcp::parse(packet, stream.ssrc, stream.checkpoint, &mut events);
                 if let Some(checkpoint) = events.checkpoint_frame_id {
@@ -300,11 +302,9 @@ fn run(
                         acked = true;
                     }
                     stream.checkpoint = stream.checkpoint.max(checkpoint);
-                    while stream
-                        .history
-                        .front()
-                        .is_some_and(|f| f.frame_id as i64 <= stream.checkpoint)
-                    {
+                    while stream.history.front().is_some_and(|f| {
+                        i64::try_from(f.frame_id).unwrap_or(i64::MAX) <= stream.checkpoint
+                    }) {
                         stream.evict_oldest();
                     }
                 }
@@ -344,12 +344,12 @@ fn run(
 /// burst hits `WouldBlock`, and a dropped packet costs the receiver the whole
 /// frame. Waiting paces us to what the link accepts. False if it never went.
 fn send_packet(socket: &UdpSocket, packet: &[u8]) -> bool {
-    let deadline = Instant::now() + SEND_TIMEOUT;
+    let deadline = Instant::now().checked_add(SEND_TIMEOUT);
     loop {
         match socket.send(packet) {
             Ok(_) => return true,
             Err(e) if e.kind() == ErrorKind::WouldBlock => {
-                if Instant::now() >= deadline {
+                if deadline.is_none_or(|deadline| Instant::now() >= deadline) {
                     debug!("RTP send buffer stayed full for {SEND_TIMEOUT:?}, dropping a packet");
                     return false;
                 }
@@ -366,14 +366,14 @@ fn send_packet(socket: &UdpSocket, packet: &[u8]) -> bool {
 /// Returns how many packets of the frame could not be sent.
 fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) -> u32 {
     let frame_id = stream.next_frame_id;
-    stream.next_frame_id += 1;
+    stream.next_frame_id = stream.next_frame_id.wrapping_add(1);
 
     let frame = OutboundFrame {
         frame_id,
-        referenced_frame_id: if chunk.is_key_frame || frame_id == 0 {
+        referenced_frame_id: if chunk.is_key_frame {
             frame_id
         } else {
-            frame_id - 1
+            frame_id.saturating_sub(1)
         },
         rtp_timestamp: chunk.rtp_timestamp,
         is_key_frame: chunk.is_key_frame,
@@ -390,12 +390,14 @@ fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) -> 
         .packetizer
         .packetize(&frame, buffer, |payload| cipher.apply_keystream(payload));
 
-    let mut dropped = 0;
+    let mut dropped: u32 = 0;
     for packet in packets.iter() {
         stream.packet_count = stream.packet_count.wrapping_add(1);
-        stream.octet_count = stream.octet_count.wrapping_add(packet.len() as u32);
+        stream.octet_count = stream
+            .octet_count
+            .wrapping_add(u32::try_from(packet.len()).unwrap_or(u32::MAX));
         if !send_packet(socket, packet) {
-            dropped += 1;
+            dropped = dropped.saturating_add(1);
         }
     }
     stream.last_timestamps = Some((chunk.rtp_timestamp, chunk.ntp_timestamp));
@@ -411,7 +413,7 @@ fn retransmit(socket: &UdpSocket, stream: &Stream, nack: &rtcp::Nack) {
     let Some(frame) = stream
         .history
         .iter()
-        .find(|f| f.frame_id as i64 == nack.frame_id)
+        .find(|f| i64::try_from(f.frame_id).unwrap_or(i64::MAX) == nack.frame_id)
     else {
         return;
     };

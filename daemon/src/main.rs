@@ -33,9 +33,9 @@ const IDLE_EXIT: Duration = Duration::from_mins(10);
 
 #[derive(Debug)]
 pub enum Event {
-    DevicesChanged,
-    StateChanged,
-    VolumeChanged,
+    Devices,
+    State,
+    Volume,
 }
 
 /// Technical detail of the active cast, surfaced in the extension menu when
@@ -66,7 +66,7 @@ pub struct SharedState {
     pub active_task: Mutex<Option<tokio::task::JoinHandle<()>>>,
     /// Sends volume levels (0.0-1.0) to the active session's volume connection;
     /// `None` when idle.
-    pub volume_tx: Mutex<Option<std::sync::mpsc::Sender<f32>>>,
+    pub volume_tx: Mutex<Option<std::sync::mpsc::Sender<f64>>>,
     /// Last known receiver volume (0.0-1.0), surfaced to the slider.
     pub cast_volume: Mutex<f64>,
     pub events: mpsc::UnboundedSender<Event>,
@@ -98,7 +98,7 @@ impl SharedState {
     pub fn set_status(&self, state: &str, device_id: &str) {
         *self.status.lock() = (state.to_owned(), device_id.to_owned());
         self.touch();
-        let _ = self.events.send(Event::StateChanged);
+        let _ = self.events.send(Event::State);
     }
 
     pub fn status(&self) -> (String, String) {
@@ -130,21 +130,21 @@ impl SharedState {
     }
 
     /// Installs (or clears with `None`) the active session's volume channel.
-    pub fn set_volume_channel(&self, tx: Option<std::sync::mpsc::Sender<f32>>) {
+    pub fn set_volume_channel(&self, tx: Option<std::sync::mpsc::Sender<f64>>) {
         *self.volume_tx.lock() = tx;
     }
 
     /// Asks the active session to set the receiver volume; a no-op when idle.
     pub fn request_volume(&self, level: f64) {
         if let Some(tx) = self.volume_tx.lock().as_ref() {
-            let _ = tx.send(level as f32);
+            let _ = tx.send(level.clamp(0.0, 1.0));
         }
     }
 
     /// Records the receiver's volume and notifies the extension's slider.
     pub fn set_cast_volume(&self, level: f64) {
         *self.cast_volume.lock() = level;
-        let _ = self.events.send(Event::VolumeChanged);
+        let _ = self.events.send(Event::Volume);
     }
 
     pub fn cast_volume(&self) -> f64 {
@@ -202,6 +202,9 @@ impl ShellCast {
     /// The daemon's own version, so the extension can detect a daemon that is
     /// older (or newer) than the version it was built against.
     fn get_version(&self) -> String {
+        // Touched like every other call: a version query is activity, and the
+        // daemon exits when idle.
+        self.state.touch();
         env!("CARGO_PKG_VERSION").to_owned()
     }
 
@@ -229,14 +232,16 @@ impl ShellCast {
             let devices = self.state.devices.lock();
             let device = devices
                 .get(device_id)
-                .ok_or_else(|| zbus::fdo::Error::Failed(format!("unknown device: {device_id}")))?;
+                .ok_or_else(|| zbus::fdo::Error::Failed(format!("unknown device: {device_id}")))?
+                .clone();
+            drop(devices);
             if !device.has_video() && source != capture::SourceKind::Audio {
                 return Err(zbus::fdo::Error::Failed(format!(
                     "{} is audio-only and cannot receive screen casts",
                     device.name
                 )));
             }
-            device.clone()
+            device
         };
 
         let settings = StreamSettings::from_options(options);
@@ -253,7 +258,11 @@ impl ShellCast {
         // resolve, shutting the old cast down before the new one starts.
         *self.state.active.lock() = Some(stop_tx);
         let previous = self.state.active_task.lock().take();
-        let generation = self.state.generation.fetch_add(1, Ordering::SeqCst) + 1;
+        let generation = self
+            .state
+            .generation
+            .fetch_add(1, Ordering::SeqCst)
+            .wrapping_add(1);
 
         let state = Arc::clone(&self.state);
         let task = tokio::spawn(async move {
@@ -354,12 +363,12 @@ async fn main() -> Result<()> {
     tokio::spawn(async move {
         while let Some(event) = events_rx.recv().await {
             let result = match event {
-                Event::DevicesChanged => ShellCast::devices_changed(iface.signal_emitter()).await,
-                Event::StateChanged => {
+                Event::Devices => ShellCast::devices_changed(iface.signal_emitter()).await,
+                Event::State => {
                     let (s, d) = signal_state.status();
                     ShellCast::state_changed(iface.signal_emitter(), &s, &d).await
                 }
-                Event::VolumeChanged => {
+                Event::Volume => {
                     let level = signal_state.cast_volume();
                     ShellCast::volume_changed(iface.signal_emitter(), level).await
                 }

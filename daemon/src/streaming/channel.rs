@@ -53,8 +53,10 @@ pub struct MirrorChannel {
 impl MirrorChannel {
     /// Connects, launches the mirroring app and negotiates the streams in
     /// `offer_body`. Blocking; run on a dedicated thread.
-    pub fn negotiate(addr: IpAddr, port: u16, offer_body: Value) -> Result<(Self, Answer)> {
-        let deadline = Instant::now() + NEGOTIATION_TIMEOUT;
+    pub fn negotiate(addr: IpAddr, port: u16, offer_body: &Value) -> Result<(Self, Answer)> {
+        let Some(deadline) = Instant::now().checked_add(NEGOTIATION_TIMEOUT) else {
+            bail!("the monotonic clock is at its maximum");
+        };
         let manager = connect_tls(addr, port)?;
         let mut channel = Self {
             manager,
@@ -85,8 +87,11 @@ impl MirrorChannel {
 
         // Open a virtual connection to the app itself, then OFFER.
         channel.send_json(NS_CONNECTION, &transport_id, &json!({"type": "CONNECT"}))?;
-        let seq_num = offer_body["seqNum"].as_u64().unwrap_or(0);
-        channel.send_json(messages::WEBRTC_NAMESPACE, &transport_id, &offer_body)?;
+        let seq_num = offer_body
+            .get("seqNum")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        channel.send_json(messages::WEBRTC_NAMESPACE, &transport_id, offer_body)?;
         let answer = channel.wait_for_answer(seq_num, deadline)?;
         info!(
             "receiver ANSWER: udp port {}, streams {:?}",
@@ -148,7 +153,9 @@ impl MirrorChannel {
     /// Waits (briefly) for the receiver to report the mirroring app gone;
     /// relaunching it mid-shutdown gets the new session killed seconds in.
     fn await_app_stopped(&mut self) {
-        let deadline = Instant::now() + STOP_CONFIRM_TIMEOUT;
+        let Some(deadline) = Instant::now().checked_add(STOP_CONFIRM_TIMEOUT) else {
+            return;
+        };
         while Instant::now() < deadline {
             let message = match self.try_receive() {
                 Ok(Some(message)) => message,
@@ -159,7 +166,7 @@ impl MirrorChannel {
             let Some(payload) = json_payload(&message) else {
                 continue;
             };
-            match payload["type"].as_str().unwrap_or("") {
+            match payload.get("type").and_then(Value::as_str).unwrap_or("") {
                 "PING" => {
                     let _ = self.pong(&message.source);
                 }
@@ -178,7 +185,7 @@ impl MirrorChannel {
         let Some(payload) = json_payload(&message) else {
             return Ok(None);
         };
-        let message_type = payload["type"].as_str().unwrap_or("");
+        let message_type = payload.get("type").and_then(Value::as_str).unwrap_or("");
         match (message.namespace.as_str(), message_type) {
             (NS_HEARTBEAT, "PING") => {
                 self.pong(&message.source)?;
@@ -217,12 +224,15 @@ impl MirrorChannel {
             let Some(payload) = json_payload(&message) else {
                 continue;
             };
-            match payload["type"].as_str().unwrap_or("") {
+            match payload.get("type").and_then(Value::as_str).unwrap_or("") {
                 "PING" => {
                     self.pong(&message.source)?;
                 }
                 "LAUNCH_ERROR" => {
-                    bail!("mirroring app launch failed: {}", payload["reason"]);
+                    bail!(
+                        "mirroring app launch failed: {}",
+                        payload.get("reason").unwrap_or(&Value::Null)
+                    );
                 }
                 "RECEIVER_STATUS" => {
                     if let Some(app) = find_app(&payload, messages::MIRRORING_APP_ID) {
@@ -251,13 +261,13 @@ impl MirrorChannel {
             };
             match (
                 message.namespace.as_str(),
-                payload["type"].as_str().unwrap_or(""),
+                payload.get("type").and_then(Value::as_str).unwrap_or(""),
             ) {
                 (NS_HEARTBEAT, "PING") => {
                     self.pong(&message.source)?;
                 }
                 (messages::WEBRTC_NAMESPACE, "ANSWER") => {
-                    if payload["seqNum"].as_u64() == Some(seq_num) {
+                    if payload.get("seqNum").and_then(Value::as_u64) == Some(seq_num) {
                         return messages::parse_answer(&payload);
                     }
                 }
@@ -278,7 +288,7 @@ impl MirrorChannel {
     }
 
     fn next_request_id(&mut self) -> u32 {
-        self.request_id += 1;
+        self.request_id = self.request_id.wrapping_add(1);
         self.request_id
     }
 }
@@ -308,20 +318,24 @@ fn json_payload(message: &CastMessage) -> Option<Value> {
     }
 }
 
+fn applications(status: &Value) -> Option<&Vec<Value>> {
+    status
+        .get("status")
+        .and_then(|status| status.get("applications"))
+        .and_then(Value::as_array)
+}
+
 fn find_app<'a>(status: &'a Value, app_id: &str) -> Option<&'a Value> {
-    status["status"]["applications"]
-        .as_array()?
+    applications(status)?
         .iter()
-        .find(|app| app["appId"].as_str() == Some(app_id))
+        .find(|app| app.get("appId").and_then(Value::as_str) == Some(app_id))
 }
 
 fn status_has_session(status: &Value, session_id: &str) -> bool {
-    status["status"]["applications"]
-        .as_array()
-        .is_some_and(|apps| {
-            apps.iter()
-                .any(|app| app["sessionId"].as_str() == Some(session_id))
-        })
+    applications(status).is_some_and(|apps| {
+        apps.iter()
+            .any(|app| app.get("sessionId").and_then(Value::as_str) == Some(session_id))
+    })
 }
 
 /// Owns the channel run-loop thread; dropping stops the receiver app.

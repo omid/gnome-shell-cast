@@ -24,9 +24,12 @@ pub fn ntp_now() -> u64 {
     let d = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap_or_default();
-    let seconds = d.as_secs() + NTP_UNIX_OFFSET;
-    let fraction = (u64::from(d.subsec_nanos()) << 32) / 1_000_000_000;
-    (seconds << 32) | fraction
+    let seconds = d.as_secs().saturating_add(NTP_UNIX_OFFSET);
+    let fraction = u64::from(d.subsec_nanos())
+        .wrapping_shl(32)
+        .checked_div(1_000_000_000)
+        .unwrap_or(0);
+    seconds.wrapping_shl(32) | fraction
 }
 
 /// A 28-byte RTCP Sender Report (no report blocks): maps the stream's RTP
@@ -39,16 +42,28 @@ pub fn build_sender_report(
     packet_count: u32,
     octet_count: u32,
 ) -> [u8; 28] {
-    let mut p = [0_u8; 28];
-    p[0] = 0b1000_0000; // V=2, P=0, report count 0
-    p[1] = PT_SENDER_REPORT;
-    p[2..4].copy_from_slice(&6_u16.to_be_bytes()); // length: 7 words - 1
-    p[4..8].copy_from_slice(&sender_ssrc.to_be_bytes());
-    p[8..16].copy_from_slice(&ntp_timestamp.to_be_bytes());
-    p[16..20].copy_from_slice(&rtp_timestamp.to_be_bytes());
-    p[20..24].copy_from_slice(&packet_count.to_be_bytes());
-    p[24..28].copy_from_slice(&octet_count.to_be_bytes());
-    p
+    // Written as one field sequence rather than by offset: the layout is the
+    // order of the chain, and nothing can index past the end.
+    let mut report = [0_u8; 28];
+    let fields = [0b1000_0000, PT_SENDER_REPORT] // V=2, P=0, report count 0
+        .into_iter()
+        .chain(6_u16.to_be_bytes()) // length: 7 words - 1
+        .chain(sender_ssrc.to_be_bytes())
+        .chain(ntp_timestamp.to_be_bytes())
+        .chain(rtp_timestamp.to_be_bytes())
+        .chain(packet_count.to_be_bytes())
+        .chain(octet_count.to_be_bytes());
+    for (slot, byte) in report.iter_mut().zip(fields) {
+        *slot = byte;
+    }
+    report
+}
+
+/// A big-endian `u32` at `at`, or `None` if the packet is too short.
+fn be_u32(bytes: &[u8], at: usize) -> Option<u32> {
+    let end = at.checked_add(4)?;
+    let field: [u8; 4] = bytes.get(at..end)?.try_into().ok()?;
+    Some(u32::from_be_bytes(field))
 }
 
 /// One packet-level NACK: a frame (full frame id, bit-expanded) and a packet
@@ -87,80 +102,86 @@ pub fn parse(data: &[u8], sender_ssrc: u32, checkpoint_hint: i64, events: &mut R
     events.clear();
     let mut rest = data;
 
-    while rest.len() >= 4 {
-        let byte0 = rest[0];
+    while let Some(&[byte0, packet_type, len_hi, len_lo]) = rest.first_chunk::<4>() {
         if byte0 >> 6 != 2 {
             break; // not RTCP v2; corrupt
         }
         let count_or_subtype = byte0 & 0b0001_1111;
-        let packet_type = rest[1];
-        let length_words = u16::from_be_bytes([rest[2], rest[3]]) as usize;
-        let total = 4 + length_words * 4;
-        if total > rest.len() {
+        let length_words = usize::from(u16::from_be_bytes([len_hi, len_lo]));
+        let Some(total) = length_words.checked_mul(4).and_then(|n| n.checked_add(4)) else {
             break;
-        }
-        let body = &rest[4..total];
+        };
+        let Some(body) = rest.get(4..total) else {
+            break;
+        };
 
         match (packet_type, count_or_subtype) {
             (PT_PAYLOAD_SPECIFIC, SUBTYPE_FEEDBACK) => {
                 parse_feedback(body, sender_ssrc, checkpoint_hint, events);
             }
-            (PT_PAYLOAD_SPECIFIC, SUBTYPE_PICTURE_LOSS)
-                if body.len() >= 8
-                    && u32::from_be_bytes([body[4], body[5], body[6], body[7]]) == sender_ssrc =>
-            {
+            (PT_PAYLOAD_SPECIFIC, SUBTYPE_PICTURE_LOSS) if be_u32(body, 4) == Some(sender_ssrc) => {
                 events.picture_loss = true;
             }
             // Receiver reports, extended reports, SDES, etc. carry nothing we
             // act on; only Cast Feedback and PLI matter to the sender.
             _ => {}
         }
-        rest = &rest[total..];
+        let Some(next) = rest.get(total..) else {
+            break;
+        };
+        rest = next;
     }
 }
 
 fn parse_feedback(body: &[u8], sender_ssrc: u32, hint: i64, events: &mut ReceiverEvents) {
     // [receiver ssrc][sender ssrc]["CAST"][checkpoint u8][#loss u8][delay u16]
-    if body.len() < 12 {
+    let (Some(ssrc), Some(cast), Some(&checkpoint_byte), Some(&loss_count)) =
+        (be_u32(body, 4), be_u32(body, 8), body.get(12), body.get(13))
+    else {
+        return;
+    };
+    if ssrc != sender_ssrc || cast != CAST {
         return;
     }
-    if u32::from_be_bytes([body[4], body[5], body[6], body[7]]) != sender_ssrc {
-        return;
-    }
-    if u32::from_be_bytes([body[8], body[9], body[10], body[11]]) != CAST {
-        return;
-    }
-    let checkpoint = expand_frame_id(body[12], hint);
+    let checkpoint = expand_frame_id(checkpoint_byte, hint);
     events.checkpoint_frame_id = Some(match events.checkpoint_frame_id {
         Some(existing) => existing.max(checkpoint),
         None => checkpoint,
     });
-    let loss_fields = body[13] as usize;
 
-    let mut pos = 16;
-    for _ in 0..loss_fields {
-        if pos + 4 > body.len() {
+    let Some(loss_fields) = body.get(16..) else {
+        return;
+    };
+    // [frame id u8][lost packet id u16][bit vector for the next 8 u8]
+    for field in loss_fields.chunks_exact(4).take(usize::from(loss_count)) {
+        let [id, packet_hi, packet_lo, bits] = field else {
             return;
-        }
-        // [frame id u8][lost packet id u16][bit vector for the next 8 u8]
-        let frame_id = expand_frame_id(body[pos], checkpoint + 1);
-        let packet_id = u16::from_be_bytes([body[pos + 1], body[pos + 2]]);
-        let bits = body[pos + 3];
+        };
+        let frame_id = expand_frame_id(*id, checkpoint.saturating_add(1));
+        let packet_id = u16::from_be_bytes([*packet_hi, *packet_lo]);
         events.nacks.push(Nack {
             frame_id,
             packet_id,
         });
-        if packet_id != ALL_PACKETS_LOST {
-            for i in 0..8_u16 {
-                if bits & (1 << i) != 0 {
-                    events.nacks.push(Nack {
-                        frame_id,
-                        packet_id: packet_id + 1 + i,
-                    });
-                }
+        if packet_id == ALL_PACKETS_LOST {
+            continue;
+        }
+        // Bit i marks the packet i+1 after `packet_id`. Masks rather than
+        // shifts so nothing can shift past the width.
+        for (offset, mask) in [1_u8, 2, 4, 8, 16, 32, 64, 128].into_iter().enumerate() {
+            let Ok(offset) = u16::try_from(offset) else {
+                continue;
+            };
+            if bits & mask != 0
+                && let Some(packet_id) =
+                    packet_id.checked_add(offset).and_then(|p| p.checked_add(1))
+            {
+                events.nacks.push(Nack {
+                    frame_id,
+                    packet_id,
+                });
             }
         }
-        pos += 4;
     }
     // An optional "CST2" frame-level ACK bit vector follows; the checkpoint
     // and NACKs are all we need, so it is deliberately not parsed.
@@ -170,8 +191,13 @@ fn parse_feedback(body: &[u8], sender_ssrc: u32, hint: i64, events: &mut Receive
 /// [reference - 128, reference + 127] (openscreen's `ExpandedValueBase`). The
 /// window must reach backwards: a receiver with nothing yet acks frame -1.
 fn expand_frame_id(low8: u8, reference: i64) -> i64 {
-    let delta = (i64::from(low8) - reference) & 0xff;
-    reference + if delta >= 128 { delta - 256 } else { delta }
+    let delta = i64::from(low8).wrapping_sub(reference) & 0xff;
+    let delta = if delta >= 128 {
+        delta.wrapping_sub(256)
+    } else {
+        delta
+    };
+    reference.wrapping_add(delta)
 }
 
 #[cfg(test)]
@@ -206,7 +232,7 @@ mod tests {
         body.extend_from_slice(&sender_ssrc.to_be_bytes());
         body.extend_from_slice(&CAST.to_be_bytes());
         body.push(checkpoint);
-        body.push(loss.len() as u8);
+        body.push(u8::try_from(loss.len()).unwrap_or(u8::MAX));
         body.extend_from_slice(&400_u16.to_be_bytes());
         for (fid, pid, bits) in loss {
             body.push(*fid);
@@ -214,7 +240,8 @@ mod tests {
             body.push(*bits);
         }
         let mut p = vec![0x80 | SUBTYPE_FEEDBACK, PT_PAYLOAD_SPECIFIC];
-        p.extend_from_slice(&((body.len() / 4) as u16).to_be_bytes());
+        let words = u16::try_from(body.len().checked_div(4).unwrap_or(0)).unwrap_or(u16::MAX);
+        p.extend_from_slice(&words.to_be_bytes());
         p.extend_from_slice(&body);
         p
     }

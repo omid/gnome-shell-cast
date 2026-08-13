@@ -234,9 +234,15 @@ impl Read for ChannelReader {
                 Err(_) => return Ok(0),
             }
         }
-        let n = (self.cur.len() - self.pos).min(buf.len());
-        buf[..n].copy_from_slice(&self.cur[self.pos..self.pos + n]);
-        self.pos += n;
+        let Some(remaining) = self.cur.get(self.pos..) else {
+            return Ok(0);
+        };
+        let n = remaining.len().min(buf.len());
+        let (Some(dst), Some(src)) = (buf.get_mut(..n), remaining.get(..n)) else {
+            return Ok(0);
+        };
+        dst.copy_from_slice(src);
+        self.pos = self.pos.saturating_add(n);
         Ok(n)
     }
 }

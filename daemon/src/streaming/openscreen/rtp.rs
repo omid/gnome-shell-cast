@@ -44,6 +44,11 @@ pub struct OutboundFrame<'a> {
     pub data: &'a [u8],
 }
 
+/// The low 8 bits the wire format carries for a frame id.
+fn truncate_frame_id(frame_id: u64) -> u8 {
+    u8::try_from(frame_id & 0xff).unwrap_or(0)
+}
+
 pub fn num_packets(payload_len: usize) -> usize {
     payload_len.div_ceil(MAX_PAYLOAD_SIZE).max(1)
 }
@@ -60,20 +65,25 @@ pub struct PacketizedFrame {
 
 impl PacketizedFrame {
     pub fn packet(&self, packet_id: u16) -> Option<&[u8]> {
-        let id = packet_id as usize;
+        let id = usize::from(packet_id);
         if id >= self.count {
             return None;
         }
         if id == 0 {
-            return Some(&self.buffer[..self.first_packet_len]);
+            return self.buffer.get(..self.first_packet_len);
         }
-        let start = self.first_packet_len + (id - 1) * FULL_PACKET_SIZE;
-        let end = (start + FULL_PACKET_SIZE).min(self.buffer.len());
-        Some(&self.buffer[start..end])
+        let start = id
+            .checked_sub(1)?
+            .checked_mul(FULL_PACKET_SIZE)?
+            .checked_add(self.first_packet_len)?;
+        let end = start
+            .saturating_add(FULL_PACKET_SIZE)
+            .min(self.buffer.len());
+        self.buffer.get(start..end)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &[u8]> {
-        (0..self.count).filter_map(|id| self.packet(id as u16))
+        (0..self.count).filter_map(|id| u16::try_from(id).ok().and_then(|id| self.packet(id)))
     }
 
     /// Recovers the backing buffer for reuse by a later `packetize` call,
@@ -121,23 +131,28 @@ impl Packetizer {
         F: FnMut(&mut [u8]),
     {
         let count = num_packets(frame.data.len());
-        let max_packet_id = (count - 1) as u16;
+        let max_packet_id = u16::try_from(count.saturating_sub(1)).unwrap_or(u16::MAX);
         let extension_len = if frame.playout_delay_ms.is_some() {
             4
         } else {
             0
         };
         buffer.clear();
-        buffer.reserve(count * BASE_HEADER_SIZE + extension_len + frame.data.len());
+        buffer.reserve(
+            count
+                .saturating_mul(BASE_HEADER_SIZE)
+                .saturating_add(extension_len)
+                .saturating_add(frame.data.len()),
+        );
         let mut first_packet_len = 0;
 
-        for packet_id in 0..count as u16 {
+        for packet_id in 0..=max_packet_id {
             let is_last = packet_id == max_packet_id;
-            let chunk_start = MAX_PAYLOAD_SIZE * packet_id as usize;
+            let chunk_start = MAX_PAYLOAD_SIZE.saturating_mul(usize::from(packet_id));
             let chunk_end = if is_last {
                 frame.data.len()
             } else {
-                chunk_start + MAX_PAYLOAD_SIZE
+                chunk_start.saturating_add(MAX_PAYLOAD_SIZE)
             };
             let latency_change = if packet_id == 0 {
                 frame.playout_delay_ms
@@ -158,10 +173,10 @@ impl Packetizer {
                     | HAS_REFERENCE_FRAME_ID_BIT
                     | u8::from(latency_change.is_some()),
             );
-            buffer.push(frame.frame_id as u8);
+            buffer.push(truncate_frame_id(frame.frame_id));
             buffer.extend_from_slice(&packet_id.to_be_bytes());
             buffer.extend_from_slice(&max_packet_id.to_be_bytes());
-            buffer.push(frame.referenced_frame_id as u8);
+            buffer.push(truncate_frame_id(frame.referenced_frame_id));
             if let Some(delay) = latency_change {
                 // 6-bit type, 10-bit data size, then the data.
                 buffer.extend_from_slice(
@@ -170,8 +185,10 @@ impl Packetizer {
                 buffer.extend_from_slice(&delay.to_be_bytes());
             }
             let payload_at = buffer.len();
-            buffer.extend_from_slice(&frame.data[chunk_start..chunk_end]);
-            process_payload(&mut buffer[payload_at..]);
+            buffer.extend_from_slice(frame.data.get(chunk_start..chunk_end).unwrap_or_default());
+            if let Some(payload) = buffer.get_mut(payload_at..) {
+                process_payload(payload);
+            }
             if packet_id == 0 {
                 first_packet_len = buffer.len();
             }
@@ -233,7 +250,9 @@ mod tests {
     #[test]
     fn multi_packet_frame_split_and_sequence() {
         let (frame_id, referenced_frame_id, rtp_timestamp) = meta();
-        let data: Vec<u8> = (0..MAX_PAYLOAD_SIZE + 5).map(|i| i as u8).collect();
+        let data: Vec<u8> = (0..MAX_PAYLOAD_SIZE + 5)
+            .map(|i| u8::try_from(i & 0xff).unwrap())
+            .collect();
         let mut pk = Packetizer::new(127, 1);
         let f = OutboundFrame {
             frame_id,
@@ -292,7 +311,7 @@ mod tests {
         assert_eq!(packets.packet(2).unwrap().len(), BASE_HEADER_SIZE + 7);
         for (id, p) in packets.iter().enumerate() {
             assert!(p.len() <= MAX_PACKET_SIZE);
-            assert_eq!(&p[14..16], &(id as u16).to_be_bytes());
+            assert_eq!(&p[14..16], &u16::try_from(id).unwrap().to_be_bytes());
             assert_eq!(&p[16..18], &2_u16.to_be_bytes());
         }
     }

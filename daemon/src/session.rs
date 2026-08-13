@@ -238,12 +238,12 @@ async fn run_cast_loop(
             _ = bus_poll.tick() => {
                 while let Some(message) = bus.pop() {
                     use gst::MessageView;
-                    match message.view() {
-                        MessageView::Error(e) => {
-                            return Err(anyhow!("pipeline error: {}", e.error()));
-                        }
-                        MessageView::Eos(_) => return Err(anyhow!("pipeline reached EOS")),
-                        _ => {}
+                    let view = message.view();
+                    if let MessageView::Error(e) = view {
+                        return Err(anyhow!("pipeline error: {}", e.error()));
+                    }
+                    if matches!(view, MessageView::Eos(_)) {
+                        return Err(anyhow!("pipeline reached EOS"));
                     }
                 }
             }
@@ -254,7 +254,7 @@ async fn run_cast_loop(
 fn setup_volume(state: &Arc<SharedState>, device: &Device) {
     let volume = volume::VolumeControl::start(device.addr, device.port, {
         let state = Arc::clone(state);
-        move |level| state.set_cast_volume(f64::from(level))
+        move |level| state.set_cast_volume(level)
     });
     state.set_volume_channel(Some(volume.sender()));
 }

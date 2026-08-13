@@ -74,6 +74,80 @@ pub fn start(state: Arc<SharedState>) {
     }
 }
 
+/// Records one resolved service, keeping `state.devices` in step.
+fn resolved(
+    state: &Arc<SharedState>,
+    announced: &mut HashMap<String, Vec<IpAddr>>,
+    info: &mdns_sd::ResolvedService,
+) {
+    let fullname = info.get_fullname();
+    let addrs: Vec<IpAddr> = info
+        .get_addresses()
+        .iter()
+        .filter_map(|v| match v {
+            ScopedIp::V4(ip) => Some(IpAddr::from(*ip.addr())),
+            ScopedIp::V6(ip) => Some(IpAddr::from(*ip.addr())),
+            _ => None,
+        })
+        .collect();
+
+    let addresses = announced.entry(fullname.to_owned()).or_default();
+    for addr in addrs.iter().rev() {
+        addresses.retain(|a| a != addr);
+        addresses.insert(0, *addr);
+    }
+    debug!("resolved {fullname} with {addrs:?}, known {addresses:?}");
+    let Some(addr) = pick_address(addresses) else {
+        warn!("resolved {fullname} without addresses");
+        return;
+    };
+
+    let name = info.get_property_val_str("fn").unwrap_or_else(|| {
+        fullname
+            .split("._googlecast")
+            .next()
+            .unwrap_or("Chromecast")
+    });
+    let port = info.get_port();
+    let ca = parse_capabilities(info.get_property_val_str("ca"));
+
+    // Chromecasts re-announce periodically; only build (and log) a Device when
+    // something actually changed.
+    let changed = {
+        let mut devices = state.devices.lock();
+        // Never downgrade a working address to an unreachable one.
+        let addr = match devices.get(fullname) {
+            Some(e) if e.addr != addr && !routable(addr) && routable(e.addr) => {
+                debug!("keeping {} at {} over unreachable {addr}", e.name, e.addr);
+                e.addr
+            }
+            _ => addr,
+        };
+        match devices.get(fullname) {
+            Some(e) if e.name == name && e.addr == addr && e.port == port && e.ca == ca => false,
+            _ => {
+                devices.insert(
+                    fullname.to_owned(),
+                    Device {
+                        id: fullname.to_owned(),
+                        name: name.to_owned(),
+                        addr,
+                        port,
+                        ca,
+                    },
+                );
+                true
+            }
+        }
+    };
+    if changed {
+        info!("found {name} at {addr}:{port}");
+        let _ = state.events.send(Event::Devices);
+    } else {
+        debug!("refreshed {name} at {addr}:{port}");
+    }
+}
+
 fn run(state: &Arc<SharedState>) {
     // mDNS can be unavailable for a moment after login (no network yet); keep
     // retrying rather than giving up for the rest of the daemon's life. Warn
@@ -108,91 +182,20 @@ fn run(state: &Arc<SharedState>) {
     while let Ok(event) = receiver.recv() {
         match event {
             ServiceEvent::ServiceResolved(info) => {
-                let fullname = info.get_fullname();
-                let resolved: Vec<IpAddr> = info
-                    .get_addresses()
-                    .iter()
-                    .map(|v| match v {
-                        ScopedIp::V4(ip) => IpAddr::from(*ip.addr()),
-                        ScopedIp::V6(ip) => IpAddr::from(*ip.addr()),
-                        _ => unreachable!("mDNS address is neither IPv4 nor IPv6"),
-                    })
-                    .collect();
-
-                let addresses = announced.entry(fullname.to_owned()).or_default();
-                for addr in resolved.iter().rev() {
-                    addresses.retain(|a| a != addr);
-                    addresses.insert(0, *addr);
-                }
-                debug!("resolved {fullname} with {resolved:?}, known {addresses:?}");
-                let Some(addr) = pick_address(addresses) else {
-                    warn!("resolved {fullname} without addresses");
-                    continue;
-                };
-
-                let name = info.get_property_val_str("fn").unwrap_or_else(|| {
-                    fullname
-                        .split("._googlecast")
-                        .next()
-                        .unwrap_or("Chromecast")
-                });
-                let port = info.get_port();
-                let ca = parse_capabilities(info.get_property_val_str("ca"));
-
-                // Chromecasts re-announce periodically; compare
-                // against the known entry by reference and only
-                // build (and log) a Device when something changed.
-                let changed = {
-                    let mut devices = state.devices.lock();
-                    // Never downgrade a working address to an unreachable one.
-                    let addr = match devices.get(fullname) {
-                        Some(e) if e.addr != addr && !routable(addr) && routable(e.addr) => {
-                            debug!("keeping {} at {} over unreachable {addr}", e.name, e.addr);
-                            e.addr
-                        }
-                        _ => addr,
-                    };
-                    match devices.get(fullname) {
-                        Some(e)
-                            if e.name == name && e.addr == addr && e.port == port && e.ca == ca =>
-                        {
-                            false
-                        }
-                        _ => {
-                            devices.insert(
-                                fullname.to_owned(),
-                                Device {
-                                    id: fullname.to_owned(),
-                                    name: name.to_owned(),
-                                    addr,
-                                    port,
-                                    ca,
-                                },
-                            );
-                            true
-                        }
-                    }
-                };
-                if changed {
-                    info!("found {name} at {addr}:{port}");
-                    let _ = state.events.send(Event::DevicesChanged);
-                } else {
-                    debug!("refreshed {name} at {addr}:{port}");
-                }
+                resolved(state, &mut announced, &info);
             }
             ServiceEvent::ServiceRemoved(_, fullname) => {
                 info!("lost {fullname}");
                 announced.remove(&fullname);
                 if state.devices.lock().remove(&fullname).is_some() {
-                    let _ = state.events.send(Event::DevicesChanged);
+                    let _ = state.events.send(Event::Devices);
                 }
             }
+            // The trailing `_` is required: ServiceEvent is #[non_exhaustive].
             other @ (ServiceEvent::SearchStarted(_)
             | ServiceEvent::ServiceFound(..)
-            | ServiceEvent::SearchStopped(_)) => debug!("mdns event: {other:?}"),
-            // ServiceEvent is #[non_exhaustive]; this covers only variants
-            // added by a future mdns-sd, never one we know about today.
-            _ => {}
+            | ServiceEvent::SearchStopped(_)
+            | _) => debug!("mdns event: {other:?}"),
         }
     }
 }

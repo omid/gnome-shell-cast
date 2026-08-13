@@ -74,8 +74,9 @@ fn is_hardware(factory: &str) -> bool {
 /// minimal - just bitrate and CBR - to maximise the chance they parse across
 /// driver/plugin versions; the parse-check drops any that don't.
 fn launch_for(factory: &str, bitrate_bps: u32, fps: u32) -> String {
-    let kbps = (bitrate_bps / 1000).max(1); // svtav1/av1/VA/NVENC want kbit/s
-    let key_int = (fps * 2).max(1);
+    // svtav1/av1/VA/NVENC want kbit/s
+    let kbps = bitrate_bps.checked_div(1000).unwrap_or(1).max(1);
+    let key_int = fps.saturating_mul(2).max(1);
     match factory {
         // vp8enc and vp9enc share the VPX base and its properties (bit/s).
         "vp8enc" | "vp9enc" => format!(
