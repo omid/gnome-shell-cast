@@ -15,6 +15,8 @@ use log::{info, warn};
 pub enum SourceKind {
     Screen,
     Window,
+    /// Screen or window, picked in GNOME's "Display / Window" portal dialog.
+    Choose,
     /// System audio only (for audio-only receivers); no portal involved.
     Audio,
 }
@@ -42,12 +44,24 @@ pub struct Capture {
     session: Option<Session<Screencast>>,
 }
 
+impl Capture {
+    /// Closes the portal session, waiting for the compositor. A cast started
+    /// right after would otherwise race this teardown and get a dead stream.
+    pub async fn close(mut self) {
+        let Some(session) = self.session.take() else {
+            return;
+        };
+        match session.close().await {
+            Ok(()) => info!("closed screen-cast portal session"),
+            Err(e) => warn!("closing screen-cast portal session: {e}"),
+        }
+    }
+}
+
 impl Drop for Capture {
     fn drop(&mut self) {
-        // ashpd's `Session` has no `Drop` of its own, and this daemon outlives
-        // the cast, so the portal session must be closed explicitly or the
-        // compositor keeps showing the screen-sharing indicator. `close()` is
-        // async, so hand it to the runtime we are being dropped on.
+        // Safety net for paths that skip `close()`; without it the compositor
+        // keeps showing the screen-sharing indicator. Async, so spawn it.
         let Some(session) = self.session.take() else {
             return;
         };
@@ -83,11 +97,17 @@ pub async fn open(source: SourceKind) -> Result<Capture> {
     // a *different* window, so those should always show the picker.
     let (source_type, persist, restore_token) = match source {
         SourceKind::Screen => (
-            SourceType::Monitor,
+            BitFlags::from(SourceType::Monitor),
             PersistMode::ExplicitlyRevoked,
             load_restore_token(),
         ),
-        SourceKind::Window => (SourceType::Window, PersistMode::DoNot, None),
+        SourceKind::Window => (BitFlags::from(SourceType::Window), PersistMode::DoNot, None),
+        // Never persisted: the whole point is to be asked again next time.
+        SourceKind::Choose => (
+            SourceType::Monitor | SourceType::Window,
+            PersistMode::DoNot,
+            None,
+        ),
         SourceKind::Audio => return Err(anyhow!("audio-only casts do not use the portal")),
     };
     proxy
@@ -95,7 +115,7 @@ pub async fn open(source: SourceKind) -> Result<Capture> {
             &session,
             SelectSourcesOptions::default()
                 .set_cursor_mode(CursorMode::Embedded)
-                .set_sources(BitFlags::from(source_type))
+                .set_sources(source_type)
                 .set_multiple(false)
                 .set_persist_mode(persist)
                 .set_restore_token(restore_token.as_deref()),

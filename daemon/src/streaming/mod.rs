@@ -10,7 +10,6 @@ mod channel;
 mod encoder;
 mod openscreen;
 
-use std::net::UdpSocket;
 use std::os::fd::AsRawFd;
 use std::sync::Arc;
 use std::time::Duration;
@@ -25,7 +24,7 @@ use tokio::sync::{mpsc, oneshot};
 use crate::SharedState;
 use crate::capture::Capture;
 use crate::discovery::Device;
-use crate::pipeline::{self, StreamSettings};
+use crate::pipeline::{self, PipelineStop, StreamSettings};
 use channel::{ChannelControl, ChannelEvent, MirrorChannel};
 use openscreen::sender::{
     ChunkSender, EncodedChunk, MediaSender, StreamConfig, StreamKind, chunk_channel,
@@ -180,7 +179,9 @@ pub async fn run(
     let channel_control = ChannelControl::spawn(mirror_channel, channel_events_tx);
 
     // 3. Media transport socket.
-    let socket = match udp_socket_towards(addr, answer.udp_port) {
+    let socket = match crate::net::connected_udp(addr, answer.udp_port)
+        .context("connecting the RTP socket")
+    {
         Ok(s) => s,
         Err(e) => return Outcome::Unavailable(e),
     };
@@ -300,16 +301,6 @@ fn pop_bus_error(bus: &gst::Bus) -> Option<anyhow::Error> {
     None
 }
 
-/// Binds a UDP socket and connects it to the receiver's negotiated port, so
-/// plain `send()` works and the receiver learns our address from the traffic.
-fn udp_socket_towards(addr: std::net::IpAddr, port: u16) -> Result<UdpSocket> {
-    let socket = UdpSocket::bind("0.0.0.0:0").context("binding RTP socket")?;
-    socket
-        .connect((addr, port))
-        .context("connecting RTP socket")?;
-    Ok(socket)
-}
-
 fn build_pipeline(
     capture: Option<&Capture>,
     settings: &StreamSettings,
@@ -418,12 +409,4 @@ fn attach_appsink(
             .build(),
     );
     Ok(())
-}
-
-struct PipelineStop(gst::Pipeline);
-
-impl Drop for PipelineStop {
-    fn drop(&mut self) {
-        let _ = self.0.set_state(gst::State::Null);
-    }
 }

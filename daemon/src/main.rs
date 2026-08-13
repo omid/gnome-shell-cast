@@ -2,6 +2,7 @@ mod capture;
 mod cast;
 mod discovery;
 mod http;
+mod net;
 mod pipeline;
 mod session;
 mod streaming;
@@ -60,6 +61,9 @@ pub struct SharedState {
     pub last_event: Mutex<(String, String)>,
     /// Dropping the sender stops the running cast session.
     pub active: Mutex<Option<oneshot::Sender<()>>>,
+    /// Awaited before a replacement session starts, so the two never share
+    /// the portal capture or the receiver's mirroring app.
+    pub active_task: Mutex<Option<tokio::task::JoinHandle<()>>>,
     /// Sends volume levels (0.0-1.0) to the active session's volume connection;
     /// `None` when idle.
     pub volume_tx: Mutex<Option<std::sync::mpsc::Sender<f32>>>,
@@ -78,6 +82,7 @@ impl SharedState {
             details: Mutex::new(CastDetails::default()),
             last_event: Mutex::new((String::new(), String::new())),
             active: Mutex::new(None),
+            active_task: Mutex::new(None),
             volume_tx: Mutex::new(None),
             cast_volume: Mutex::new(1.0),
             events,
@@ -210,6 +215,7 @@ impl ShellCast {
             0 => capture::SourceKind::Screen,
             1 => capture::SourceKind::Window,
             2 => capture::SourceKind::Audio,
+            3 => capture::SourceKind::Choose,
             other => {
                 return Err(zbus::fdo::Error::InvalidArgs(format!(
                     "unknown source type: {other}"
@@ -244,16 +250,18 @@ impl ShellCast {
         // Dropping a previous sender (if any) makes that session's stop_rx
         // resolve, shutting the old cast down before the new one starts.
         *self.state.active.lock() = Some(stop_tx);
+        let previous = self.state.active_task.lock().take();
         let generation = self.state.generation.fetch_add(1, Ordering::SeqCst) + 1;
 
-        tokio::spawn(session::run(
-            self.state.clone(),
-            generation,
-            device,
-            source,
-            settings,
-            stop_rx,
-        ));
+        let state = self.state.clone();
+        let task = tokio::spawn(async move {
+            // Here rather than in the D-Bus call, to keep StartCast prompt.
+            if let Some(previous) = previous {
+                let _ = previous.await;
+            }
+            session::run(state, generation, device, source, settings, stop_rx).await;
+        });
+        *self.state.active_task.lock() = Some(task);
         Ok(())
     }
 
