@@ -9,6 +9,7 @@ use ashpd::desktop::screencast::{
 };
 use ashpd::desktop::{CreateSessionOptions, PersistMode, ResponseError, Session};
 use ashpd::enumflags2::BitFlags;
+use futures_util::StreamExt;
 use log::{info, warn};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -45,6 +46,26 @@ pub struct Capture {
 }
 
 impl Capture {
+    /// Resolves when the *compositor* ends the session - GNOME's screen-sharing
+    /// indicator has a stop button, and pressing it leaves the capture dead
+    /// while `pipewiresrc resend-last=true` happily reships the last frame
+    /// forever, so the cast has to be told. Never resolves for an audio-only
+    /// cast, which has no portal session.
+    pub async fn closed(&self) {
+        let Some(session) = self.session.as_ref() else {
+            return std::future::pending().await;
+        };
+        match session.receive_closed().await {
+            Ok(mut closed) => {
+                closed.next().await;
+            }
+            Err(e) => {
+                warn!("cannot watch for the portal session closing: {e}");
+                std::future::pending::<()>().await;
+            }
+        }
+    }
+
     /// Closes the portal session, waiting for the compositor. A cast started
     /// right after would otherwise race this teardown and get a dead stream.
     pub async fn close(mut self) {

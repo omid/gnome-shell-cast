@@ -175,10 +175,18 @@ async fn cast_with_capture(
             title: None,
             artist: None,
         },
-        "hls",
-        "h264",
+        capture,
+        ("hls", "h264"),
     )
     .await
+}
+
+/// Pends forever for an audio-only cast, which has no portal session to lose.
+async fn capture_closed(capture: Option<&capture::Capture>) {
+    match capture {
+        Some(capture) => capture.closed().await,
+        None => std::future::pending().await,
+    }
 }
 
 /// Drives a launched cast until stop, device disconnect, or a pipeline error,
@@ -189,14 +197,22 @@ async fn run_cast_loop(
     stop_rx: &mut oneshot::Receiver<()>,
     cast_events: &mut mpsc::UnboundedReceiver<cast::CastEvent>,
     bus: &gst::Bus,
-    transport: &str,
-    codec: &str,
+    capture: Option<&capture::Capture>,
+    (transport, codec): (&str, &str),
 ) -> Result<()> {
     let mut bus_poll = tokio::time::interval(Duration::from_millis(500));
+    // Subscribed once: re-creating it per iteration would resubscribe on every
+    // tick and could miss the signal in between.
+    let capture_closed = capture_closed(capture);
+    tokio::pin!(capture_closed);
     loop {
         tokio::select! {
             _ = &mut *stop_rx => {
                 info!("stop requested");
+                return Ok(());
+            }
+            () = &mut capture_closed => {
+                info!("screen sharing was stopped from the system menu");
                 return Ok(());
             }
             event = cast_events.recv() => match event {
@@ -241,8 +257,8 @@ async fn run_cast_to_device(
     stop_rx: &mut oneshot::Receiver<()>,
     pipeline: &gst::Pipeline,
     media: cast::LoadMedia,
-    transport: &str,
-    codec: &str,
+    capture: Option<&capture::Capture>,
+    details: (&str, &str),
 ) -> Result<()> {
     let (url_tx, url_rx) = oneshot::channel();
     let (cast_events_tx, mut cast_events) = mpsc::unbounded_channel();
@@ -259,8 +275,8 @@ async fn run_cast_to_device(
         stop_rx,
         &mut cast_events,
         &bus,
-        transport,
-        codec,
+        capture,
+        details,
     )
     .await;
 
@@ -312,8 +328,8 @@ async fn cast_audio_stream(
             title: Some("GNOME Shell Cast".to_string()),
             artist: hostname(),
         },
-        "audio",
-        codec,
+        None,
+        ("audio", codec),
     )
     .await
 }
