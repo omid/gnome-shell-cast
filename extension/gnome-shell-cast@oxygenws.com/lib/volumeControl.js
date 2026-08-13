@@ -1,3 +1,5 @@
+'use strict';
+
 import GLib from 'gi://GLib';
 
 // Throttles a volume slider's drags into D-Bus writes, and applies

@@ -1,3 +1,5 @@
+'use strict';
+
 import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';

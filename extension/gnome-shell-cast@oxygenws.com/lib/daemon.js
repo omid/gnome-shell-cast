@@ -1,3 +1,5 @@
+'use strict';
+
 import Gio from 'gi://Gio';
 
 export const SOURCE_SCREEN = 0;
