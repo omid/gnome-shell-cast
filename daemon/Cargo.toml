@@ -11,6 +11,7 @@ anyhow = "1"
 ashpd = { version = "0.13", default-features = false, features = ["screencast", "tokio"] }
 ctr = "0.10"
 env_logger = "0.11"
+futures-util = { version = "0.3", default-features = false }
 gstreamer = "0.25"
 gstreamer-app = "0.25"
 log = "0.4"

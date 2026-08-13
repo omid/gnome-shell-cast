@@ -260,10 +260,18 @@ pub async fn run(
     state.set_status("casting", &device.id);
 
     let bus = pipeline.bus();
+    // Subscribed once, outside the loop: re-creating it each iteration would
+    // resubscribe every tick and could miss the signal in between.
+    let capture_closed = capture_closed(capture);
+    tokio::pin!(capture_closed);
     let result = loop {
         tokio::select! {
             _ = &mut *stop_rx => {
                 info!("stop requested");
+                break Ok(());
+            }
+            () = &mut capture_closed => {
+                info!("screen sharing was stopped from the system menu");
                 break Ok(());
             }
             event = channel_events.recv() => match event {
@@ -289,6 +297,14 @@ pub async fn run(
     drop(media_sender);
     drop(channel_control);
     Outcome::Finished(result)
+}
+
+/// Pends forever for an audio-only cast, which has no portal session to lose.
+async fn capture_closed(capture: Option<&Capture>) {
+    match capture {
+        Some(capture) => capture.closed().await,
+        None => std::future::pending().await,
+    }
 }
 
 fn pop_bus_error(bus: &gst::Bus) -> Option<anyhow::Error> {
