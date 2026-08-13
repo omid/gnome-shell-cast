@@ -124,13 +124,14 @@ pub fn parse_answer(message: &Value) -> Result<Answer> {
     let answer = &message["answer"];
     let udp_port = answer["udpPort"]
         .as_u64()
-        .filter(|p| (1..=65535).contains(p))
-        .context("ANSWER has no valid udpPort")? as u16;
+        .and_then(|p| u16::try_from(p).ok())
+        .filter(|p| *p != 0)
+        .context("ANSWER has no valid udpPort")?;
     let send_indexes = answer["sendIndexes"]
         .as_array()
         .context("ANSWER has no sendIndexes")?
         .iter()
-        .filter_map(|v| v.as_u64().map(|i| i as u32))
+        .filter_map(|v| v.as_u64().and_then(|i| u32::try_from(i).ok()))
         .collect();
     Ok(Answer {
         udp_port,

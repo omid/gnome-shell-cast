@@ -24,9 +24,11 @@ impl FrameCrypto {
     /// sizes) encrypts the frame without an intermediate copy.
     pub fn cipher(&self, frame_id: u64) -> Aes128Ctr {
         let mut nonce = self.iv_mask;
-        let id_bytes = (frame_id as u32).to_be_bytes();
-        for (i, b) in id_bytes.iter().enumerate() {
-            nonce[8 + i] ^= b;
+        let id_bytes = u32::try_from(frame_id & u64::from(u32::MAX))
+            .unwrap_or(0)
+            .to_be_bytes();
+        for (slot, b) in nonce.iter_mut().skip(8).zip(id_bytes) {
+            *slot ^= b;
         }
         Aes128Ctr::new(&self.key.into(), &nonce.into())
     }
@@ -71,7 +73,7 @@ mod tests {
         // The packetizer feeds the frame through the cipher one payload chunk
         // at a time; the result must equal a single whole-frame pass.
         let crypto = FrameCrypto::new([3; 16], [4; 16]);
-        let data: Vec<u8> = (0..100).map(|i| i as u8).collect();
+        let data: Vec<u8> = (0..100_u8).collect();
         let whole = encrypt(&crypto, 9, &data);
         let mut cipher = crypto.cipher(9);
         let mut chunked = data;
