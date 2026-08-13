@@ -215,7 +215,7 @@ mod tests {
         assert!(packets.packet(1).is_none());
         assert_eq!(p.len(), BASE_HEADER_SIZE + 4 + 10);
         assert_eq!(p[0], 0x80);
-        assert_eq!(p[1], MARKER_BIT | 96); // last packet → marker set
+        assert_eq!(p[1], MARKER_BIT | 0x60); // payload type 96, marker set
         assert_eq!(&p[4..8], &987_u32.to_be_bytes());
         assert_eq!(&p[8..12], &0xAABB_CCDD_u32.to_be_bytes());
         // key | has-ref | 1 extension

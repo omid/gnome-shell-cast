@@ -119,7 +119,7 @@ fn run(state: &Arc<SharedState>) {
                     })
                     .collect();
 
-                let addresses = announced.entry(fullname.to_string()).or_default();
+                let addresses = announced.entry(fullname.to_owned()).or_default();
                 for addr in resolved.iter().rev() {
                     addresses.retain(|a| a != addr);
                     addresses.insert(0, *addr);
@@ -160,10 +160,10 @@ fn run(state: &Arc<SharedState>) {
                         }
                         _ => {
                             devices.insert(
-                                fullname.to_string(),
+                                fullname.to_owned(),
                                 Device {
-                                    id: fullname.to_string(),
-                                    name: name.to_string(),
+                                    id: fullname.to_owned(),
+                                    name: name.to_owned(),
                                     addr,
                                     port,
                                     ca,
@@ -187,7 +187,12 @@ fn run(state: &Arc<SharedState>) {
                     let _ = state.events.send(Event::DevicesChanged);
                 }
             }
-            other => debug!("mdns event: {other:?}"),
+            other @ (ServiceEvent::SearchStarted(_)
+            | ServiceEvent::ServiceFound(..)
+            | ServiceEvent::SearchStopped(_)) => debug!("mdns event: {other:?}"),
+            // ServiceEvent is #[non_exhaustive]; this covers only variants
+            // added by a future mdns-sd, never one we know about today.
+            _ => {}
         }
     }
 }

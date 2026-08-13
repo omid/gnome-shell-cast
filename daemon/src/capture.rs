@@ -179,10 +179,9 @@ pub async fn open(source: SourceKind) -> Result<Capture> {
 /// Maps a portal error, turning a user cancellation into the `Cancelled`
 /// sentinel (so the session ends quietly) and anything else into a real error.
 fn map_cancel(error: ashpd::Error) -> anyhow::Error {
-    if matches!(error, ashpd::Error::Response(ResponseError::Cancelled)) {
-        Cancelled.into()
-    } else {
-        anyhow!("portal request failed: {error}")
+    match error {
+        ashpd::Error::Response(ResponseError::Cancelled) => Cancelled.into(),
+        other => anyhow!("portal request failed: {other}"),
     }
 }
 
@@ -198,7 +197,7 @@ fn restore_token_path() -> Option<PathBuf> {
 fn load_restore_token() -> Option<String> {
     let token = std::fs::read_to_string(restore_token_path()?).ok()?;
     let token = token.trim();
-    (!token.is_empty()).then(|| token.to_string())
+    (!token.is_empty()).then(|| token.to_owned())
 }
 
 fn save_restore_token(token: &str) {

@@ -1,4 +1,14 @@
+avoid-breaking-exported-api = false
+
+# ---------------------------------------------------------------- thresholds
 cognitive-complexity-threshold = 25
+excessive-nesting-threshold = 6
+too-many-arguments-threshold = 8
+type-complexity-threshold = 250
+large-error-threshold = 128
+stack-size-threshold = 512000
+
+# ---------------------------------------------------------------- test hatches
 allow-unwrap-in-tests = true
 allow-expect-in-tests = true
 allow-panic-in-tests = true
@@ -6,3 +16,4 @@ allow-dbg-in-tests = true
 allow-indexing-slicing-in-tests = true
 allow-large-stack-frames-in-tests = true
 allow-print-in-tests = true
+allow-useless-vec-in-tests = true

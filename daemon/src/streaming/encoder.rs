@@ -24,10 +24,10 @@ impl VideoCodec {
     /// The `codecName` string used in the Cast OFFER.
     pub fn codec_name(self) -> &'static str {
         match self {
-            VideoCodec::Vp8 => "vp8",
-            VideoCodec::Vp9 => "vp9",
-            VideoCodec::Av1 => "av1",
-            VideoCodec::H264 => "h264",
+            Self::Vp8 => "vp8",
+            Self::Vp9 => "vp9",
+            Self::Av1 => "av1",
+            Self::H264 => "h264",
         }
     }
 }
