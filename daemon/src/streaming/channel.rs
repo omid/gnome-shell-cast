@@ -32,6 +32,8 @@ const NEGOTIATION_TIMEOUT: Duration = Duration::from_secs(12);
 /// Socket read timeout; doubles as the tick interval of the run loop.
 const READ_TIMEOUT: Duration = Duration::from_secs(1);
 const PING_INTERVAL: Duration = Duration::from_secs(5);
+/// How long we wait for the receiver to confirm the mirroring app has stopped.
+const STOP_CONFIRM_TIMEOUT: Duration = Duration::from_secs(3);
 
 type Manager = MessageManager<StreamOwned<ClientConnection, TcpStream>>;
 
@@ -104,7 +106,11 @@ impl MirrorChannel {
             match self.receive_tick() {
                 Ok(Some(reason)) => break Some(reason),
                 Ok(None) => {}
-                Err(e) => break Some(format!("connection lost: {e}")),
+                // Detail to the journal; the user just gets "lost".
+                Err(e) => {
+                    warn!("mirror channel connection lost: {e:#}");
+                    break Some("the connection was lost".into());
+                }
             }
         };
 
@@ -115,21 +121,59 @@ impl MirrorChannel {
             RECEIVER_ID,
             &json!({"type": "STOP", "sessionId": self.session_id, "requestId": request_id}),
         );
+        self.await_app_stopped();
         if let Some(reason) = reason {
             let _ = events.send(ChannelEvent::Ended(reason));
         }
     }
 
-    /// One receive cycle. Returns Ok(Some(reason)) when the session ended.
-    fn receive_tick(&mut self) -> Result<Option<String>> {
-        let message = match self.manager.receive() {
-            Ok(m) => m,
+    /// One receive attempt; `Ok(None)` when the read timed out, as it does on
+    /// every idle tick.
+    fn try_receive(&mut self) -> Result<Option<CastMessage>> {
+        match self.manager.receive() {
+            Ok(message) => Ok(Some(message)),
             Err(rust_cast::errors::Error::Io(e))
                 if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) =>
             {
-                return Ok(None);
+                Ok(None)
             }
-            Err(e) => return Err(anyhow!("{e}")),
+            Err(e) => Err(anyhow!("{e}")),
+        }
+    }
+
+    fn pong(&self, destination: &str) -> Result<()> {
+        self.send_json(NS_HEARTBEAT, destination, &json!({"type": "PONG"}))
+    }
+
+    /// Waits (briefly) for the receiver to report the mirroring app gone;
+    /// relaunching it mid-shutdown gets the new session killed seconds in.
+    fn await_app_stopped(&mut self) {
+        let deadline = Instant::now() + STOP_CONFIRM_TIMEOUT;
+        while Instant::now() < deadline {
+            let message = match self.try_receive() {
+                Ok(Some(message)) => message,
+                Ok(None) => continue,
+                // The connection is already gone, so the app is too.
+                Err(_) => return,
+            };
+            let Some(payload) = json_payload(&message) else {
+                continue;
+            };
+            match payload["type"].as_str().unwrap_or("") {
+                "PING" => {
+                    let _ = self.pong(&message.source);
+                }
+                "RECEIVER_STATUS" if !status_has_session(&payload, &self.session_id) => return,
+                _ => {}
+            }
+        }
+        debug!("receiver never confirmed the mirroring app stopped");
+    }
+
+    /// One receive cycle. Returns Ok(Some(reason)) when the session ended.
+    fn receive_tick(&mut self) -> Result<Option<String>> {
+        let Some(message) = self.try_receive()? else {
+            return Ok(None);
         };
         let Some(payload) = json_payload(&message) else {
             return Ok(None);
@@ -137,14 +181,14 @@ impl MirrorChannel {
         let message_type = payload["type"].as_str().unwrap_or("");
         match (message.namespace.as_str(), message_type) {
             (NS_HEARTBEAT, "PING") => {
-                self.send_json(NS_HEARTBEAT, &message.source, &json!({"type": "PONG"}))?;
+                self.pong(&message.source)?;
             }
             (NS_CONNECTION, "CLOSE") if message.source == self.transport_id => {
-                return Ok(Some("receiver closed the session".into()));
+                return Ok(Some("the device closed the session".into()));
             }
             (NS_RECEIVER, "RECEIVER_STATUS") => {
                 if !status_has_session(&payload, &self.session_id) {
-                    return Ok(Some("receiver app is gone".into()));
+                    return Ok(Some("the cast was stopped on the device".into()));
                 }
             }
             _ => debug!("mirror channel message on {}: {payload}", message.namespace),
@@ -167,21 +211,15 @@ impl MirrorChannel {
             if Instant::now() > deadline {
                 bail!("timed out waiting for the mirroring app to launch");
             }
-            let message = match self.manager.receive() {
-                Ok(m) => m,
-                Err(rust_cast::errors::Error::Io(e))
-                    if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) =>
-                {
-                    continue;
-                }
-                Err(e) => return Err(anyhow!("waiting for launch: {e}")),
+            let Some(message) = self.try_receive().context("waiting for launch")? else {
+                continue;
             };
             let Some(payload) = json_payload(&message) else {
                 continue;
             };
             match payload["type"].as_str().unwrap_or("") {
                 "PING" => {
-                    self.send_json(NS_HEARTBEAT, &message.source, &json!({"type": "PONG"}))?;
+                    self.pong(&message.source)?;
                 }
                 "LAUNCH_ERROR" => {
                     bail!("mirroring app launch failed: {}", payload["reason"]);
@@ -205,14 +243,8 @@ impl MirrorChannel {
             if Instant::now() > deadline {
                 bail!("timed out waiting for the receiver's ANSWER");
             }
-            let message = match self.manager.receive() {
-                Ok(m) => m,
-                Err(rust_cast::errors::Error::Io(e))
-                    if matches!(e.kind(), ErrorKind::WouldBlock | ErrorKind::TimedOut) =>
-                {
-                    continue;
-                }
-                Err(e) => return Err(anyhow!("waiting for ANSWER: {e}")),
+            let Some(message) = self.try_receive().context("waiting for ANSWER")? else {
+                continue;
             };
             let Some(payload) = json_payload(&message) else {
                 continue;
@@ -222,7 +254,7 @@ impl MirrorChannel {
                 payload["type"].as_str().unwrap_or(""),
             ) {
                 (NS_HEARTBEAT, "PING") => {
-                    self.send_json(NS_HEARTBEAT, &message.source, &json!({"type": "PONG"}))?;
+                    self.pong(&message.source)?;
                 }
                 (messages::WEBRTC_NAMESPACE, "ANSWER") => {
                     if payload["seqNum"].as_u64() == Some(seq_num) {

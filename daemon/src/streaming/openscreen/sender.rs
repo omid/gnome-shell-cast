@@ -5,6 +5,7 @@
 //! without the adaptive bandwidth machinery (LAN use, fixed bitrate).
 
 use std::collections::VecDeque;
+use std::io::ErrorKind;
 use std::net::UdpSocket;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -23,6 +24,12 @@ use super::rtp::{OutboundFrame, PacketizedFrame, Packetizer};
 /// Matches openscreen's kMaxUnackedFrames.
 const MAX_HISTORY_FRAMES: usize = 120;
 const SENDER_REPORT_INTERVAL: Duration = Duration::from_millis(500);
+/// How long video may flow with no RTCP coming back before we say so.
+const FEEDBACK_TIMEOUT: Duration = Duration::from_secs(3);
+/// How long a single packet may wait for room in the socket's send buffer.
+const SEND_TIMEOUT: Duration = Duration::from_millis(100);
+/// Pause between attempts while the send buffer is full.
+const SEND_RETRY_DELAY: Duration = Duration::from_micros(200);
 /// How long we wait for a command before servicing the socket again.
 const TICK: Duration = Duration::from_millis(2);
 
@@ -137,7 +144,9 @@ struct Stream {
     packetizer: Packetizer,
     crypto: FrameCrypto,
     next_frame_id: u64,
-    checkpoint: u64,
+    /// Last frame the receiver has fully received; -1 until it acks anything,
+    /// which is also how it reports "nothing yet" on the wire.
+    checkpoint: i64,
     history: VecDeque<SentFrame>,
     /// Packet buffers recycled from evicted history frames. Sends and
     /// evictions pair up one-to-one in steady state, so `history` +
@@ -160,7 +169,7 @@ impl Stream {
             packetizer: Packetizer::new(config.payload_type, config.ssrc),
             crypto: FrameCrypto::new(config.aes_key, config.aes_iv_mask),
             next_frame_id: 0,
-            checkpoint: 0,
+            checkpoint: -1,
             history: VecDeque::with_capacity(MAX_HISTORY_FRAMES + 1),
             spare_buffers: Vec::new(),
             packet_count: 0,
@@ -236,7 +245,11 @@ fn run(
     let mut receive_buffer = [0_u8; 1500];
     // Reused across RTCP packets so NACK parsing does not allocate per packet.
     let mut events = rtcp::ReceiverEvents::default();
-    let mut first_video_frame = true;
+    let mut video_started_at = None;
+    // Tells "not getting our RTP" apart from "getting it but not decoding".
+    let mut acked = false;
+    let mut reported_silence = false;
+    let mut reported_drops = false;
 
     loop {
         if stop.load(Ordering::Relaxed) {
@@ -247,15 +260,33 @@ fn run(
         match chunks.recv_timeout(TICK) {
             Ok(chunk) => {
                 if let Some(stream) = streams.iter_mut().find(|s| s.kind == chunk.kind) {
-                    if chunk.kind == StreamKind::Video && first_video_frame {
+                    if chunk.kind == StreamKind::Video && video_started_at.is_none() {
                         info!("sending first video frame to the receiver");
-                        first_video_frame = false;
+                        video_started_at = Some(Instant::now());
                     }
-                    send_frame(&socket, stream, &chunk);
+                    let dropped = send_frame(&socket, stream, &chunk);
+                    if dropped > 0 && !reported_drops {
+                        warn!(
+                            "the network would not take {dropped} packet(s) of a frame; \
+                             the picture will break up - try a lower bitrate"
+                        );
+                        reported_drops = true;
+                    }
                 }
             }
             Err(RecvTimeoutError::Timeout) => {}
             Err(RecvTimeoutError::Disconnected) => break,
+        }
+
+        if !acked
+            && !reported_silence
+            && video_started_at.is_some_and(|t| t.elapsed() >= FEEDBACK_TIMEOUT)
+        {
+            warn!(
+                "no RTCP feedback from the receiver after {}s of video; it is not receiving our RTP",
+                FEEDBACK_TIMEOUT.as_secs()
+            );
+            reported_silence = true;
         }
 
         // 2. Receiver RTCP.
@@ -264,11 +295,15 @@ fn run(
             for stream in &mut streams {
                 rtcp::parse(packet, stream.ssrc, stream.checkpoint, &mut events);
                 if let Some(checkpoint) = events.checkpoint_frame_id {
+                    if !acked && checkpoint >= 0 && stream.kind == StreamKind::Video {
+                        info!("receiver acknowledged video up to frame {checkpoint}");
+                        acked = true;
+                    }
                     stream.checkpoint = stream.checkpoint.max(checkpoint);
                     while stream
                         .history
                         .front()
-                        .is_some_and(|f| f.frame_id <= stream.checkpoint)
+                        .is_some_and(|f| f.frame_id as i64 <= stream.checkpoint)
                     {
                         stream.evict_oldest();
                     }
@@ -304,7 +339,32 @@ fn run(
     info!("mirror sender stopped");
 }
 
-fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) {
+/// Sends one packet, waiting out a full send buffer rather than dropping it:
+/// the socket is non-blocking (so RTCP can be polled), so a frame's packet
+/// burst hits `WouldBlock`, and a dropped packet costs the receiver the whole
+/// frame. Waiting paces us to what the link accepts. False if it never went.
+fn send_packet(socket: &UdpSocket, packet: &[u8]) -> bool {
+    let deadline = Instant::now() + SEND_TIMEOUT;
+    loop {
+        match socket.send(packet) {
+            Ok(_) => return true,
+            Err(e) if e.kind() == ErrorKind::WouldBlock => {
+                if Instant::now() >= deadline {
+                    debug!("RTP send buffer stayed full for {SEND_TIMEOUT:?}, dropping a packet");
+                    return false;
+                }
+                thread::sleep(SEND_RETRY_DELAY);
+            }
+            Err(e) => {
+                debug!("RTP send failed: {e}");
+                return false;
+            }
+        }
+    }
+}
+
+/// Returns how many packets of the frame could not be sent.
+fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) -> u32 {
     let frame_id = stream.next_frame_id;
     stream.next_frame_id += 1;
 
@@ -330,11 +390,12 @@ fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) {
         .packetizer
         .packetize(&frame, buffer, |payload| cipher.apply_keystream(payload));
 
+    let mut dropped = 0;
     for packet in packets.iter() {
         stream.packet_count = stream.packet_count.wrapping_add(1);
         stream.octet_count = stream.octet_count.wrapping_add(packet.len() as u32);
-        if let Err(e) = socket.send(packet) {
-            debug!("RTP send failed: {e}");
+        if !send_packet(socket, packet) {
+            dropped += 1;
         }
     }
     stream.last_timestamps = Some((chunk.rtp_timestamp, chunk.ntp_timestamp));
@@ -343,18 +404,23 @@ fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) {
     if stream.history.len() > MAX_HISTORY_FRAMES {
         stream.evict_oldest();
     }
+    dropped
 }
 
 fn retransmit(socket: &UdpSocket, stream: &Stream, nack: &rtcp::Nack) {
-    let Some(frame) = stream.history.iter().find(|f| f.frame_id == nack.frame_id) else {
+    let Some(frame) = stream
+        .history
+        .iter()
+        .find(|f| f.frame_id as i64 == nack.frame_id)
+    else {
         return;
     };
     if nack.packet_id == rtcp::ALL_PACKETS_LOST {
         for packet in frame.packets.iter() {
-            let _ = socket.send(packet);
+            send_packet(socket, packet);
         }
     } else if let Some(packet) = frame.packets.packet(nack.packet_id) {
-        let _ = socket.send(packet);
+        send_packet(socket, packet);
     } else {
         // The receiver NACKed a packet id we never produced; nothing to resend.
     }

@@ -80,7 +80,7 @@ fn launch_for(factory: &str, bitrate_bps: u32, fps: u32) -> String {
         // vp8enc and vp9enc share the VPX base and its properties (bit/s).
         "vp8enc" | "vp9enc" => format!(
             "{factory} name=venc deadline=1 cpu-used=8 end-usage=cbr \
-             target-bitrate={bitrate_bps} keyframe-max-dist=3000 lag-in-frames=0 \
+             target-bitrate={bitrate_bps} keyframe-max-dist={key_int} lag-in-frames=0 \
              error-resilient=default threads=4"
         ),
         "svtav1enc" => {
@@ -90,7 +90,7 @@ fn launch_for(factory: &str, bitrate_bps: u32, fps: u32) -> String {
         }
         "av1enc" => format!(
             "av1enc name=venc usage-profile=realtime end-usage=cbr \
-             target-bitrate={kbps} cpu-used=9 lag-in-frames=0 keyframe-max-dist=3000 \
+             target-bitrate={kbps} cpu-used=9 lag-in-frames=0 keyframe-max-dist={key_int} \
              threads=4"
         ),
         "x264enc" => format!(
@@ -155,6 +155,21 @@ mod tests {
         assert!(f.starts_with("vp9enc name=venc"));
         assert!(f.contains("end-usage=cbr"));
         assert!(f.contains("target-bitrate=4000000"));
+    }
+
+    /// A receiver that lost the first key frame shows black until the next.
+    #[test]
+    fn every_fragment_keys_about_every_two_seconds() {
+        for codec in EFFICIENCY_ORDER {
+            for factory in factories(codec) {
+                let f = launch_for(factory, 2_000_000, 40);
+                if let Some(rest) = f.split("keyframe-max-dist=").nth(1) {
+                    assert_eq!(rest.split_whitespace().next(), Some("80"), "{factory}");
+                }
+            }
+        }
+        assert!(launch_for("x264enc", 2_000_000, 40).contains("key-int-max=80"));
+        assert!(launch_for("svtav1enc", 2_000_000, 40).contains("intra-period-length=80"));
     }
 
     #[test]
