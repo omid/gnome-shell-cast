@@ -1,3 +1,5 @@
+'use strict';
+
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
