@@ -15,7 +15,7 @@ export class CastVolumeControl {
         this._throttleId = 0;
         this._pending = 0;
         this._lastSent = -1;
-        this._changedId = slider.connect('notify::value', () => this._onUserChanged());
+        slider.connectObject('notify::value', () => this._onUserChanged(), this);
     }
 
     // Reflects the receiver's volume without echoing it back as a change.
@@ -56,9 +56,6 @@ export class CastVolumeControl {
             GLib.source_remove(this._throttleId);
             this._throttleId = 0;
         }
-        if (this._changedId) {
-            this._slider.disconnect(this._changedId);
-            this._changedId = 0;
-        }
+        this._slider.disconnectObject(this);
     }
 }

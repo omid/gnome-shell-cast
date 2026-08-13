@@ -122,18 +122,26 @@ export class CastMenu {
         // Lets the destructive/warning tints switch to their light-popup
         // variants (see stylesheet.css).
         this._stSettings = St.Settings.get();
-        this._colorSchemeId = this._stSettings.connect('notify::color-scheme', () =>
-            this._updateColorScheme(),
+        this._stSettings.connectObject(
+            'notify::color-scheme',
+            () => this._updateColorScheme(),
+            this,
         );
         this._updateColorScheme();
 
-        this._showDetailsId = this._settings.connect('changed::show-details', () =>
-            this._onShowDetailsChanged(),
+        this._settings.connectObject(
+            'changed::show-details',
+            () => this._onShowDetailsChanged(),
+            this,
         );
 
-        this._openStateId = menu.connect('open-state-changed', (_menu, open) => {
-            if (open) this.refresh();
-        });
+        menu.connectObject(
+            'open-state-changed',
+            (_menu, open) => {
+                if (open) this.refresh();
+            },
+            this,
+        );
 
         // Reflect an already-running cast right away, without waking an idle daemon.
         this._daemon.getStatus((state, deviceId) => this._setState(state, deviceId), {
@@ -475,18 +483,9 @@ export class CastMenu {
     destroy() {
         this._daemonSetup.destroy();
         this._daemonSetup = null;
-        if (this._colorSchemeId) {
-            this._stSettings.disconnect(this._colorSchemeId);
-            this._colorSchemeId = null;
-        }
-        if (this._showDetailsId) {
-            this._settings.disconnect(this._showDetailsId);
-            this._showDetailsId = null;
-        }
-        if (this._openStateId) {
-            this._menu.disconnect(this._openStateId);
-            this._openStateId = null;
-        }
+        this._stSettings.disconnectObject(this);
+        this._settings.disconnectObject(this);
+        this._menu.disconnectObject(this);
         // close() pops the modal grab; ModalDialog destroys itself on close.
         this._dialog?.close();
         this._dialog = null;
