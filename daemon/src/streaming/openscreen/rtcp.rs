@@ -55,14 +55,15 @@ pub fn build_sender_report(
 /// within it, or `ALL_PACKETS_LOST` for the whole frame.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Nack {
-    pub frame_id: u64,
+    pub frame_id: i64,
     pub packet_id: u16,
 }
 
 #[derive(Debug, Default)]
 pub struct ReceiverEvents {
-    /// All frames up to and including this one are fully received.
-    pub checkpoint_frame_id: Option<u64>,
+    /// All frames up to and including this one are fully received. Signed:
+    /// a receiver with nothing yet reports the frame before the first, -1.
+    pub checkpoint_frame_id: Option<i64>,
     pub nacks: Vec<Nack>,
     /// The receiver lost decoder state and needs a key frame.
     pub picture_loss: bool,
@@ -82,7 +83,7 @@ impl ReceiverEvents {
 /// instance cares about; feedback for other SSRCs is ignored.
 /// `checkpoint_hint` is the last known checkpoint, used to bit-expand the
 /// 8-bit frame ids on the wire.
-pub fn parse(data: &[u8], sender_ssrc: u32, checkpoint_hint: u64, events: &mut ReceiverEvents) {
+pub fn parse(data: &[u8], sender_ssrc: u32, checkpoint_hint: i64, events: &mut ReceiverEvents) {
     events.clear();
     let mut rest = data;
 
@@ -118,7 +119,7 @@ pub fn parse(data: &[u8], sender_ssrc: u32, checkpoint_hint: u64, events: &mut R
     }
 }
 
-fn parse_feedback(body: &[u8], sender_ssrc: u32, hint: u64, events: &mut ReceiverEvents) {
+fn parse_feedback(body: &[u8], sender_ssrc: u32, hint: i64, events: &mut ReceiverEvents) {
     // [receiver ssrc][sender ssrc]["CAST"][checkpoint u8][#loss u8][delay u16]
     if body.len() < 12 {
         return;
@@ -165,15 +166,12 @@ fn parse_feedback(body: &[u8], sender_ssrc: u32, hint: u64, events: &mut Receive
     // and NACKs are all we need, so it is deliberately not parsed.
 }
 
-/// Expands an 8-bit truncated frame id to the full value: the unique value
-/// with those low 8 bits in the window [reference, reference + 255].
-fn expand_frame_id(low8: u8, reference: u64) -> u64 {
-    let candidate = (reference & !0xff) | u64::from(low8);
-    if candidate < reference {
-        candidate + 256
-    } else {
-        candidate
-    }
+/// Expands an 8-bit frame id to the value *nearest* the reference, i.e. in
+/// [reference - 128, reference + 127] (openscreen's `ExpandedValueBase`). The
+/// window must reach backwards: a receiver with nothing yet acks frame -1.
+fn expand_frame_id(low8: u8, reference: i64) -> i64 {
+    let delta = (i64::from(low8) - reference) & 0xff;
+    reference + if delta >= 128 { delta - 256 } else { delta }
 }
 
 #[cfg(test)]
@@ -198,6 +196,8 @@ mod tests {
         assert_eq!(expand_frame_id(5, 250), 261); // wrapped past the low byte
         assert_eq!(expand_frame_id(250, 250), 250);
         assert_eq!(expand_frame_id(0x02, 0x100), 0x102);
+        // "I have received nothing": the frame before the first one.
+        assert_eq!(expand_frame_id(255, 0), -1);
     }
 
     fn feedback_packet(sender_ssrc: u32, checkpoint: u8, loss: &[(u8, u16, u8)]) -> Vec<u8> {
@@ -219,12 +219,12 @@ mod tests {
         p
     }
 
-    fn parse_new(data: &[u8], sender_ssrc: u32, checkpoint_hint: u64) -> ReceiverEvents {
+    fn parse_new(data: &[u8], sender_ssrc: u32, checkpoint_hint: i64) -> ReceiverEvents {
         // Pre-poison the events to prove parse() replaces previous contents.
         let mut events = ReceiverEvents {
-            checkpoint_frame_id: Some(u64::MAX),
+            checkpoint_frame_id: Some(i64::MAX),
             nacks: vec![Nack {
-                frame_id: u64::MAX,
+                frame_id: i64::MAX,
                 packet_id: 0,
             }],
             picture_loss: false,
@@ -256,6 +256,15 @@ mod tests {
                 },
             ]
         );
+    }
+
+    /// Read as a forward jump this retires the whole retransmit history, so
+    /// the frames the receiver is about to NACK could never be resent.
+    #[test]
+    fn empty_receiver_checkpoint_is_before_the_first_frame() {
+        let packet = feedback_packet(42, 255, &[]);
+        let events = parse_new(&packet, 42, 0);
+        assert_eq!(events.checkpoint_frame_id, Some(-1));
     }
 
     #[test]
