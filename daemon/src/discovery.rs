@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::net::IpAddr;
 use std::sync::Arc;
 use std::thread;
@@ -19,6 +20,24 @@ const CA_VIDEO_OUT: u32 = 1;
 /// default to video-capable so unknown devices are never hidden or blocked.
 fn parse_capabilities(ca: Option<&str>) -> u32 {
     ca.and_then(|s| s.parse().ok()).unwrap_or(CA_VIDEO_OUT)
+}
+
+/// Whether the host has a route to `addr`.
+fn routable(addr: IpAddr) -> bool {
+    crate::net::connected_udp(addr, 9).is_ok()
+}
+
+/// Picks the address to reach a device on. Reachability comes first - a
+/// device's IPv6 record is useless on an IPv4-only network - then family, then
+/// whatever was announced, so a device still shows up if the probe can't help.
+fn pick_address(addresses: &[IpAddr]) -> Option<IpAddr> {
+    addresses
+        .iter()
+        .find(|a| a.is_ipv4() && routable(**a))
+        .or_else(|| addresses.iter().find(|a| routable(**a)))
+        .or_else(|| addresses.iter().find(|a| a.is_ipv4()))
+        .or_else(|| addresses.first())
+        .copied()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,26 +101,35 @@ fn run(state: &Arc<SharedState>) {
         }
     };
 
+    // Every address a device has announced, freshest first: one resolve can
+    // carry only part of the record (after a resume, often just the AAAA).
+    let mut announced: HashMap<String, Vec<IpAddr>> = HashMap::new();
+
     while let Ok(event) = receiver.recv() {
         match event {
             ServiceEvent::ServiceResolved(info) => {
-                let Some(addr) = info
+                let fullname = info.get_fullname();
+                let resolved: Vec<IpAddr> = info
                     .get_addresses()
                     .iter()
-                    .find(|a| a.is_ipv4())
-                    .or_else(|| info.get_addresses().iter().next())
-                    .cloned()
                     .map(|v| match v {
                         ScopedIp::V4(ip) => IpAddr::from(*ip.addr()),
                         ScopedIp::V6(ip) => IpAddr::from(*ip.addr()),
                         _ => unreachable!("mDNS address is neither IPv4 nor IPv6"),
                     })
-                else {
-                    warn!("resolved {} without addresses", info.get_fullname());
+                    .collect();
+
+                let addresses = announced.entry(fullname.to_string()).or_default();
+                for addr in resolved.iter().rev() {
+                    addresses.retain(|a| a != addr);
+                    addresses.insert(0, *addr);
+                }
+                debug!("resolved {fullname} with {resolved:?}, known {addresses:?}");
+                let Some(addr) = pick_address(addresses) else {
+                    warn!("resolved {fullname} without addresses");
                     continue;
                 };
 
-                let fullname = info.get_fullname();
                 let name = info.get_property_val_str("fn").unwrap_or_else(|| {
                     fullname
                         .split("._googlecast")
@@ -116,6 +144,14 @@ fn run(state: &Arc<SharedState>) {
                 // build (and log) a Device when something changed.
                 let changed = {
                     let mut devices = state.devices.lock();
+                    // Never downgrade a working address to an unreachable one.
+                    let addr = match devices.get(fullname) {
+                        Some(e) if e.addr != addr && !routable(addr) && routable(e.addr) => {
+                            debug!("keeping {} at {} over unreachable {addr}", e.name, e.addr);
+                            e.addr
+                        }
+                        _ => addr,
+                    };
                     match devices.get(fullname) {
                         Some(e)
                             if e.name == name && e.addr == addr && e.port == port && e.ca == ca =>
@@ -146,6 +182,7 @@ fn run(state: &Arc<SharedState>) {
             }
             ServiceEvent::ServiceRemoved(_, fullname) => {
                 info!("lost {fullname}");
+                announced.remove(&fullname);
                 if state.devices.lock().remove(&fullname).is_some() {
                     let _ = state.events.send(Event::DevicesChanged);
                 }
@@ -158,6 +195,21 @@ fn run(state: &Arc<SharedState>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn address_preference() {
+        let v4 = IpAddr::from([192, 168, 1, 5]);
+        let loopback = IpAddr::from([127, 0, 0, 1]);
+        // Documentation range (RFC 3849): announced, never routable.
+        let v6: IpAddr = "2001:db8::1".parse().unwrap();
+
+        assert_eq!(pick_address(&[]), None);
+        assert_eq!(pick_address(&[v6, loopback]), Some(loopback));
+        // Only unreachable addresses: still surface the device.
+        assert_eq!(pick_address(&[v6]), Some(v6));
+        // Freshest first among equally reachable addresses.
+        assert_eq!(pick_address(&[loopback, v4]), Some(loopback));
+    }
 
     #[test]
     fn known_capability_masks() {

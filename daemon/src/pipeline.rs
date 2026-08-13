@@ -236,6 +236,15 @@ pub async fn default_audio_monitor() -> Option<String> {
     Some(format!("{sink}.monitor"))
 }
 
+/// Stops a pipeline when it goes out of scope, on every path out of a session.
+pub struct PipelineStop(pub gst::Pipeline);
+
+impl Drop for PipelineStop {
+    fn drop(&mut self) {
+        let _ = self.0.set_state(gst::State::Null);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

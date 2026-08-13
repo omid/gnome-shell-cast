@@ -13,7 +13,7 @@ use tokio::sync::{mpsc, oneshot};
 
 use crate::capture::{self, SourceKind};
 use crate::discovery::Device;
-use crate::pipeline::{self, PLAYLIST_NAME, StreamSettings};
+use crate::pipeline::{self, PLAYLIST_NAME, PipelineStop, StreamSettings};
 use crate::{SharedState, cast, http, streaming, volume};
 
 /// Runs one cast session end to end: portal capture → `GStreamer` HLS encode →
@@ -37,7 +37,7 @@ pub async fn run(
         }
         Err(e) => {
             warn!("cast session failed: {e:#}");
-            state.set_last_event("error", &format!("{e:#}"));
+            state.set_last_event("error", &user_message(&e));
             state.set_status("error", &device.id);
         }
     }
@@ -51,12 +51,36 @@ pub async fn run(
     }
 }
 
+/// What to show the user: the chain carries crate detail (rustls doc URLs,
+/// `os error` numbers) that belongs in the journal, not in a notification.
+fn user_message(error: &anyhow::Error) -> String {
+    use std::io::ErrorKind;
+
+    if let Some(io) = error
+        .chain()
+        .find_map(|cause| cause.downcast_ref::<std::io::Error>())
+    {
+        return match io.kind() {
+            ErrorKind::NetworkUnreachable | ErrorKind::HostUnreachable => {
+                "Could not reach the device. Check that it is switched on and on the same network."
+            }
+            ErrorKind::ConnectionRefused => "The device refused the connection.",
+            ErrorKind::TimedOut | ErrorKind::ConnectionReset | ErrorKind::BrokenPipe => {
+                "Lost the connection to the device."
+            }
+            _ => "Could not reach the device over the network.",
+        }
+        .to_string();
+    }
+    format!("{error}")
+}
+
 async fn cast_session(
     state: &Arc<SharedState>,
     device: &Device,
     source: SourceKind,
     settings: StreamSettings,
-    mut stop_rx: oneshot::Receiver<()>,
+    stop_rx: oneshot::Receiver<()>,
 ) -> Result<()> {
     setup_volume(state, device).await;
 
@@ -75,9 +99,27 @@ async fn cast_session(
         other => Some(capture::open(other).await?),
     };
 
+    let result =
+        cast_with_capture(state, device, source, settings, stop_rx, capture.as_ref()).await;
+
+    // Awaited here, not left to `Drop`: the next cast must not race it.
+    if let Some(capture) = capture {
+        capture.close().await;
+    }
+    result
+}
+
+async fn cast_with_capture(
+    state: &Arc<SharedState>,
+    device: &Device,
+    source: SourceKind,
+    settings: StreamSettings,
+    mut stop_rx: oneshot::Receiver<()>,
+    capture: Option<&capture::Capture>,
+) -> Result<()> {
     // 2. Prefer Chrome-style Cast Streaming (sub-second latency); fall back
     // to the HLS path below only when the receiver can't be negotiated with.
-    match streaming::run(state, device, capture.as_ref(), &settings, &mut stop_rx).await {
+    match streaming::run(state, device, capture, &settings, &mut stop_rx).await {
         streaming::Outcome::Finished(result) => return result,
         streaming::Outcome::Unavailable(e) => {
             warn!("mirroring unavailable, falling back to HLS: {e:#}");
@@ -102,7 +144,7 @@ async fn cast_session(
         warn!("no audio monitor found, casting video only");
     }
     let pipeline = pipeline::build(
-        capture.as_ref().map(|c| (c.fd.as_raw_fd(), c.node_id)),
+        capture.map(|c| (c.fd.as_raw_fd(), c.node_id)),
         &settings,
         &hls_dir,
         audio_monitor.as_deref(),
@@ -331,18 +373,32 @@ async fn wait_for_playlist(dir: &std::path::Path) -> Result<()> {
     ))
 }
 
-struct PipelineStop(gst::Pipeline);
-
-impl Drop for PipelineStop {
-    fn drop(&mut self) {
-        let _ = self.0.set_state(gst::State::Null);
-    }
-}
-
 struct DirCleanup(PathBuf);
 
 impl Drop for DirCleanup {
     fn drop(&mut self) {
         let _ = std::fs::remove_dir_all(&self.0);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn network_errors_lose_their_technical_detail() {
+        let io = std::io::Error::from(std::io::ErrorKind::NetworkUnreachable);
+        let message = user_message(&anyhow::Error::new(io).context("probing route to device"));
+        assert!(
+            message.starts_with("Could not reach the device."),
+            "{message}"
+        );
+        assert!(!message.contains("os error"), "{message}");
+    }
+
+    #[test]
+    fn other_errors_keep_their_top_level_context() {
+        let error = anyhow!("no video encoder is installed").context("building the pipeline");
+        assert_eq!(user_message(&error), "building the pipeline");
     }
 }
