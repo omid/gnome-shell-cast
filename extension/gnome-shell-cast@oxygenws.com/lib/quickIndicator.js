@@ -1,3 +1,4 @@
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -34,6 +35,11 @@ const CastVolumeSlider = GObject.registerClass(
         }
     },
 );
+
+// The grid is built asynchronously at login; how long to keep looking for
+// the shell's sliders before giving up and appending.
+const SLIDER_ANCHOR_RETRIES = 10;
+const SLIDER_ANCHOR_INTERVAL_MS = 200;
 
 function createToggleIconUpdater(toggle, icons) {
     return (active) => {
@@ -124,19 +130,47 @@ export const CastQuickIndicator = GObject.registerClass(
 
             this.quickSettingsItems.push(this._toggle);
 
+            this._sliderTries = 0;
+            this._sliderTimeoutId = 0;
             this._addSlider();
         }
 
-        // Appended full-width. Placing it next to the system volume sliders
-        // instead would mean naming one as the sibling for
-        // insertItemBefore(), and the shell exposes no public way to.
-        //
-        // The one shell API we reach into, so it is guarded: a throw here
-        // would abort enable() and cost the user the whole extension, not
-        // just the slider. (addItem is unchanged across shell 48-50.)
+        // The item just past the shell's own sliders, so the cast volume sits
+        // with the other volumes instead of below every toggle. Public API
+        // only: getFirstItem() plus sibling traversal, matching the exported
+        // QuickSlider class rather than naming a private member.
+        _sliderAnchor(menu) {
+            let lastSlider = null;
+            for (let item = menu.getFirstItem(); item; item = item.get_next_sibling()) {
+                if (item instanceof QuickSettings.QuickSlider) lastSlider = item;
+                else if (lastSlider) break;
+            }
+            return lastSlider?.get_next_sibling() ?? null;
+        }
+
+        // Shell 50 builds its indicators asynchronously, so at login the grid
+        // can still be empty; retry a few times before settling for the end.
+        // Guarded: a throw here would abort enable() and cost the user the
+        // whole extension, not just the slider.
         _addSlider() {
             try {
-                Main.panel.statusArea.quickSettings.menu.addItem(this._slider, 2);
+                const menu = Main.panel.statusArea.quickSettings.menu;
+                const anchor = this._sliderAnchor(menu);
+                if (anchor) {
+                    menu.insertItemBefore(this._slider, anchor, 2);
+                } else if (this._sliderTries++ < SLIDER_ANCHOR_RETRIES) {
+                    this._sliderTimeoutId = GLib.timeout_add(
+                        GLib.PRIORITY_DEFAULT,
+                        SLIDER_ANCHOR_INTERVAL_MS,
+                        () => {
+                            this._sliderTimeoutId = 0;
+                            this._addSlider();
+                            return GLib.SOURCE_REMOVE;
+                        },
+                    );
+                } else {
+                    menu.addItem(this._slider, 2);
+                }
             } catch (e) {
                 console.warn(`gnome-shell-cast: no volume slider, casting still works: ${e}`);
                 this._slider.destroy();
@@ -145,6 +179,10 @@ export const CastQuickIndicator = GObject.registerClass(
         }
 
         destroy() {
+            if (this._sliderTimeoutId) {
+                GLib.source_remove(this._sliderTimeoutId);
+                this._sliderTimeoutId = 0;
+            }
             this._toggle.disconnect(this._checkedId);
             // Destroyed explicitly because it isn't in quickSettingsItems.
             this._slider?.destroy();
