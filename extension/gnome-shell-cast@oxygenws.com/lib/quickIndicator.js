@@ -126,9 +126,13 @@ export const CastQuickIndicator = GObject.registerClass(
                 onVolume: (level) => this._slider?.setValueFromDaemon(level),
             });
 
-            this._checkedId = this._toggle.connect('notify::checked', () => {
-                this._indicatorIcon.visible = this._toggle.checked;
-            });
+            this._toggle.connectObject(
+                'notify::checked',
+                () => {
+                    this._indicatorIcon.visible = this._toggle.checked;
+                },
+                this,
+            );
 
             this.quickSettingsItems.push(this._toggle);
 
@@ -161,6 +165,7 @@ export const CastQuickIndicator = GObject.registerClass(
                 if (anchor) {
                     menu.insertItemBefore(this._slider, anchor, 2);
                 } else if (this._sliderTries++ < SLIDER_ANCHOR_RETRIES) {
+                    if (this._sliderTimeoutId) GLib.source_remove(this._sliderTimeoutId);
                     this._sliderTimeoutId = GLib.timeout_add(
                         GLib.PRIORITY_DEFAULT,
                         SLIDER_ANCHOR_INTERVAL_MS,
@@ -185,7 +190,7 @@ export const CastQuickIndicator = GObject.registerClass(
                 GLib.source_remove(this._sliderTimeoutId);
                 this._sliderTimeoutId = 0;
             }
-            this._toggle.disconnect(this._checkedId);
+            this._toggle.disconnectObject(this);
             // Destroyed explicitly because it isn't in quickSettingsItems.
             this._slider?.destroy();
             this.quickSettingsItems.forEach((item) => item.destroy());
