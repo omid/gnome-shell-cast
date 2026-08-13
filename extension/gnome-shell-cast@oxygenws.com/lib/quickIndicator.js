@@ -1,5 +1,3 @@
-'use strict';
-
 import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -10,8 +8,7 @@ import { CastMenu, loadIcons } from './castMenu.js';
 import { CastVolumeControl } from './volumeControl.js';
 
 // Volume slider for the active cast device, shown among the Quick Settings
-// volume sliders while casting. Moving it sets the receiver's volume via the
-// daemon, which reports it back to keep the slider in sync.
+// volume sliders while casting.
 const CastVolumeSlider = GObject.registerClass(
     class CastVolumeSlider extends QuickSettings.QuickSlider {
         constructor(gicon, onChange) {
@@ -64,6 +61,8 @@ const CastToggle = GObject.registerClass(
                 setIcon: createToggleIconUpdater(this, icons),
                 onCastChanged: hooks.onCastChanged,
                 onVolume: hooks.onVolume,
+                // Optional call: losing it only leaves the panel open.
+                closeMenu: () => Main.panel.closeQuickSettings?.(),
             });
 
             this.connect('clicked', () => {
@@ -96,8 +95,8 @@ export const CastQuickIndicator = GObject.registerClass(
             const icons = loadIcons(extension);
             this._indicatorIcon = this._addIndicator();
             this._indicatorIcon.gicon = icons.active;
-            // Shown only while casting; wear the shell's privacy-indicator class
-            // for GNOME's orange (the active mic / screen-sharing tint).
+            // The shell's privacy-indicator class gives GNOME's orange, matching
+            // the active mic / screen-sharing tint.
             this._indicatorIcon.add_style_class_name('privacy-indicator');
             this._indicatorIcon.visible = false;
 
@@ -107,16 +106,16 @@ export const CastQuickIndicator = GObject.registerClass(
 
             this._toggle = new CastToggle(extension, settings, icons, {
                 onCastChanged: (casting, deviceName) => {
-                    this._slider.setCasting(casting, deviceName);
-                    // Fetch the current level when a cast begins, in case the
-                    // daemon's volume signal arrived before the slider existed.
+                    this._slider?.setCasting(casting, deviceName);
+                    // In case the daemon's volume signal arrived before the
+                    // slider existed.
                     if (casting) {
                         this._toggle.getVolume((level) => {
-                            if (level !== null) this._slider.setValueFromDaemon(level);
+                            if (level !== null) this._slider?.setValueFromDaemon(level);
                         });
                     }
                 },
-                onVolume: (level) => this._slider.setValueFromDaemon(level),
+                onVolume: (level) => this._slider?.setValueFromDaemon(level),
             });
 
             this._checkedId = this._toggle.connect('notify::checked', () => {
@@ -125,18 +124,30 @@ export const CastQuickIndicator = GObject.registerClass(
 
             this.quickSettingsItems.push(this._toggle);
 
-            // Between the system output and input volume sliders (the two grid
-            // items after getFirstItem()) via public sibling navigation. Both
-            // sliders always exist in the shell versions we target (48-50).
-            const qsMenu = Main.panel.statusArea.quickSettings.menu;
-            const anchor = qsMenu.getFirstItem().get_next_sibling().get_next_sibling();
-            qsMenu.insertItemBefore(this._slider, anchor, 2);
+            this._addSlider();
+        }
+
+        // Appended full-width. Placing it next to the system volume sliders
+        // instead would mean naming one as the sibling for
+        // insertItemBefore(), and the shell exposes no public way to.
+        //
+        // The one shell API we reach into, so it is guarded: a throw here
+        // would abort enable() and cost the user the whole extension, not
+        // just the slider. (addItem is unchanged across shell 48-50.)
+        _addSlider() {
+            try {
+                Main.panel.statusArea.quickSettings.menu.addItem(this._slider, 2);
+            } catch (e) {
+                console.warn(`gnome-shell-cast: no volume slider, casting still works: ${e}`);
+                this._slider.destroy();
+                this._slider = null;
+            }
         }
 
         destroy() {
             this._toggle.disconnect(this._checkedId);
             // Destroyed explicitly because it isn't in quickSettingsItems.
-            this._slider.destroy();
+            this._slider?.destroy();
             this.quickSettingsItems.forEach((item) => item.destroy());
             super.destroy();
         }

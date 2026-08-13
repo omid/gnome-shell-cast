@@ -1,5 +1,4 @@
-'use strict';
-
+import Clutter from 'gi://Clutter';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
@@ -9,9 +8,9 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Slider } from 'resource:///org/gnome/shell/ui/slider.js';
 import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import { CastDaemon, SOURCE_AUDIO, SOURCE_SCREEN, SOURCE_WINDOW } from './daemon.js';
+import { CastDaemon, SOURCE_AUDIO, SOURCE_CHOOSE, SOURCE_SCREEN } from './daemon.js';
 import { CastVolumeControl } from './volumeControl.js';
-import { SetupDialog } from './setupDialog.js';
+import { DaemonSetup } from './daemonSetup.js';
 import { ErrorDialog } from './errorDialog.js';
 
 const RESOLUTIONS = {
@@ -41,6 +40,75 @@ function createMenuItem(label, icon, styleClass = null) {
     return item;
 }
 
+const TOOLTIP_DELAY_MS = 400;
+
+// The shell has no tooltip API; this does what the dash does - a label in the
+// uiGroup (the menu would clip it), positioned by hand under the button.
+class RowTooltip {
+    constructor() {
+        this._label = new St.Label({ style_class: 'gsc-tooltip', visible: false });
+        Main.layoutManager.uiGroup.add_child(this._label);
+        this._timeoutId = 0;
+    }
+
+    // Delayed, so sweeping the pointer across a row doesn't flash tooltips.
+    showFor(button, text) {
+        this.hide();
+        this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TOOLTIP_DELAY_MS, () => {
+            this._timeoutId = 0;
+            if (button.mapped) this._place(button, text);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _place(button, text) {
+        this._label.text = text;
+        this._label.show();
+
+        const [buttonX, buttonY] = button.get_transformed_position();
+        const monitor = Main.layoutManager.findMonitorForActor(button);
+        const centred = buttonX + Math.floor((button.width - this._label.width) / 2);
+        const maxX = monitor.x + monitor.width - this._label.width;
+        this._label.set_position(
+            Math.max(monitor.x, Math.min(centred, maxX)),
+            buttonY + button.height + 4,
+        );
+    }
+
+    hide() {
+        if (this._timeoutId) {
+            GLib.source_remove(this._timeoutId);
+            this._timeoutId = 0;
+        }
+        this._label?.hide();
+    }
+
+    destroy() {
+        this.hide();
+        this._label?.destroy();
+        this._label = null;
+    }
+}
+
+// 'icon-button' is the shell's own; stylesheet.css restyles the rest.
+function createRowButton(iconName, label, tooltip, onClick) {
+    const button = new St.Button({
+        style_class: 'icon-button flat gsc-row-button',
+        can_focus: true,
+        // Off by default on St.Button; without it `hover` never changes.
+        track_hover: true,
+        child: new St.Icon({ icon_name: iconName, style_class: 'popup-menu-icon' }),
+    });
+    button.accessible_name = label;
+    button.connect('notify::hover', () => {
+        if (button.hover) tooltip.showFor(button, label);
+        else tooltip.hide();
+    });
+    button.connect('destroy', () => tooltip.hide());
+    button.connect('clicked', onClick);
+    return button;
+}
+
 function toggleStyleClass(element, className, enabled = true) {
     if (enabled) element.add_style_class_name(className);
     else element.remove_style_class_name(className);
@@ -53,10 +121,8 @@ export function loadIcons(extension) {
     };
 }
 
-// Builds and drives the cast menu contents (device list, casting state,
-// daemon setup warnings) inside a host-provided PopupMenu-compatible menu.
-// Shared between the top-bar indicator and the quick-settings toggle so the
-// two host widgets don't duplicate this logic.
+// Drives the cast menu contents inside a host-provided PopupMenu, shared by the
+// top-bar indicator and the quick-settings toggle.
 export class CastMenu {
     constructor({
         extension,
@@ -67,21 +133,23 @@ export class CastMenu {
         onCastChanged,
         onVolume,
         inlineVolume,
+        closeMenu,
     }) {
         this._extension = extension;
         this._settings = settings;
         this._menu = menu;
         this._icons = icons;
         this._setIcon = setIcon;
-        // The quick-settings host drives its own grid slider via these hooks.
-        // The top-bar host instead sets `inlineVolume` to get a slider row
-        // inside this menu (both share CastVolumeControl).
+        // The quick-settings host drives its own grid slider through these hooks;
+        // the top-bar host sets `inlineVolume` for a slider row in this menu.
         this._onCastChanged = onCastChanged;
         this._onVolume = onVolume;
         this._inlineVolume = inlineVolume;
+        // A toggle menu is not a child of the quick-settings menu, so closing
+        // it leaves the panel up; the host closes that.
+        this._closeMenu = closeMenu;
 
         this.version = extension.metadata.version;
-        this.daemonVersion = `${this.version}.0.0`;
 
         this._devices = [];
         this._state = 'idle';
@@ -96,23 +164,33 @@ export class CastMenu {
             onStartError: (message) => this._showError(message),
         });
 
+        this._daemonSetup = new DaemonSetup({
+            extension,
+            daemon: this._daemon,
+            onWarning: (label) => this._setDaemonWarning(label),
+            onNotify: (message) => this._notifyError(message),
+            onDialog: (dialog) => this._showDialog(dialog),
+        });
+
+        this._tooltip = new RowTooltip();
         this._buildMenu();
 
-        // Track the shell's colour scheme so the destructive/warning tints
-        // can switch to their light-popup variants (see stylesheet.css).
+        // Lets the destructive/warning tints switch to their light-popup
+        // variants (see stylesheet.css).
         this._stSettings = St.Settings.get();
         this._colorSchemeId = this._stSettings.connect('notify::color-scheme', () =>
             this._updateColorScheme(),
         );
         this._updateColorScheme();
 
-        // Update the detail lines live when the user toggles the setting.
         this._showDetailsId = this._settings.connect('changed::show-details', () =>
             this._onShowDetailsChanged(),
         );
 
         this._openStateId = menu.connect('open-state-changed', (_menu, open) => {
             if (open) this.refresh();
+            // Lives outside the menu, so it would hang around after closing.
+            else this._tooltip.hide();
         });
 
         // Reflect an already-running cast right away, without waking an idle daemon.
@@ -137,8 +215,8 @@ export class CastMenu {
         this._daemon.getVolume(callback);
     }
 
-    // Daemon reported the receiver's volume: update the quick-settings grid
-    // slider (via the hook) and/or this menu's inline slider.
+    // Update the quick-settings grid slider (via the hook) and/or this menu's
+    // inline slider.
     _onVolumeChanged(level) {
         this._onVolume?.(level);
         this._volumeControl?.setFromDaemon(level);
@@ -149,11 +227,9 @@ export class CastMenu {
     }
 
     refresh() {
-        // Each user-initiated refresh gets one grace retry (see below).
-        this._daemonCheckRetried = false;
         this._refreshDevices();
         this._daemon.getStatus((state, deviceId) => this._setState(state, deviceId));
-        this._checkDaemonVersion();
+        this._daemonSetup.check();
     }
 
     _onShowDetailsChanged() {
@@ -180,7 +256,7 @@ export class CastMenu {
             'gsc-warning-label',
         );
         this._daemonWarningItem.visible = false;
-        this._daemonWarningItem.connect('activate', () => this._openSetupDialog());
+        this._daemonWarningItem.connect('activate', () => this._daemonSetup.openDialog());
         this._menu.addMenuItem(this._daemonWarningItem);
 
         this._devicesSection = new PopupMenu.PopupMenuSection();
@@ -226,88 +302,13 @@ export class CastMenu {
         );
     }
 
-    _checkDaemonVersion() {
-        this._daemon.getVersion((version) => {
-            if (version === null) {
-                // The D-Bus-activated daemon can take a moment to come up
-                // right after login; give it one retry before declaring it
-                // missing so we don't flash a spurious warning at boot.
-                if (!this._daemonCheckRetried) {
-                    this._daemonCheckRetried = true;
-                    if (this._versionRetryId) {
-                        GLib.source_remove(this._versionRetryId);
-                        this._versionRetryId = 0;
-                    }
-                    this._versionRetryId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 2000, () => {
-                        this._versionRetryId = 0;
-                        this._checkDaemonVersion();
-                        return GLib.SOURCE_REMOVE;
-                    });
-                    return;
-                }
-                this._daemonSetup = { mode: 'install', currentVersion: null };
-                this._showDaemonWarning(
-                    _('Set up the cast daemon'),
-                    _(
-                        'The cast daemon isn’t installed yet. Open the menu and click ' +
-                            '“Set up the cast daemon” to install it.',
-                    ),
-                );
-            } else if (version !== this.daemonVersion) {
-                this._daemonSetup = { mode: 'update', currentVersion: version };
-                this._showDaemonWarning(
-                    _('Update the cast daemon (v%old → v%new)')
-                        .replace('%old', version)
-                        .replace('%new', this.daemonVersion),
-                    _(
-                        'The cast daemon (v%old) doesn’t match this version of the ' +
-                            'extension (needs v%new). Open the menu to update it.',
-                    )
-                        .replace('%old', version)
-                        .replace('%new', this.daemonVersion),
-                );
-            } else {
-                this._daemonWarningItem.visible = false;
-            }
-        });
-    }
-
-    _showDaemonWarning(label, notifyMessage) {
+    _setDaemonWarning(label) {
+        if (label === null) {
+            this._daemonWarningItem.visible = false;
+            return;
+        }
         this._daemonWarningItem.label.text = label;
         this._daemonWarningItem.visible = true;
-        // Notify once per distinct problem so the tray icon isn't silent
-        // when the user hasn't opened the menu yet.
-        if (this._lastDaemonWarning !== notifyMessage) {
-            this._lastDaemonWarning = notifyMessage;
-            this._notifyError(notifyMessage);
-        }
-    }
-
-    _daemonRepoUrl() {
-        return this._extension.metadata.url;
-    }
-
-    // The one-liner the setup/update dialog shows. Pinned to this
-    // extension's version so it installs the matching daemon release - the
-    // same command therefore updates the daemon after an extension update.
-    _installCommand() {
-        const raw = this._daemonRepoUrl().replace('github.com', 'raw.githubusercontent.com');
-        return `curl -fsSL ${raw}/refs/tags/v${this.version}/scripts/install.sh | sh -s -- v${this.version}`;
-    }
-
-    _openSetupDialog() {
-        // Only reachable from the warning item, which is made visible after
-        // _checkDaemonVersion() has assigned _daemonSetup.
-        const setup = this._daemonSetup;
-        this._showDialog(
-            new SetupDialog({
-                mode: setup.mode,
-                command: this._installCommand(),
-                currentVersion: setup.currentVersion,
-                requiredVersion: this.daemonVersion,
-                url: this._daemonRepoUrl(),
-            }),
-        );
     }
 
     // Tracks the open modal so destroy() can close it: a dialog is parented to
@@ -359,26 +360,49 @@ export class CastMenu {
                 continue;
             }
 
-            const item = new PopupMenu.PopupSubMenuMenuItem(device.name, true);
-            item.icon.gicon = active ? this._icons.active : this._icons.idle;
-            this._markCastingDevice(item, active, device.name);
-
-            const screenItem = createMenuItem(_('Cast screen'), 'video-display-symbolic');
-            screenItem.connect('activate', () => this._startCast(device, SOURCE_SCREEN));
-            item.menu.addMenuItem(screenItem);
-
-            const windowItem = createMenuItem(_('Cast window'), 'window-new-symbolic');
-            windowItem.connect('activate', () => this._startCast(device, SOURCE_WINDOW));
-            item.menu.addMenuItem(windowItem);
-
+            const item = this._createDeviceRow(device, active);
             this._devicesSection.addMenuItem(item);
             if (active) this._addDetailLines();
         }
     }
 
-    // Dim, non-interactive lines under the active device showing the
-    // transport and negotiated codecs. Populated from GetDetails when the
-    // "show details" setting is on; a no-op otherwise.
+    // Name on the left, the two cast actions as buttons on the right.
+    _createDeviceRow(device, active) {
+        const item = new PopupMenu.PopupBaseMenuItem({ activate: false });
+
+        item.add_child(
+            new St.Icon({
+                gicon: active ? this._icons.active : this._icons.idle,
+                style_class: 'popup-menu-icon',
+            }),
+        );
+
+        // label_actor so the row reads as the device name.
+        item.label = new St.Label({
+            text: device.name,
+            x_expand: true,
+            y_expand: true,
+            y_align: Clutter.ActorAlign.CENTER,
+        });
+        item.add_child(item.label);
+        item.label_actor = item.label;
+        this._markCastingDevice(item, active, device.name);
+
+        item.add_child(
+            createRowButton('video-display-symbolic', _('Cast screen'), this._tooltip, () =>
+                this._startCast(device, SOURCE_SCREEN),
+            ),
+        );
+        item.add_child(
+            createRowButton('focus-windows-symbolic', _('Choose what to cast'), this._tooltip, () =>
+                this._startCast(device, SOURCE_CHOOSE),
+            ),
+        );
+
+        return item;
+    }
+
+    // Populated from GetDetails when the "show details" setting is on.
     _addDetailLines() {
         if (!this._details || !this._settings.get_boolean('show-details')) return;
         const { transport, codec, receiverCodecs } = this._details;
@@ -404,6 +428,9 @@ export class CastMenu {
 
     _startCast(device, source) {
         this._daemon.startCast(device.id, source, this._castOptions());
+        // The row is not activatable, so nothing closes the menu for us.
+        this._menu.itemActivated();
+        this._closeMenu?.();
     }
 
     _castOptions() {
@@ -428,8 +455,7 @@ export class CastMenu {
 
         this._reflectState();
 
-        // Codecs are known only once a cast is actually running; fetch them
-        // then, and rebuild once they arrive. Otherwise clear them.
+        // Codecs are known only once a cast is actually running.
         if (state === 'casting' && this._settings.get_boolean('show-details')) {
             this._daemon.getDetails((details) => {
                 this._details = details;
@@ -475,7 +501,7 @@ export class CastMenu {
     }
 
     // Daemon gone without a final state update: reset to "not casting" without
-    // calling back into D-Bus (which would just reactivate it).
+    // calling back into D-Bus, which would just reactivate it.
     _onDaemonGone() {
         if (this._state === 'idle') return;
         this._state = 'idle';
@@ -492,7 +518,7 @@ export class CastMenu {
         const dialog = new ErrorDialog({
             message,
             version: this.version,
-            url: this._daemonRepoUrl(),
+            url: this._extension.metadata.url,
         });
         dialog.connect('closed', () => {
             if (this._lastErrorShown === message) this._lastErrorShown = null;
@@ -505,10 +531,8 @@ export class CastMenu {
     }
 
     destroy() {
-        if (this._versionRetryId) {
-            GLib.source_remove(this._versionRetryId);
-            this._versionRetryId = 0;
-        }
+        this._daemonSetup.destroy();
+        this._daemonSetup = null;
         if (this._colorSchemeId) {
             this._stSettings.disconnect(this._colorSchemeId);
             this._colorSchemeId = null;
@@ -521,6 +545,9 @@ export class CastMenu {
             this._menu.disconnect(this._openStateId);
             this._openStateId = null;
         }
+        // Parented to the uiGroup, so it outlives the menu unless destroyed.
+        this._tooltip.destroy();
+        this._tooltip = null;
         // close() pops the modal grab; ModalDialog destroys itself on close.
         this._dialog?.close();
         this._dialog = null;

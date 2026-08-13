@@ -1,5 +1,3 @@
-'use strict';
-
 import Adw from 'gi://Adw';
 import Gtk from 'gi://Gtk';
 import Gio from 'gi://Gio';
@@ -120,5 +118,12 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
 
         group.add(linkRow(_('Homepage'), url));
         group.add(linkRow(_('Report an issue'), `${url}/issues`));
+
+        const help = new Adw.PreferencesGroup({
+            title: _('Help'),
+            description: _('Common problems and their fixes'),
+        });
+        page.add(help);
+        help.add(linkRow(_('Troubleshooting guide'), `${url}/blob/main/TROUBLESHOOTING.md`));
     }
 }

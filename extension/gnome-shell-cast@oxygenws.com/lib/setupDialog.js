@@ -1,5 +1,3 @@
-'use strict';
-
 import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
@@ -23,7 +21,7 @@ export const SetupDialog = GObject.registerClass(
                       .replace('%old', currentVersion)
                       .replace('%new', requiredVersion)
                 : _(
-                      "GNOME Shell Cast needs a small background daemon. It can't be " +
+                      'GNOME Shell Cast needs a small background daemon. It can’t be ' +
                           'shipped through extensions.gnome.org, so install it once with the ' +
                           'command below. It downloads a checksum-verified binary to ' +
                           '~/.local/bin (nothing runs as root).',

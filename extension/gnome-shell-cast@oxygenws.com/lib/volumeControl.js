@@ -1,12 +1,8 @@
-'use strict';
-
 import GLib from 'gi://GLib';
 
-// Drives a cast volume slider, shared by the quick-settings QuickSlider and the
-// top-bar menu's slider row. Given a Slider.Slider (anything with a `value`
-// property and a `notify::value` signal) and an `onChange(level)` callback, it
-// throttles user drags into D-Bus writes and applies daemon-reported values
-// back without echoing them. Call destroy() when the slider goes away.
+// Throttles a volume slider's drags into D-Bus writes, and applies
+// daemon-reported values back without echoing them. Shared by the
+// quick-settings QuickSlider and the top-bar menu's slider row.
 export class CastVolumeControl {
     constructor(slider, onChange) {
         this._slider = slider;
@@ -18,9 +14,8 @@ export class CastVolumeControl {
         this._changedId = slider.connect('notify::value', () => this._onUserChanged());
     }
 
-    // Reflects the receiver's volume without echoing it back as a change.
     // Relies on `notify::value` firing synchronously (St's slider does) so the
-    // `_fromDaemon` guard is still set when `_onUserChanged` runs.
+    // guard is still set when `_onUserChanged` runs.
     setFromDaemon(level) {
         this._fromDaemon = true;
         this._slider.value = level;
@@ -31,8 +26,8 @@ export class CastVolumeControl {
     _onUserChanged() {
         if (this._fromDaemon) return;
         this._pending = this._slider.value;
-        // Leading edge: apply the first move immediately, then let the running
-        // timer rate-limit the rest of the drag so we don't flood D-Bus.
+        // Leading edge: apply the first move at once, then let the timer
+        // rate-limit the rest of the drag.
         if (this._throttleId) return;
 
         this._send();

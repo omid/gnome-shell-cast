@@ -1,10 +1,10 @@
-'use strict';
-
 import Gio from 'gi://Gio';
 
 export const SOURCE_SCREEN = 0;
 export const SOURCE_WINDOW = 1;
 export const SOURCE_AUDIO = 2;
+// Screen or window, picked in the portal dialog.
+export const SOURCE_CHOOSE = 3;
 
 const BUS_NAME = 'org.gnome.ShellCast';
 const OBJECT_PATH = '/org/gnome/ShellCast';
@@ -54,11 +54,8 @@ const CAST_IFACE_XML = `
   </interface>
 </node>`;
 
-/**
- * Thin wrapper around the org.gnome.ShellCast1 D-Bus service provided by
- * gnome-shell-cast-daemon. The daemon is D-Bus activatable: constructing the
- * proxy does not launch it, but any method call does.
- */
+// Wraps the org.gnome.ShellCast1 D-Bus service. The daemon is D-Bus
+// activatable: constructing the proxy doesn't launch it, but a method call does.
 export class CastDaemon {
     constructor({
         onDevicesChanged,
@@ -98,14 +95,19 @@ export class CastDaemon {
                     () => this._onDevicesChanged(),
                     this,
                 );
+                // g-signal passes (proxy, sender, signalName, parameters):
+                // the payload is the fourth argument, and a GVariant.
                 proxy.connectObject(
                     'g-signal::StateChanged',
-                    (_p, _sender, [state, deviceId]) => this._onStateChanged(state, deviceId),
+                    (_p, _sender, _name, params) => {
+                        const [state, deviceId] = params.deepUnpack();
+                        this._onStateChanged(state, deviceId);
+                    },
                     this,
                 );
                 proxy.connectObject(
                     'g-signal::VolumeChanged',
-                    (_p, _sender, [level]) => this._onVolumeChanged(level),
+                    (_p, _sender, _name, params) => this._onVolumeChanged(params.deepUnpack()[0]),
                     this,
                 );
             },
@@ -115,9 +117,7 @@ export class CastDaemon {
         );
 
         // A dying daemon (crash, kill) sends no final StateChanged, leaving the
-        // indicator stuck "casting". `onVanished` fires when its bus name loses
-        // its owner; it also fires once at startup (handler is a no-op then).
-        // Watching does not activate the daemon.
+        // indicator stuck "casting". Watching does not activate the daemon.
         this._watchId = Gio.bus_watch_name(
             Gio.BusType.SESSION,
             BUS_NAME,
@@ -139,10 +139,8 @@ export class CastDaemon {
         this._proxy.ListDevicesRemote(
             this._reply((result, error) => {
                 if (error) {
-                    // A transient failure (e.g. the daemon still activating just
-                    // after login) yields an empty list and the "Searching…"
-                    // placeholder; a genuinely missing daemon is reported by the
-                    // version check, so don't also raise a notification here.
+                    // A missing daemon is reported by the version check, so a
+                    // failure here just shows the "Searching…" placeholder.
                     callback([]);
                     return;
                 }
@@ -208,11 +206,8 @@ export class CastDaemon {
         );
     }
 
-    /**
-     * Fetches the running daemon's version. Passes null to the callback when
-     * the daemon cannot be reached (e.g. it is not installed) - a D-Bus method
-     * call auto-starts the daemon, so an error here means activation failed.
-     */
+    // Passes null when the daemon can't be reached: the call auto-starts it, so
+    // an error here means activation failed and it isn't installed.
     getVersion(callback) {
         this._proxy.GetVersionRemote(
             this._reply((result, error) => {
