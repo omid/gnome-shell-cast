@@ -25,6 +25,13 @@ install and `pkill`; extension **JS needs a logout** (Wayland, and the shell
 caches ES modules per process), while `stylesheet.css` reloads on
 disable/enable. Prefer CSS while iterating on appearance.
 
+## Extension code is held to upstream rules
+
+Before writing or reviewing anything under `extension/`, read the pages listed
+in the `extension-guidelines` skill: GJS best practices, the extensions.gnome.org
+review guidelines, and the EGO AI reference. Answer "does this follow the
+guidelines?" from those, not from memory.
+
 ## Conventions
 
 - **UI text is sentence case**, not Title Case — menus, prefs, notifications.
