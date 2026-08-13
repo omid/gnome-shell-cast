@@ -29,6 +29,24 @@ npx prettier --check extension/   # separate from eslint; check-all runs both
 `manual_review` finding for `St.Clipboard.get_default()` in `errorDialog.js` and
 `setupDialog.js` - that is a "a human should look at this" flag, not a defect.
 
+## What an EGO reviewer has asked for on this extension
+
+Real review feedback, generalised. Apply these before submitting rather than
+waiting to be told again.
+
+- **Construct nothing outside the class that owns it.** Module scope and
+  initialization are for static data only; anything created has to be built by
+  the class that will destroy it. See
+  [initialization](https://gjs.guide/extensions/review-guidelines/review-guidelines.html#only-use-initialization-for-static-resources)
+  and [destroy all objects](https://gjs.guide/extensions/review-guidelines/review-guidelines.html#destroy-all-objects).
+- **Prefer `connectObject()` / `disconnectObject()`** over `connect()` with a
+  hand-kept handler id. One `disconnectObject(this)` cannot leave a handler
+  behind, and a reviewer can verify cleanup at a glance.
+- **Keep sources plain ASCII unless a character earns its place.** Typographic
+  punctuation invites mojibake, and in a translatable string it silently edits
+  the msgid.
+- **`constructor()`, never `_init()`.**
+
 ## Rules this project has already been bitten by
 
 - **Public shell API only.** No `_private` members of shell objects. Where the
