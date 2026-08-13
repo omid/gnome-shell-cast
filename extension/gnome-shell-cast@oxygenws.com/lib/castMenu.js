@@ -40,58 +40,8 @@ function createMenuItem(label, icon, styleClass = null) {
     return item;
 }
 
-const TOOLTIP_DELAY_MS = 400;
-
-// The shell has no tooltip API; this does what the dash does - a label in the
-// uiGroup (the menu would clip it), positioned by hand under the button.
-class RowTooltip {
-    constructor() {
-        this._label = new St.Label({ style_class: 'gsc-tooltip', visible: false });
-        Main.layoutManager.uiGroup.add_child(this._label);
-        this._timeoutId = 0;
-    }
-
-    // Delayed, so sweeping the pointer across a row doesn't flash tooltips.
-    showFor(button, text) {
-        this.hide();
-        this._timeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, TOOLTIP_DELAY_MS, () => {
-            this._timeoutId = 0;
-            if (button.mapped) this._place(button, text);
-            return GLib.SOURCE_REMOVE;
-        });
-    }
-
-    _place(button, text) {
-        this._label.text = text;
-        this._label.show();
-
-        const [buttonX, buttonY] = button.get_transformed_position();
-        const monitor = Main.layoutManager.findMonitorForActor(button);
-        const centred = buttonX + Math.floor((button.width - this._label.width) / 2);
-        const maxX = monitor.x + monitor.width - this._label.width;
-        this._label.set_position(
-            Math.max(monitor.x, Math.min(centred, maxX)),
-            buttonY + button.height + 4,
-        );
-    }
-
-    hide() {
-        if (this._timeoutId) {
-            GLib.source_remove(this._timeoutId);
-            this._timeoutId = 0;
-        }
-        this._label?.hide();
-    }
-
-    destroy() {
-        this.hide();
-        this._label?.destroy();
-        this._label = null;
-    }
-}
-
 // 'icon-button' is the shell's own; stylesheet.css restyles the rest.
-function createRowButton(iconName, label, tooltip, onClick) {
+function createRowButton(iconName, label, onClick) {
     const button = new St.Button({
         style_class: 'icon-button flat gsc-row-button',
         can_focus: true,
@@ -99,12 +49,9 @@ function createRowButton(iconName, label, tooltip, onClick) {
         track_hover: true,
         child: new St.Icon({ icon_name: iconName, style_class: 'popup-menu-icon' }),
     });
+    // No tooltip: the shell has no API for one, and a hand-rolled label
+    // would not follow the user's theme. Screen readers still get this.
     button.accessible_name = label;
-    button.connect('notify::hover', () => {
-        if (button.hover) tooltip.showFor(button, label);
-        else tooltip.hide();
-    });
-    button.connect('destroy', () => tooltip.hide());
     button.connect('clicked', onClick);
     return button;
 }
@@ -172,7 +119,6 @@ export class CastMenu {
             onDialog: (dialog) => this._showDialog(dialog),
         });
 
-        this._tooltip = new RowTooltip();
         this._buildMenu();
 
         // Lets the destructive/warning tints switch to their light-popup
@@ -189,8 +135,6 @@ export class CastMenu {
 
         this._openStateId = menu.connect('open-state-changed', (_menu, open) => {
             if (open) this.refresh();
-            // Lives outside the menu, so it would hang around after closing.
-            else this._tooltip.hide();
         });
 
         // Reflect an already-running cast right away, without waking an idle daemon.
@@ -389,12 +333,12 @@ export class CastMenu {
         this._markCastingDevice(item, active, device.name);
 
         item.add_child(
-            createRowButton('video-display-symbolic', _('Cast screen'), this._tooltip, () =>
+            createRowButton('video-display-symbolic', _('Cast screen'), () =>
                 this._startCast(device, SOURCE_SCREEN),
             ),
         );
         item.add_child(
-            createRowButton('focus-windows-symbolic', _('Choose what to cast'), this._tooltip, () =>
+            createRowButton('focus-windows-symbolic', _('Choose what to cast'), () =>
                 this._startCast(device, SOURCE_CHOOSE),
             ),
         );
@@ -545,9 +489,6 @@ export class CastMenu {
             this._menu.disconnect(this._openStateId);
             this._openStateId = null;
         }
-        // Parented to the uiGroup, so it outlives the menu unless destroyed.
-        this._tooltip.destroy();
-        this._tooltip = null;
         // close() pops the modal grab; ModalDialog destroys itself on close.
         this._dialog?.close();
         this._dialog = null;
