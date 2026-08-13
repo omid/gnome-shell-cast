@@ -243,7 +243,7 @@ pub async fn run(
         .iter()
         .enumerate()
         .filter(|(_, p)| answer.send_indexes.contains(&p.index))
-        .map(|(i, _)| codecs[i].codec_name().to_string())
+        .map(|(i, _)| codecs[i].codec_name().to_owned())
         .collect();
     if let Some((codec, ..)) = chosen_video {
         let hw = video_encoder.as_ref().is_some_and(|(_, hw)| *hw);

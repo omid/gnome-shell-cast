@@ -51,7 +51,7 @@ pub fn start(
     events: UnboundedSender<CastEvent>,
 ) -> CastControl {
     let stop = Arc::new(AtomicBool::new(false));
-    let stop_flag = stop.clone();
+    let stop_flag = Arc::clone(&stop);
 
     #[allow(
         clippy::expect_used,

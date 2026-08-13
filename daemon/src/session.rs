@@ -60,17 +60,23 @@ fn user_message(error: &anyhow::Error) -> String {
         .chain()
         .find_map(|cause| cause.downcast_ref::<std::io::Error>())
     {
-        return match io.kind() {
-            ErrorKind::NetworkUnreachable | ErrorKind::HostUnreachable => {
-                "Could not reach the device. Check that it is switched on and on the same network."
-            }
-            ErrorKind::ConnectionRefused => "The device refused the connection.",
-            ErrorKind::TimedOut | ErrorKind::ConnectionReset | ErrorKind::BrokenPipe => {
-                "Lost the connection to the device."
-            }
-            _ => "Could not reach the device over the network.",
+        let kind = io.kind();
+        return if matches!(
+            kind,
+            ErrorKind::NetworkUnreachable | ErrorKind::HostUnreachable
+        ) {
+            "Could not reach the device. Check that it is switched on and on the same network."
+        } else if kind == ErrorKind::ConnectionRefused {
+            "The device refused the connection."
+        } else if matches!(
+            kind,
+            ErrorKind::TimedOut | ErrorKind::ConnectionReset | ErrorKind::BrokenPipe
+        ) {
+            "Lost the connection to the device."
+        } else {
+            "Could not reach the device over the network."
         }
-        .to_string();
+        .to_owned();
     }
     format!("{error}")
 }
@@ -82,7 +88,7 @@ async fn cast_session(
     settings: StreamSettings,
     stop_rx: oneshot::Receiver<()>,
 ) -> Result<()> {
-    setup_volume(state, device).await;
+    setup_volume(state, device);
 
     // 1. Portal capture (GNOME shows the screen/window picker here).
     // Audio-only casts capture nothing on-screen and never touch the portal,
@@ -96,7 +102,9 @@ async fn cast_session(
             }
             None
         }
-        other => Some(capture::open(other).await?),
+        SourceKind::Screen | SourceKind::Window | SourceKind::Choose => {
+            Some(capture::open(source).await?)
+        }
     };
 
     let result =
@@ -154,7 +162,7 @@ async fn cast_with_capture(
         .context("starting the GStreamer pipeline")?;
     let _pipeline_stop = PipelineStop(pipeline.clone());
 
-    let server = http::serve(hls_dir.clone())?;
+    let server = http::serve(&hls_dir)?;
     wait_for_playlist(&hls_dir).await?;
 
     let local_ip = http::local_ip_towards(device.addr)?;
@@ -171,7 +179,7 @@ async fn cast_with_capture(
         &pipeline,
         cast::LoadMedia {
             url,
-            content_type: "application/vnd.apple.mpegurl".to_string(),
+            content_type: "application/vnd.apple.mpegurl".to_owned(),
             title: None,
             artist: None,
         },
@@ -243,9 +251,9 @@ async fn run_cast_loop(
     }
 }
 
-async fn setup_volume(state: &Arc<SharedState>, device: &Device) {
+fn setup_volume(state: &Arc<SharedState>, device: &Device) {
     let volume = volume::VolumeControl::start(device.addr, device.port, {
-        let state = state.clone();
+        let state = Arc::clone(state);
         move |level| state.set_cast_volume(f64::from(level))
     });
     state.set_volume_channel(Some(volume.sender()));
@@ -324,8 +332,8 @@ async fn cast_audio_stream(
         &pipeline,
         cast::LoadMedia {
             url,
-            content_type: content_type.to_string(),
-            title: Some("GNOME Shell Cast".to_string()),
+            content_type: content_type.to_owned(),
+            title: Some("GNOME Shell Cast".to_owned()),
             artist: hostname(),
         },
         None,
@@ -352,7 +360,7 @@ fn attach_audio_sink(pipeline: &gst::Pipeline, broadcaster: &http::AudioBroadcas
                 let Ok(map) = buffer.map_readable() else {
                     return Err(gst::FlowError::Error);
                 };
-                broadcaster.push(std::sync::Arc::from(map.as_slice()));
+                broadcaster.push(&Arc::from(map.as_slice()));
                 Ok(gst::FlowSuccess::Ok)
             })
             .build(),
@@ -365,7 +373,7 @@ fn attach_audio_sink(pipeline: &gst::Pipeline, broadcaster: &http::AudioBroadcas
 fn hostname() -> Option<String> {
     let name = std::fs::read_to_string("/proc/sys/kernel/hostname").ok()?;
     let name = name.trim();
-    (!name.is_empty()).then(|| name.to_string())
+    (!name.is_empty()).then(|| name.to_owned())
 }
 
 fn runtime_dir() -> PathBuf {

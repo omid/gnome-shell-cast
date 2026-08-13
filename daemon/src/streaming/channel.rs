@@ -56,7 +56,7 @@ impl MirrorChannel {
     pub fn negotiate(addr: IpAddr, port: u16, offer_body: Value) -> Result<(Self, Answer)> {
         let deadline = Instant::now() + NEGOTIATION_TIMEOUT;
         let manager = connect_tls(addr, port)?;
-        let mut channel = MirrorChannel {
+        let mut channel = Self {
             manager,
             session_id: String::new(),
             transport_id: String::new(),
@@ -97,7 +97,7 @@ impl MirrorChannel {
 
     /// Runs the channel until `stop` is set or the receiver ends the session.
     /// Consumes the channel; stopping the receiver app on the way out.
-    pub fn run(mut self, stop: Arc<AtomicBool>, events: UnboundedSender<ChannelEvent>) {
+    pub fn run(mut self, stop: &AtomicBool, events: &UnboundedSender<ChannelEvent>) {
         let reason = loop {
             if stop.load(Ordering::Relaxed) {
                 break None;
@@ -229,7 +229,7 @@ impl MirrorChannel {
                         let session = app["sessionId"].as_str().unwrap_or_default();
                         let transport = app["transportId"].as_str().unwrap_or_default();
                         if !session.is_empty() && !transport.is_empty() {
-                            return Ok((session.to_string(), transport.to_string()));
+                            return Ok((session.to_owned(), transport.to_owned()));
                         }
                     }
                 }
@@ -269,9 +269,9 @@ impl MirrorChannel {
     fn send_json(&self, namespace: &str, destination: &str, payload: &Value) -> Result<()> {
         self.manager
             .send(CastMessage {
-                namespace: namespace.to_string(),
-                source: SENDER_ID.to_string(),
-                destination: destination.to_string(),
+                namespace: namespace.to_owned(),
+                source: SENDER_ID.to_owned(),
+                destination: destination.to_owned(),
                 payload: CastMessagePayload::String(payload.to_string()),
             })
             .map_err(|e| anyhow!("sending cast message: {e}"))
@@ -333,14 +333,14 @@ pub struct ChannelControl {
 impl ChannelControl {
     pub fn spawn(channel: MirrorChannel, events: UnboundedSender<ChannelEvent>) -> Self {
         let stop = Arc::new(AtomicBool::new(false));
-        let stop_flag = stop.clone();
+        let stop_flag = Arc::clone(&stop);
         #[allow(
             clippy::expect_used,
             reason = "spawning a thread only fails on OS resource exhaustion, which is unrecoverable"
         )]
         let handle = thread::Builder::new()
             .name("mirror-channel".into())
-            .spawn(move || channel.run(stop_flag, events))
+            .spawn(move || channel.run(&stop_flag, &events))
             .expect("failed to spawn mirror-channel thread");
         Self {
             stop,

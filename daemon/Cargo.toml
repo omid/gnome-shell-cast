@@ -8,7 +8,10 @@ description = "Casts the GNOME desktop (screen or window) to Chromecast devices;
 [dependencies]
 aes = "0.9"
 anyhow = "1"
-ashpd = { version = "0.13", default-features = false, features = ["screencast", "tokio"] }
+ashpd = { version = "0.13", default-features = false, features = [
+    "screencast",
+    "tokio",
+] }
 ctr = "0.10"
 env_logger = "0.11"
 futures-util = { version = "0.3", default-features = false }
@@ -42,48 +45,54 @@ strip = true
 [lints.rust]
 unsafe_code = "forbid"
 rust_2018_idioms = { level = "deny", priority = -1 }
+## Flags code that is not edition-2024-ready. Inert on crates already on 2024,
+## so it is effectively a nag for any crate still left behind on an older edition.
+## It cannot assert the *declared* edition; no Clippy lint can.
+rust_2024_compatibility = { level = "warn", priority = -1 }
 nonstandard_style = { level = "deny", priority = -1 }
 future_incompatible = { level = "deny", priority = -1 }
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(test)'] }
+unused_qualifications = "warn"
+unused_lifetimes = "warn"
+unused_macro_rules = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+ambiguous_negative_literals = "warn"
+unit_bindings = "warn"
 
 [lints.clippy]
-pedantic = { level = "warn", priority = -1 }
-cargo = { level = "warn", priority = -1 }
-correctness = { level = "warn", priority = -1 }
+## groups — never lower a group below its default level.
+## `correctness` is deny-by-default: setting it to "warn" downgrades it.
+correctness = { level = "deny", priority = -1 }
 suspicious = { level = "warn", priority = -1 }
 perf = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
 
+## group opt-outs
 cargo_common_metadata = "allow"
-similar_names = "allow"
 multiple_crate_versions = "allow"
-option_option = "warn"
-wildcard_imports = "warn"
+similar_names = "allow"
 
-# The daemon is largely a byte-exact port of Chromium's Cast Streaming
-# (RTP/RTCP/crypto in src/mirror). There, slice indexing, intentional integer
-# truncation and wrapping counter arithmetic are the correct expression of the
-# wire format and match the reference implementation line for line; rewriting
-# them as checked/`.get()` code would make the port *harder* to audit. These
-# lints are therefore allowed rather than fought. Correctness-critical lints
-# (unwrap/expect/panic, format args, the rustc groups) stay enforced below.
-missing_docs_in_private_items = "allow"
-missing_panics_doc = "allow"
-missing_errors_doc = "allow"
-cast_possible_truncation = "allow"
-cast_sign_loss = "allow"
-cast_possible_wrap = "allow"
-cast_precision_loss = "allow"
-indexing_slicing = "allow"
-arithmetic_side_effects = "allow"
-float_arithmetic = "allow"
-string_slice = "allow"
-needless_pass_by_value = "allow"
-too_many_lines = "allow"
-cognitive_complexity = "allow"
-# zbus `#[interface]` methods must be `async fn` even when they don't await.
-unused_async = "allow"
+## escalations (the rest of `pedantic` stays at warn; `make clippy` denies warnings)
+uninlined_format_args = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
 
-## restrictions kept enforced
+## restrictions — not part of any group above, so each must be listed.
+## Deliberately NOT enabled, because they have no test escape hatch in Clippy
+## (no `Conf`/`is_in_test` check) and Cargo's `[lints]` table cannot be scoped to
+## a single target, so they would fire in test code:
+##   panic_in_result_fn — also flags assert!/assert_eq!/assert_ne! inside any fn
+##                        returning Result, i.e. every `#[test] fn t() -> Result<..>`.
+##   unreachable        — used in test assertions.
+## Production coverage for these comes from `panic`/`unwrap_used`/`expect_used`
+## (which DO honour the allow-*-in-tests keys in clippy.toml) plus unwrap_in_result.
+## To enforce them for non-test code only, a crate root can opt in with
+## `#![cfg_attr(not(test), deny(clippy::panic_in_result_fn))]`.
 unseparated_literal_suffix = "warn"
 needless_raw_strings = "warn"
 semicolon_inside_block = "warn"
@@ -93,13 +102,33 @@ assigning_clones = "warn"
 if_then_some_else_none = "warn"
 else_if_without_else = "warn"
 impl_trait_in_params = "warn"
+indexing_slicing = "warn"
+string_slice = "warn"
 iter_over_hash_type = "warn"
-# Would require exhaustive matches on `#[non_exhaustive]` external enums
-# (gstreamer `MessageView`, mdns-sd `ServiceEvent`), which is impossible.
-wildcard_enum_match_arm = "allow"
-# Payload-type / port constants read naturally in decimal even in `|` exprs.
-decimal_bitwise_operands = "allow"
-uninlined_format_args = "deny"
-unwrap_used = "deny"
-panic = "deny"
-expect_used = "deny"
+wildcard_enum_match_arm = "warn"
+arithmetic_side_effects = "warn"
+float_arithmetic = "warn"
+cognitive_complexity = "warn"
+excessive_nesting = "warn"
+dbg_macro = "warn"
+exit = "warn"
+mem_forget = "warn"
+integer_division = "warn"
+modulo_arithmetic = "warn"
+lossy_float_literal = "warn"
+clone_on_ref_ptr = "warn"
+str_to_string = "warn"
+rc_buffer = "warn"
+rc_mutex = "warn"
+try_err = "warn"
+infinite_loop = "warn"
+verbose_file_reads = "warn"
+filetype_is_file = "warn"
+pathbuf_init_then_push = "warn"
+string_lit_chars_any = "warn"
+
+## nursery — curated, low-false-positive picks only.
+redundant_clone = "warn"
+use_self = "warn"
+significant_drop_tightening = "warn"
+large_stack_frames = "warn"

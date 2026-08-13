@@ -41,19 +41,15 @@ pub struct VolumeControl {
 impl VolumeControl {
     /// Starts the worker. `on_level` reports the receiver's volume (0.0-1.0) on
     /// the initial read and after each change, for the daemon to push to the slider.
-    pub fn start<F: Fn(f32) + Send + 'static>(
-        addr: IpAddr,
-        port: u16,
-        on_level: F,
-    ) -> VolumeControl {
+    pub fn start<F: Fn(f32) + Send + 'static>(addr: IpAddr, port: u16, on_level: F) -> Self {
         let (tx, rx) = channel();
         let stop = Arc::new(AtomicBool::new(false));
-        let stop_flag = stop.clone();
+        let stop_flag = Arc::clone(&stop);
         let handle = thread::Builder::new()
             .name("cast-volume".into())
             .spawn(move || run(addr, port, &rx, &stop_flag, &on_level))
             .ok();
-        VolumeControl { tx, stop, handle }
+        Self { tx, stop, handle }
     }
 
     /// A handle for requesting volume levels; sending never blocks.
@@ -211,9 +207,9 @@ fn connect(addr: IpAddr, port: u16) -> Result<Manager> {
 fn send(manager: &Manager, namespace: &str, destination: &str, payload: &Value) -> Result<()> {
     manager
         .send(CastMessage {
-            namespace: namespace.to_string(),
-            source: SENDER_ID.to_string(),
-            destination: destination.to_string(),
+            namespace: namespace.to_owned(),
+            source: SENDER_ID.to_owned(),
+            destination: destination.to_owned(),
             payload: CastMessagePayload::String(payload.to_string()),
         })
         .map_err(|e| anyhow!("sending cast message: {e}"))

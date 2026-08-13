@@ -29,8 +29,8 @@ impl Default for StreamSettings {
 }
 
 impl StreamSettings {
-    pub fn from_options(options: &HashMap<String, OwnedValue>) -> Self {
-        let get_i32 = |key: &str| options.get(key).and_then(|v| i32::try_from(v).ok());
+    pub fn from_options(mut options: HashMap<String, OwnedValue>) -> Self {
+        let mut get_i32 = |key: &str| options.remove(key).and_then(|v| i32::try_from(&v).ok());
 
         let mut settings = Self::default();
         if let (Some(w), Some(h)) = (get_i32("width"), get_i32("height"))
@@ -154,7 +154,7 @@ pub fn launch_description(
 pub fn build_audio_stream(monitor: &str) -> Result<(gst::Pipeline, &'static str)> {
     let (encode, content_type) = if gst::ElementFactory::find("lamemp3enc").is_some() {
         (
-            "lamemp3enc target=bitrate bitrate=128 cbr=true".to_string(),
+            "lamemp3enc target=bitrate bitrate=128 cbr=true".to_owned(),
             "audio/mpeg",
         )
     } else {
@@ -252,7 +252,7 @@ mod tests {
 
     #[test]
     fn default_settings_from_empty_options() {
-        let settings = StreamSettings::from_options(&HashMap::new());
+        let settings = StreamSettings::from_options(HashMap::new());
         assert_eq!(settings.size, Some((1280, 720)));
         assert_eq!(settings.fps, 20);
         assert_eq!(settings.bitrate_kbps, 4000);
@@ -261,9 +261,9 @@ mod tests {
     #[test]
     fn options_are_clamped() {
         let mut options = HashMap::new();
-        options.insert("fps".to_string(), OwnedValue::from(500_i32));
-        options.insert("bitrate-kbps".to_string(), OwnedValue::from(1_i32));
-        let settings = StreamSettings::from_options(&options);
+        options.insert("fps".to_owned(), OwnedValue::from(500_i32));
+        options.insert("bitrate-kbps".to_owned(), OwnedValue::from(1_i32));
+        let settings = StreamSettings::from_options(options);
         assert_eq!(settings.fps, 60);
         assert_eq!(settings.bitrate_kbps, 1000);
     }
@@ -271,10 +271,10 @@ mod tests {
     #[test]
     fn high_resolution_and_bitrate_pass_through() {
         let mut options = HashMap::new();
-        options.insert("width".to_string(), OwnedValue::from(3840_i32));
-        options.insert("height".to_string(), OwnedValue::from(2160_i32));
-        options.insert("bitrate-kbps".to_string(), OwnedValue::from(30_000_i32));
-        let settings = StreamSettings::from_options(&options);
+        options.insert("width".to_owned(), OwnedValue::from(3840_i32));
+        options.insert("height".to_owned(), OwnedValue::from(2160_i32));
+        options.insert("bitrate-kbps".to_owned(), OwnedValue::from(30_000_i32));
+        let settings = StreamSettings::from_options(options);
         assert_eq!(settings.size, Some((3840, 2160)));
         assert_eq!(settings.bitrate_kbps, 30_000);
     }
@@ -282,10 +282,10 @@ mod tests {
     #[test]
     fn absurd_size_and_bitrate_are_capped() {
         let mut options = HashMap::new();
-        options.insert("width".to_string(), OwnedValue::from(100_000_i32));
-        options.insert("height".to_string(), OwnedValue::from(100_000_i32));
-        options.insert("bitrate-kbps".to_string(), OwnedValue::from(999_999_i32));
-        let settings = StreamSettings::from_options(&options);
+        options.insert("width".to_owned(), OwnedValue::from(100_000_i32));
+        options.insert("height".to_owned(), OwnedValue::from(100_000_i32));
+        options.insert("bitrate-kbps".to_owned(), OwnedValue::from(999_999_i32));
+        let settings = StreamSettings::from_options(options);
         assert_eq!(settings.size, Some((7680, 4320)));
         assert_eq!(settings.bitrate_kbps, 60_000);
     }

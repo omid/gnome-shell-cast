@@ -201,18 +201,18 @@ impl MediaSender {
         streams: Vec<StreamConfig>,
         chunks: ChunkReceiver,
         request_keyframe: Box<dyn Fn() + Send>,
-    ) -> MediaSender {
+    ) -> Self {
         let stop = Arc::new(AtomicBool::new(false));
-        let stop_flag = stop.clone();
+        let stop_flag = Arc::clone(&stop);
         #[allow(
             clippy::expect_used,
             reason = "spawning a thread only fails on OS resource exhaustion, which is unrecoverable"
         )]
         let handle = thread::Builder::new()
             .name("mirror-sender".into())
-            .spawn(move || run(socket, streams, chunks, request_keyframe, stop_flag))
+            .spawn(move || run(&socket, &streams, &chunks, &*request_keyframe, &stop_flag))
             .expect("failed to spawn mirror-sender thread");
-        MediaSender {
+        Self {
             stop,
             handle: Some(handle),
         }
@@ -232,11 +232,11 @@ impl Drop for MediaSender {
 }
 
 fn run(
-    socket: UdpSocket,
-    configs: Vec<StreamConfig>,
-    chunks: ChunkReceiver,
-    request_keyframe: Box<dyn Fn() + Send>,
-    stop: Arc<AtomicBool>,
+    socket: &UdpSocket,
+    configs: &[StreamConfig],
+    chunks: &ChunkReceiver,
+    request_keyframe: &dyn Fn(),
+    stop: &AtomicBool,
 ) {
     let mut streams: Vec<Stream> = configs.iter().map(Stream::new).collect();
     if socket.set_nonblocking(true).is_err() {
@@ -264,7 +264,7 @@ fn run(
                         info!("sending first video frame to the receiver");
                         video_started_at = Some(Instant::now());
                     }
-                    let dropped = send_frame(&socket, stream, &chunk);
+                    let dropped = send_frame(socket, stream, &chunk);
                     if dropped > 0 && !reported_drops {
                         warn!(
                             "the network would not take {dropped} packet(s) of a frame; \
@@ -309,7 +309,7 @@ fn run(
                     }
                 }
                 for nack in &events.nacks {
-                    retransmit(&socket, stream, nack);
+                    retransmit(socket, stream, nack);
                 }
                 if events.picture_loss && stream.kind == StreamKind::Video {
                     debug!("receiver reported picture loss, forcing a key frame");

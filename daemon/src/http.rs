@@ -89,7 +89,7 @@ fn start_http_server<H: ServerHandler>(
     info!("{log_msg} on port {port}");
 
     let stop = Arc::new(AtomicBool::new(false));
-    let stop_flag = stop.clone();
+    let stop_flag = Arc::clone(&stop);
     let route_token = token.clone();
     let handler = Arc::new(handler);
 
@@ -144,9 +144,11 @@ fn start_http_server<H: ServerHandler>(
     })
 }
 
-pub fn serve(dir: PathBuf) -> Result<HlsServer> {
+pub fn serve(dir: &Path) -> Result<HlsServer> {
     start_http_server(
-        FileServerHandler { dir: dir.clone() },
+        FileServerHandler {
+            dir: dir.to_path_buf(),
+        },
         "hls-http",
         &format!("serving {} on port", dir.display()),
     )
@@ -194,10 +196,10 @@ impl AudioBroadcaster {
 
     /// Sends a chunk to every client. A full queue drops the chunk (a brief
     /// glitch) rather than stalling the encoder; a gone client is removed.
-    pub fn push(&self, chunk: Chunk) {
+    pub fn push(&self, chunk: &Chunk) {
         self.clients.lock().retain(|client| {
             !matches!(
-                client.try_send(chunk.clone()),
+                client.try_send(Arc::clone(chunk)),
                 Err(TrySendError::Disconnected(_))
             )
         });

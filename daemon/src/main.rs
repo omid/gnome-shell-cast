@@ -96,7 +96,7 @@ impl SharedState {
     }
 
     pub fn set_status(&self, state: &str, device_id: &str) {
-        *self.status.lock() = (state.to_string(), device_id.to_string());
+        *self.status.lock() = (state.to_owned(), device_id.to_owned());
         self.touch();
         let _ = self.events.send(Event::StateChanged);
     }
@@ -107,8 +107,8 @@ impl SharedState {
 
     pub fn set_details(&self, transport: &str, codec: &str, receiver_codecs: Vec<String>) {
         *self.details.lock() = CastDetails {
-            transport: transport.to_string(),
-            codec: codec.to_string(),
+            transport: transport.to_owned(),
+            codec: codec.to_owned(),
             receiver_codecs,
         };
     }
@@ -122,7 +122,7 @@ impl SharedState {
     }
 
     pub fn set_last_event(&self, kind: &str, message: &str) {
-        *self.last_event.lock() = (kind.to_string(), message.to_string());
+        *self.last_event.lock() = (kind.to_owned(), message.to_owned());
     }
 
     pub fn last_event(&self) -> (String, String) {
@@ -158,10 +158,12 @@ struct ShellCast {
 
 #[zbus::interface(name = "org.gnome.ShellCast1")]
 impl ShellCast {
-    async fn list_devices(&self) -> Vec<(String, String, String, u32)> {
+    fn list_devices(&self) -> Vec<(String, String, String, u32)> {
         self.state.touch();
-        let devices = self.state.devices.lock();
-        let mut list: Vec<_> = devices
+        let mut list: Vec<_> = self
+            .state
+            .devices
+            .lock()
             .values()
             .map(|d| {
                 (
@@ -176,14 +178,14 @@ impl ShellCast {
         list
     }
 
-    async fn get_status(&self) -> (String, String) {
+    fn get_status(&self) -> (String, String) {
         self.state.touch();
         self.state.status()
     }
 
     /// (transport, video codec, codecs the receiver accepted) for the active
     /// cast; all empty when idle. Shown as extra detail in the menu.
-    async fn get_details(&self) -> (String, String, Vec<String>) {
+    fn get_details(&self) -> (String, String, Vec<String>) {
         self.state.touch();
         let d = self.state.details();
         (d.transport, d.codec, d.receiver_codecs)
@@ -192,20 +194,20 @@ impl ShellCast {
     /// How the last session ended: (kind, message), kind ∈ ""|"error"|"ended".
     /// The extension shows an error window for "error" and a notification for
     /// "ended" (device disconnected).
-    async fn get_last_event(&self) -> (String, String) {
+    fn get_last_event(&self) -> (String, String) {
         self.state.touch();
         self.state.last_event()
     }
 
     /// The daemon's own version, so the extension can detect a daemon that is
     /// older (or newer) than the version it was built against.
-    async fn get_version(&self) -> String {
-        env!("CARGO_PKG_VERSION").to_string()
+    fn get_version(&self) -> String {
+        env!("CARGO_PKG_VERSION").to_owned()
     }
 
-    async fn start_cast(
+    fn start_cast(
         &self,
-        device_id: String,
+        device_id: &str,
         source: u32,
         options: HashMap<String, OwnedValue>,
     ) -> zbus::fdo::Result<()> {
@@ -226,7 +228,7 @@ impl ShellCast {
         let device = {
             let devices = self.state.devices.lock();
             let device = devices
-                .get(&device_id)
+                .get(device_id)
                 .ok_or_else(|| zbus::fdo::Error::Failed(format!("unknown device: {device_id}")))?;
             if !device.has_video() && source != capture::SourceKind::Audio {
                 return Err(zbus::fdo::Error::Failed(format!(
@@ -237,7 +239,7 @@ impl ShellCast {
             device.clone()
         };
 
-        let settings = StreamSettings::from_options(&options);
+        let settings = StreamSettings::from_options(options);
         info!(
             "start cast to {} ({}) with {settings:?}",
             device.name, device.addr
@@ -253,7 +255,7 @@ impl ShellCast {
         let previous = self.state.active_task.lock().take();
         let generation = self.state.generation.fetch_add(1, Ordering::SeqCst) + 1;
 
-        let state = self.state.clone();
+        let state = Arc::clone(&self.state);
         let task = tokio::spawn(async move {
             // Here rather than in the D-Bus call, to keep StartCast prompt.
             if let Some(previous) = previous {
@@ -265,7 +267,7 @@ impl ShellCast {
         Ok(())
     }
 
-    async fn stop_cast(&self) {
+    fn stop_cast(&self) {
         self.state.touch();
         if let Some(stop) = self.state.active.lock().take() {
             let _ = stop.send(());
@@ -274,13 +276,13 @@ impl ShellCast {
 
     /// The receiver's volume (0.0-1.0), last known value when idle; initialises
     /// the slider.
-    async fn get_volume(&self) -> f64 {
+    fn get_volume(&self) -> f64 {
         self.state.touch();
         self.state.cast_volume()
     }
 
     /// Sets the active receiver's volume (0.0-1.0); a no-op when idle.
-    async fn set_volume(&self, level: f64) {
+    fn set_volume(&self, level: f64) {
         self.state.touch();
         self.state.request_volume(level.clamp(0.0, 1.0));
     }
@@ -332,7 +334,7 @@ async fn main() -> Result<()> {
         .serve_at(
             OBJECT_PATH,
             ShellCast {
-                state: state.clone(),
+                state: Arc::clone(&state),
             },
         )?
         .build()
@@ -340,14 +342,14 @@ async fn main() -> Result<()> {
     info!("listening on {BUS_NAME}");
 
     // mDNS discovery runs for the daemon's whole lifetime (best-effort).
-    discovery::start(state.clone());
+    discovery::start(Arc::clone(&state));
 
     // Forward internal events to D-Bus signals.
     let iface = connection
         .object_server()
         .interface::<_, ShellCast>(OBJECT_PATH)
         .await?;
-    let signal_state = state.clone();
+    let signal_state = Arc::clone(&state);
     let (bus_dead_tx, mut bus_dead_rx) = oneshot::channel::<()>();
     tokio::spawn(async move {
         while let Some(event) = events_rx.recv().await {
