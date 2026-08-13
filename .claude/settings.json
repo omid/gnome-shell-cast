@@ -1,5 +1,58 @@
 {
   "worktree": {
     "bgIsolation": "none"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in *.rs) rustfmt --edition 2024 \"$f\" ;; *.js|*.mjs|*.css) npx prettier --write \"$f\" ;; esac; } 2>/dev/null || true",
+            "statusMessage": "Formatting",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Bash(cargo build *)",
+      "Bash(cargo check *)",
+      "Bash(cargo clippy *)",
+      "Bash(cargo fmt *)",
+      "Bash(cargo test *)",
+      "Bash(make check *)",
+      "Bash(make clippy *)",
+      "Bash(make eslint *)",
+      "Bash(make fmt *)",
+      "Bash(make shexli *)",
+      "Bash(make test *)",
+      "Bash(make translations *)",
+      "Bash(make update-dry-run *)",
+      "Bash(npx eslint *)",
+      "Bash(npx prettier *)",
+      "Bash(msgattrib *)",
+      "Bash(msgfmt *)",
+      "Bash(msggrep *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git status *)",
+      "Bash(journalctl --user *)",
+      "Bash(gnome-extensions info *)",
+      "Bash(gnome-extensions list *)",
+      "Bash(gnome-shell --version)",
+      "Bash(gst-inspect-1.0 *)",
+      "Bash(pgrep *)",
+      "Bash(pw-dump)",
+      "Bash(busctl --user call org.gnome.ShellCast /org/gnome/ShellCast org.gnome.ShellCast1 GetDetails)",
+      "Bash(busctl --user call org.gnome.ShellCast /org/gnome/ShellCast org.gnome.ShellCast1 GetLastEvent)",
+      "Bash(busctl --user call org.gnome.ShellCast /org/gnome/ShellCast org.gnome.ShellCast1 GetStatus)",
+      "Bash(busctl --user call org.gnome.ShellCast /org/gnome/ShellCast org.gnome.ShellCast1 GetVersion)",
+      "Bash(busctl --user call org.gnome.ShellCast /org/gnome/ShellCast org.gnome.ShellCast1 ListDevices)"
+    ]
   }
 }
