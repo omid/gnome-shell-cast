@@ -45,6 +45,15 @@ waiting to be told again.
 - **Keep sources plain ASCII unless a character earns its place.** Typographic
   punctuation invites mojibake, and in a translatable string it silently edits
   the msgid.
+- **No defensive checks around guaranteed shell API.** `Main.panel.closeQuickSettings?.()`
+  and `typeof this.beep === 'function'` are rejection material: if the method
+  exists in every version in `metadata.json`, call it directly. These creep in
+  from writing one file to span several shell releases - target a single version
+  and use the [port guide](https://gjs.guide/extensions/#upgrading) if you really
+  need more. See
+  [avoid unnecessary checks](https://gjs.guide/extensions/review-guidelines/best-practices.html#avoid-unnecessary-checks).
+  `?.` on *your own* nullable fields is fine - the rule is about second-guessing
+  the shell.
 - **`constructor()`, never `_init()`.**
 
 ## Rules this project has already been bitten by

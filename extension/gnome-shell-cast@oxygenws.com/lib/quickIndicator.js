@@ -69,8 +69,7 @@ const CastToggle = GObject.registerClass(
                 setIcon: createToggleIconUpdater(this, icons),
                 onCastChanged: hooks.onCastChanged,
                 onVolume: hooks.onVolume,
-                // Optional call: losing it only leaves the panel open.
-                closeMenu: () => Main.panel.closeQuickSettings?.(),
+                closeMenu: () => Main.panel.closeQuickSettings(),
             });
 
             this.connect('clicked', () => {
