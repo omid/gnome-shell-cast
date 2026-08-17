@@ -1,156 +1,163 @@
-# SOME DESCRIPTIVE TITLE.
-# Copyright (C) YEAR GNOME Shell Cast contributors
+# French translation for GNOME Shell Cast.
 # This file is distributed under the same license as the GNOME Shell Cast package.
-# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
-#, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
 "POT-Creation-Date: 2026-08-14 09:26+0200\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"PO-Revision-Date: 2026-08-14 10:00+0200\n"
+"Last-Translator: \n"
+"Language-Team: French <https://github.com/omid/gnome-shell-cast>\n"
+"Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:176
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:57
 msgid "Cast"
-msgstr ""
+msgstr "Cast"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:220
 msgid "Stop casting"
-msgstr ""
+msgstr "Arrêter la diffusion"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:228
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:25
 msgid "Preferences"
-msgstr ""
+msgstr "Préférences"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:285
 #, javascript-format
 msgid "%s (casting)"
-msgstr ""
+msgstr "%s (diffusion en cours)"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:293
 msgid "Searching for Chromecast devices…"
-msgstr ""
+msgstr "Recherche d’appareils Chromecast…"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:342
 msgid "Cast screen"
-msgstr ""
+msgstr "Diffuser l’écran"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:347
 msgid "Choose what to cast"
-msgstr ""
+msgstr "Choisir ce qui est diffusé"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:360
 msgid "Cast streaming"
-msgstr ""
+msgstr "Cast Streaming"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:360
 msgid "Audio stream"
-msgstr ""
+msgstr "Flux audio"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:361
 msgid "HLS"
-msgstr ""
+msgstr "HLS"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:365
 #, javascript-format
 msgid "Receiver supports: %s"
-msgstr ""
+msgstr "Le récepteur prend en charge : %s"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:424
 msgid "The cast failed."
-msgstr ""
+msgstr "La diffusion a échoué."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:431
 #, javascript-format
 msgid "The device ended the session (%s)."
-msgstr ""
+msgstr "L’appareil a mis fin à la session (%s)."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:432
 msgid "The device ended the session."
-msgstr ""
+msgstr "L’appareil a mis fin à la session."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:480
 #: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:62
 msgid "GNOME Shell Cast"
-msgstr ""
+msgstr "GNOME Shell Cast"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:55
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:16
 msgid "Set up the cast daemon"
-msgstr ""
+msgstr "Configurer le service de diffusion"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:57
 msgid ""
 "The cast daemon isn’t installed yet. Open the menu and click “Set up the "
 "cast daemon” to install it."
 msgstr ""
+"Le service de diffusion n’est pas encore installé. Ouvrez le menu et cliquez "
+"sur « Configurer le service de diffusion » pour l’installer."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:64
 msgid "Update the cast daemon (v%old → v%new)"
-msgstr ""
+msgstr "Mettre à jour le service de diffusion (v%old → v%new)"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/daemonSetup.js:68
 msgid ""
 "The cast daemon (v%old) doesn’t match this version of the extension (needs "
 "v%new). Open the menu to update it."
 msgstr ""
+"Le service de diffusion (v%old) ne correspond pas à cette version de "
+"l’extension (v%new requise). Ouvrez le menu pour le mettre à jour."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:16
 msgid "Casting failed"
-msgstr ""
+msgstr "Échec de la diffusion"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:18
 msgid "If this keeps happening, please report it (that helps get it fixed)."
-msgstr ""
+msgstr "Si cela se reproduit, veuillez le signaler (cela aide à le corriger)."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:31
 msgid ""
 "The report will include this error, the version, and a reminder to attach "
 "logs."
 msgstr ""
+"Le rapport inclura cette erreur, la version et un rappel pour joindre les "
+"journaux."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:36
 msgid "Copy details"
-msgstr ""
+msgstr "Copier les détails"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:37
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:44
 msgid "Close"
-msgstr ""
+msgstr "Fermer"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:122
 msgid "Report an issue"
-msgstr ""
+msgstr "Signaler un problème"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:47
 msgid "Copied! Paste it into a new issue."
-msgstr ""
+msgstr "Copié. Collez-le dans un nouveau rapport."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:26
 #, javascript-format
 msgid "%s volume"
-msgstr ""
+msgstr "Volume de %s"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:16
 msgid "Update the cast daemon"
-msgstr ""
+msgstr "Mettre à jour le service de diffusion"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:19
 msgid ""
 "A newer version of the extension needs a matching daemon (installed v%old → "
 "needs v%new). Run the command below to update it (nothing runs as root)."
 msgstr ""
+"Une version plus récente de l’extension nécessite un service correspondant "
+"(v%old installée → v%new requise). Exécutez la commande ci-dessous pour le "
+"mettre à jour (rien ne s’exécute en tant que root)."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:26
 msgid ""
@@ -158,128 +165,137 @@ msgid ""
 "through extensions.gnome.org, so install it once with the command below. It "
 "downloads a checksum-verified binary to ~/.local/bin (nothing runs as root)."
 msgstr ""
+"GNOME Shell Cast a besoin d’un petit service en arrière-plan. Il ne peut pas "
+"être distribué via extensions.gnome.org, installez-le donc une fois avec la "
+"commande ci-dessous. Elle télécharge un binaire vérifié par somme de "
+"contrôle dans ~/.local/bin (rien ne s’exécute en tant que root)."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:41
 msgid "Copy the command, then paste it into a terminal and run it."
-msgstr ""
+msgstr "Copiez la commande, collez-la dans un terminal puis exécutez-la."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:121
 msgid "Homepage"
-msgstr ""
+msgstr "Site web"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:47
 msgid "Copy command"
-msgstr ""
+msgstr "Copier la commande"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:54
 msgid "Copied! Paste it into a terminal and run it."
-msgstr ""
+msgstr "Copié. Collez-la dans un terminal puis exécutez-la."
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "Native"
-msgstr ""
+msgstr "Native"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "4K (2160p)"
-msgstr ""
+msgstr "4K (2160p)"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "1440p"
-msgstr ""
+msgstr "1440p"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "1080p"
-msgstr ""
+msgstr "1080p"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
 msgid "720p"
-msgstr ""
+msgstr "720p"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:22
 msgid "Top bar"
-msgstr ""
+msgstr "Barre supérieure"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:22
 msgid "Quick settings"
-msgstr ""
+msgstr "Paramètres rapides"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:31
 msgid "Stream quality"
-msgstr ""
+msgstr "Qualité du flux"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
 msgid "Applied the next time a cast is started"
-msgstr ""
+msgstr "Appliqué au démarrage de la prochaine diffusion"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:14
 msgid "Maximum resolution"
-msgstr ""
+msgstr "Résolution maximale"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:38
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr ""
+"Au-delà de 1080p, un encodeur matériel et un débit adapté sont nécessaires"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
 msgid "Framerate"
-msgstr ""
+msgstr "Fréquence d’images"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:49
 msgid "Frames per second"
-msgstr ""
+msgstr "Images par seconde"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:60
 msgid "Video bitrate"
-msgstr ""
+msgstr "Débit vidéo"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
-msgstr ""
+msgstr "kbit/s : environ 4000 pour 720p, 8000 pour 1080p, 30000 pour 4K"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
 msgid "Menu"
-msgstr ""
+msgstr "Menu"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:39
 msgid "Indicator location"
-msgstr ""
+msgstr "Emplacement de l’icône"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr ""
+"Afficher l’icône de diffusion dans la barre supérieure ou dans le menu des "
+"paramètres rapides"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:86
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:30
 msgid "Show cast details"
-msgstr ""
+msgstr "Afficher les détails de la diffusion"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:87
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:31
 msgid "Show the transport and codecs under the active device while casting"
 msgstr ""
+"Afficher le transport et les codecs sous l’appareil actif pendant la "
+"diffusion"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:99
 msgid "About"
-msgstr ""
+msgstr "À propos"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:110
 #, javascript-format
 msgid "Version %s"
-msgstr ""
+msgstr "Version %s"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
 msgid "Help"
-msgstr ""
+msgstr "Aide"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:126
 msgid "Common problems and their fixes"
-msgstr ""
+msgstr "Problèmes courants et leurs solutions"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
 msgid "Troubleshooting guide"
-msgstr ""
+msgstr "Guide de dépannage"
 
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
 msgid ""
@@ -287,23 +303,31 @@ msgid ""
 "the captured size. Above 1080p, raise the bitrate to match and expect a "
 "hardware encoder to be needed for a smooth stream."
 msgstr ""
+"Réduire la vidéo capturée à cette taille avant l’encodage. « native » "
+"conserve la taille capturée. Au-delà de 1080p, augmentez le débit en "
+"conséquence et prévoyez qu’un encodeur matériel sera nécessaire pour un flux "
+"fluide."
 
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:20
 msgid "Stream framerate"
-msgstr ""
+msgstr "Fréquence d’images du flux"
 
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:25
 msgid "Video bitrate in kbit/s"
-msgstr ""
+msgstr "Débit vidéo en kbit/s"
 
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:26
 msgid ""
 "Roughly 4000 for 720p, 8000 for 1080p, 16000 for 1440p and 30000 for 4K; "
 "more for fast-moving content."
 msgstr ""
+"Environ 4000 pour 720p, 8000 pour 1080p, 16000 pour 1440p et 30000 pour 4K ; "
+"davantage pour un contenu très animé."
 
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:40
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."
 msgstr ""
+"Où afficher l’icône de diffusion : dans la barre supérieure ou dans le menu "
+"des paramètres rapides."

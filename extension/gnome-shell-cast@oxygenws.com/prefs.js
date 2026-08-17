@@ -22,7 +22,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         const locationLabels = [_('Top bar'), _('Quick settings')];
 
         const page = new Adw.PreferencesPage({
-            title: _('Settings'),
+            title: _('Preferences'),
             icon_name: 'preferences-system-symbolic',
         });
         window.add(page);

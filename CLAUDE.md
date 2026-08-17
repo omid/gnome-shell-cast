@@ -38,7 +38,8 @@ guidelines?" from those, not from memory.
 - **Comments are minimal**: one line, only where the code cannot say it. No
   block comments restating what the next line does.
 - **New user-visible strings go through `_()`**, then `make translations`, then
-  fill in `de_DE.po` and `fa_IR.po` — do not leave them empty.
+  fill in every `po/*.po` — do not leave them empty. The `translations` skill
+  covers picking wording that matches the rest of the GNOME desktop.
 - **Public GNOME Shell API only.** No `_private` members of shell objects; when
   the only route is a private one, guard it so a failure cannot abort
   `enable()` and cost the user the whole extension.

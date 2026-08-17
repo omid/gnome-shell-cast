@@ -67,7 +67,7 @@ waiting to be told again.
 - **`prefs.js` runs in a separate GTK process.** Importing `Main`, `St`,
   `Clutter` or `Shell` there is a rejection.
 - **User-visible strings go through `_()`**, then `make translations`, then fill
-  in `de_DE.po` and `fa_IR.po`. Watch apostrophes: a `'` vs `’` change edits the
+  in every `po/*.po`. Watch apostrophes: a `'` vs `’` change edits the
   msgid and silently fuzzies the entry, which drops it at compile time.
 - **`gnome-extensions disable/enable` does not reload changed JS** - the shell
   caches ES modules per process. See the `install-verify` skill.

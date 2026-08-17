@@ -1,6 +1,8 @@
 # Translations for GNOME Shell Cast
 
-This guide explains how to manage translations using gettext.
+This guide explains how to manage translations using gettext. For choosing the
+*wording* — matching the terms the rest of the GNOME desktop already uses — see
+the `translations` skill and `extension/gnome-shell-cast@oxygenws.com/po/README.md`.
 
 ## Quick Start
 
@@ -12,8 +14,8 @@ make extract-translations
 ### Initialize a new language (creates .po file from .pot template)
 ```bash
 msginit -i extension/gnome-shell-cast@oxygenws.com/po/gnome-shell-cast@oxygenws.com.pot \
-        -o extension/gnome-shell-cast@oxygenws.com/po/de_DE.po \
-        -l de_DE --no-translator
+        -o extension/gnome-shell-cast@oxygenws.com/po/it.po \
+        -l it --no-translator
 ```
 
 ### Update existing translations when strings change
@@ -24,9 +26,8 @@ make update-translations
 ### Edit translations
 Edit the `.po` files in the `extension/gnome-shell-cast@oxygenws.com/po/` directory using any text editor or a dedicated translation tool like Poedit:
 ```bash
-extension/gnome-shell-cast@oxygenws.com/po/de_DE.po
-extension/gnome-shell-cast@oxygenws.com/po/fa_IR.po
-extension/gnome-shell-cast@oxygenws.com/po/en_US.po
+extension/gnome-shell-cast@oxygenws.com/po/de.po
+extension/gnome-shell-cast@oxygenws.com/po/fa.po
 ```
 
 ### Full translation workflow (extract → update)
@@ -84,9 +85,13 @@ Keep the `%s` placeholder in the same position!
 
 ## Current Languages
 
-- ✅ **en_US** - English (United States)
-- ✅ **de_DE** - Deutsch (German - Germany)
-- ✅ **fa_IR** - فارسی (Persian - Iran)
+English is the source language and needs no `.po` file. Thirteen translations
+ship: `ar`, `bg`, `bn`, `de`, `es`, `fa`, `fr`, `hi`, `id`, `pt_BR`, `ru`, `ur`,
+`zh_CN` — all complete.
+
+Files are named after the bare language code unless the regional variants
+genuinely differ (`pt_BR`, `zh_CN`): gettext falls back from `de_AT` to `de`,
+but never sideways to `de_DE`.
 
 ## Translation Tools
 
@@ -103,7 +108,7 @@ Keep the `%s` placeholder in the same position!
 ## Files
 
 - `extension/gnome-shell-cast@oxygenws.com/po/gnome-shell-cast@oxygenws.com.pot` - Translation template
-- `extension/gnome-shell-cast@oxygenws.com/po/*.po` - Language files (de_DE.po, fa_IR.po, en_US.po, etc.)
+- `extension/gnome-shell-cast@oxygenws.com/po/*.po` - Language files (de.po, fa.po, etc.)
 
 ## Makefile Targets
 
