@@ -118,12 +118,14 @@ pub fn launch_description(
         // with raw frames the pipeline drops the oldest instead of buffering
         // them, so the stream falls in quality rather than further behind live.
         // `video_encoder` is the chosen H.264 element (hardware if available).
+        // NV12 for the VA-API encoders, I420 for x264enc; unconstrained,
+        // videoconvert picks Y444 and x264enc emits 4:4:4 no receiver decodes.
         let _ = write!(
             desc,
             "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 resend-last=true \
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
              ! videoconvert ! videoscale ! videorate \
-             ! video/x-raw,framerate={fps}/1{size_caps} \
+             ! video/x-raw,format={{NV12,I420}},framerate={fps}/1{size_caps} \
              ! {video_encoder} ! h264parse ! queue \
              ! hls.video "
         );
@@ -304,6 +306,7 @@ mod tests {
             "x264enc bitrate=4000",
         );
         assert!(desc.contains("width=1280,height=720"));
+        assert!(desc.contains("format={NV12,I420}"));
         assert!(desc.contains("fd=3 path=42"));
         assert!(desc.contains("x264enc bitrate=4000 ! h264parse"));
         assert!(desc.contains("/run/x/stream.m3u8"));

@@ -446,6 +446,8 @@ fn build_pipeline(
     // The video branch exists only when we have both a capture and a chosen
     // encoder (audio-only casts have neither). `video_encoder` already carries
     // its codec, bitrate and low-latency settings and names the element `venc`.
+    // The format must stay a set: VA-API encoders take only NV12, the VPX/AV1
+    // ones only I420, and leaving it open lets videoconvert pick 4:4:4.
     if let (Some(capture), Some(venc)) = (capture, video_encoder) {
         let fps = settings.fps;
         let fd = capture.fd.as_raw_fd();
@@ -455,7 +457,7 @@ fn build_pipeline(
             "pipewiresrc fd={fd} path={node} do-timestamp=true keepalive-time=1000 resend-last=true \
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
              ! videoconvert ! videoscale ! videorate \
-             ! video/x-raw,format=I420,framerate={fps}/1,width={width},height={height},pixel-aspect-ratio=1/1 \
+             ! video/x-raw,format={{NV12,I420}},framerate={fps}/1,width={width},height={height},pixel-aspect-ratio=1/1 \
              ! {venc} ! appsink name=vsink sync=false max-buffers=32 "
         );
     }
