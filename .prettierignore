@@ -1,5 +1,4 @@
 daemon/
-docs/
 package-lock.json
 **/gschemas.compiled
 *.md

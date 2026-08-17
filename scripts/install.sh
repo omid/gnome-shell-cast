@@ -111,7 +111,7 @@ if command -v gst-inspect-1.0 >/dev/null 2>&1; then
         warn "missing GStreamer elements:$missing"
         info "install gst-plugins-good/bad/ugly, gst-libav and pipewire for your distro."
         info "per-distro packages and troubleshooting:"
-        info "  https://github.com/$REPO/blob/main/docs/DEPENDENCIES.md"
+        info "  https://github.com/$REPO/blob/main/TROUBLESHOOTING.md#dependencies"
     else
         info "all required plugins found."
     fi

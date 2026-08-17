@@ -1,8 +1,23 @@
 # Troubleshooting
 
-Problems seen in the wild, what causes them, and how to fix them. If none of
-this helps, please [open an issue](https://github.com/omid/gnome-shell-cast/issues)
-and include the logs from [Collecting logs](#collecting-logs).
+Problems seen in the wild, what causes them, and how to fix them. The daemon
+uses **GStreamer** to encode and **PipeWire** to capture, so a missing plugin or
+package is the single most common cause of a cast that will not start — start
+with [Dependencies](#dependencies) if you have never had a cast work.
+
+If none of this helps, please
+[open an issue](https://github.com/omid/gnome-shell-cast/issues) and include the
+logs from [Collecting logs](#collecting-logs).
+
+| Topic | What's in it |
+|---|---|
+| [Collecting logs](#collecting-logs) | Daemon, extension, and verbose-run log commands |
+| [Dependencies](#dependencies) | What GStreamer/PipeWire pieces are needed, per-distro package lists, and which package fixes which symptom |
+| [Picture](#picture) | Overscan cropping, black screen or break-up, the Chromecast backdrop |
+| [Connection](#connection) | Unreachable routes, the HLS fallback, no devices found, broken pipe on exit |
+| [Audio](#audio) | Silent casts, audio-only receivers, checking for encoders |
+| [Extension](#extension) | A stale panel icon, `INACTIVE` state, a lingering screen-sharing indicator |
+| [Developing](#developing) | Why a JS or daemon change appears to do nothing |
 
 ## Collecting logs
 
@@ -20,6 +35,100 @@ RUST_LOG=debug ~/.local/bin/gnome-shell-cast-daemon
 
 `RUST_LOG=debug` is worth the noise — RTP/RTCP problems are invisible at the
 default level.
+
+---
+
+## Dependencies
+
+> The daemon binary from the [Releases](https://github.com/omid/gnome-shell-cast/releases)
+> is dynamically linked, so these libraries must be present at runtime even if
+> you didn't build from source.
+
+### What's needed
+
+**Runtime (to cast):**
+
+- GStreamer 1.x core and the **base**, **good**, **bad**, and **ugly** plugin sets
+  - `x264enc` (H.264, from *ugly*) - the HLS fallback and a hardware-free H.264 path
+  - `vp8enc` / `vp9enc` (VP8/VP9, from *good*/*vpx*) - Cast Streaming (mirroring)
+  - `av1enc` (aom) or `svtav1enc` (SVT-AV1) - optional AV1 mirroring
+  - an AAC encoder: `fdkaacenc` (*bad*), `avenc_aac` (*libav*), or `faac`
+  - `lamemp3enc` (MP3, from *good*) - preferred for audio-only casts (speakers, smart displays, cast groups); the AAC encoder above is used if it is missing
+  - `opusenc` (Opus audio, from *good*)
+- **PipeWire** and its GStreamer plugin (`pipewiresrc`), plus `xdg-desktop-portal-gnome`
+- `pactl` (for locating the system-audio monitor)
+- Optional, for hardware encoding: the GStreamer **VA-API** plugin (`vah264enc`, …)
+  or NVIDIA **nvcodec** plugin (`nvh264enc`, …)
+
+**Build only (if compiling the daemon yourself):** the Rust toolchain and the
+GStreamer development headers.
+
+### Install by distribution
+
+#### Debian / Ubuntu
+
+```sh
+sudo apt install \
+    gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
+    gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
+    gstreamer1.0-pipewire pipewire pulseaudio-utils
+# hardware encoding (Intel/AMD): gstreamer1.0-vaapi
+# building from source: cargo libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+```
+
+#### Fedora
+
+```sh
+sudo dnf install \
+    gstreamer1-plugins-base gstreamer1-plugins-good \
+    gstreamer1-plugins-bad-free gstreamer1-plugins-ugly gstreamer1-libav \
+    pipewire-gstreamer pipewire-utils pulseaudio-utils
+# building from source: cargo gstreamer1-devel gstreamer1-plugins-base-devel
+```
+
+(For `x264enc`/`faac` and other patent-encumbered encoders, Fedora users
+typically enable [RPM Fusion](https://rpmfusion.org/).)
+
+#### Arch Linux
+
+```sh
+sudo pacman -S \
+    gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly \
+    gst-libav gst-plugin-pipewire pipewire-pulse libpulse
+# AV1: aom or svt-av1 ;  hardware encoding: gstreamer-vaapi
+# building from source: rust
+```
+
+#### openSUSE
+
+```sh
+sudo zypper install \
+    gstreamer-plugins-base gstreamer-plugins-good \
+    gstreamer-plugins-bad gstreamer-plugins-ugly gstreamer-plugins-libav \
+    gstreamer-plugin-pipewire pipewire-tools pulseaudio-utils
+# building from source: cargo gstreamer-devel gstreamer-plugins-base-devel
+```
+
+### Which package fixes which symptom
+
+| Symptom | Likely cause | Install |
+|---|---|---|
+| No devices ever appear in the menu | not a library issue - mDNS (UDP 5353) blocked, or the device is on another subnet/VLAN (see [No devices found](#no-devices-found)) | - |
+| Cast starts then fails; log says *"no video encoder is installed"* | no VP8/VP9/etc. encoder | plugins **good** (vpx) and **ugly** (x264) |
+| Casting always uses HLS (multi-second lag), never low-latency | mirroring encoders missing, so it falls back | plugins **good** (`vp8enc`) |
+| Log: *"no AAC encoder found"* | no AAC encoder for the HLS fallback | plugins **bad** (`fdkaacenc`) or **libav** |
+| Video works but there's no audio | `pactl` missing, or no monitor source | `pulseaudio-utils` / `pipewire-pulse` |
+| Casting to a speaker or cast group plays nothing | audio-only receivers need an MP3 or AAC encoder | plugins **good** (`lamemp3enc`) or **bad** (`fdkaacenc`) |
+| Log: *"parsing the mirroring pipeline"* fails | GStreamer base/good plugins incomplete | plugins **base** + **good** |
+| Details line never shows hardware | no VA-API/NVENC GStreamer plugin (software encoding is used, which still works) | `gstreamer-vaapi` (Intel/AMD) |
+| Screen picker never opens | portal missing | `xdg-desktop-portal-gnome` + PipeWire |
+
+Check which encoders GStreamer can see:
+
+```sh
+gst-inspect-1.0 vp8enc x264enc opusenc pipewiresrc   # should all print details
+gst-inspect-1.0 | grep -iE 'vah264enc|nvh264enc'     # hardware H.264, if any
+```
 
 ---
 
@@ -113,7 +222,8 @@ while testing. Fixes:
 2. Power-cycle the Chromecast device, or force-stop the cast app on it.
 
 HLS still works in this state; it just has seconds of latency instead of
-sub-second.
+sub-second. A cast that *always* falls back is usually a missing mirroring
+encoder instead — see [Dependencies](#dependencies).
 
 ### No devices found
 
@@ -159,8 +269,8 @@ gst-inspect-1.0 fdkaacenc            # AAC for audio-only receivers
 
 Anything not found needs its plugin package installed. The daemon tries several
 AAC encoders in turn (`fdkaacenc`, `avenc_aac`, `voaacenc`, `faac`), so missing
-`gst-libav` alone is not fatal. See
-[docs/DEPENDENCIES.md](docs/DEPENDENCIES.md) for package names.
+`gst-libav` alone is not fatal. See [Dependencies](#dependencies) for package
+names.
 
 ---
 
