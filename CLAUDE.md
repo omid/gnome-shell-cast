@@ -21,9 +21,13 @@ rules. It should stay at 0 errors / 0 warnings.
 ## Making a change take effect
 
 See the `install-verify` skill. The short version: the daemon needs a rebuild,
-install and `pkill`; extension **JS needs a logout** (Wayland, and the shell
-caches ES modules per process), while `stylesheet.css` reloads on
+install and `pkill`; extension **JS needs a fresh shell process** (Wayland, and
+the shell caches ES modules per process), while `stylesheet.css` reloads on
 disable/enable. Prefer CSS while iterating on appearance.
+
+`make run-nested` is the fast loop for JS: it installs, then starts a nested
+shell on its own session bus. A logout is still what proves the change works in
+the real session.
 
 ## Extension code is held to upstream rules
 

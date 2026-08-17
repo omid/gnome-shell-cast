@@ -1,6 +1,6 @@
 ---
 name: install-verify
-description: Build, install and verify a change to the gnome-shell-cast daemon or extension on this machine. Use after editing daemon/ or extension/ when the change needs to actually run - covers the dbus-broker reload, the daemon restart, and the fact that extension JS needs a logout while CSS does not.
+description: Build, install and verify a change to the gnome-shell-cast daemon or extension on this machine. Use after editing daemon/ or extension/ when the change needs to actually run - covers the dbus-broker reload, the daemon restart, and the fact that extension JS needs a fresh shell process (a nested one, or a logout) while CSS does not.
 ---
 
 # Installing and verifying a change
@@ -37,11 +37,18 @@ Then, depending on what changed:
 | Changed | To take effect |
 |---|---|
 | `stylesheet.css` | `gnome-extensions disable … && gnome-extensions enable …` |
-| any `.js`, `metadata.json` | **log out and back in** |
+| any `.js`, `metadata.json` | a fresh shell process — `make run-nested`, or log out and back in |
 
 GNOME Shell caches an extension's ES modules for the life of the process, so
 disable/enable does **not** reload changed JS, and Wayland has no `Alt+F2 r`.
 It does load and unload the stylesheet, so keep visual iteration in CSS.
+
+`make run-nested` installs and then starts a nested shell
+(`dbus-run-session gnome-shell --devkit --wayland`), which is a fresh process
+and so picks up changed JS without ending the real session. Its own session bus
+means the daemon is activated fresh inside it too. Two things it will not tell
+you: whether the change survives a real login, and how the indicator behaves in
+the actual panel — check those with a logout before handing work over.
 
 Confirm the shell is really running new code by comparing timestamps:
 

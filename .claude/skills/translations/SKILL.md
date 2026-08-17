@@ -114,9 +114,16 @@ msgfmt -c --statistics extension/gnome-shell-cast@oxygenws.com/po/<lang>.po
 ```
 
 `msgfmt -c` catches placeholder mismatches and a wrong plural-forms header.
-Aim for `0 fuzzy, 0 untranslated`. Then `make install-extension` and switch the
-session language to see the strings in place - remembering that extension JS
-needs a logout.
+Aim for `0 fuzzy, 0 untranslated`. To see the strings in place, run a nested
+shell in the target language - it inherits the environment, so no logout and no
+changing your own session:
+
+```bash
+LANG=de_DE.UTF-8 make run-nested
+```
+
+The locale has to be generated on the machine (`locale -a`) or gettext falls
+back to English and the catalogue looks broken when it is fine.
 
 When a term you had to research is likely to come up again, add it to the
 glossary in `po/README.md` — the term and the module you took it from, not the

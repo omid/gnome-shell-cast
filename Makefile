@@ -43,6 +43,14 @@ uninstall-local:
 	@rm -f $(_BIN_INSTALL_DIR)/gnome-shell-cast-daemon
 	@rm -f $(_DBUS_SERVICE_DIR)/org.gnome.ShellCast.service
 
+# Nested GNOME Shell for trying a change without logging out - the shell caches
+# ES modules per process, so edited JS only takes effect in a fresh one. Its own
+# session bus means the daemon is activated freshly too; installs first, or the
+# nested shell would run the previously installed copy.
+.PHONY: run-nested
+run-nested: install ## Run the extension in a nested GNOME Shell (no logout needed).
+	@dbus-run-session gnome-shell --devkit --wayland
+
 # Set the single project version everywhere (usage: make set-version V=2).
 set-version:
 	@sh scripts/set-version.sh $(V)
