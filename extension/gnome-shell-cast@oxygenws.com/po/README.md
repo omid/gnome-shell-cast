@@ -105,10 +105,16 @@ whatever language you are translating into.
 | Top bar, Quick settings, Window, Connect, Disconnect | `gnome-shell` |
 | Screen, Resolution, Devices, Volume, Mute | `gnome-control-center-2.0` |
 | Framerate (as *frame rate*), bitrate, stream, audio | `gstreamer-1.0`, `gtk30` |
-| Cast, Chromecast, HLS, D-Bus, GNOME | not translated — keep as-is |
+| General, Automatic | `gnome-control-center-2.0` |
+| Video, Pixel format | `gtk40`, `gst-plugins-good-1.0` |
+| Encoder, Encoding | `gst-plugins-*` — the *video* sense, see below |
+| Cast, Chromecast, HLS, D-Bus, GNOME, NV12, I420 | not translated — keep as-is |
 
-Two that catch people out: German *About* is `Info`, not `Über`; and *Volume*
-means `Lautstärke` here, not the disk-utility `Datenträger`.
+Three that catch people out: German *About* is `Info`, not `Über`; *Volume*
+means `Lautstärke` here, not the disk-utility `Datenträger`; and *Encoding* in
+`gtk40` is **character** encoding, which is a different word from video encoding
+in several languages (Russian `Кодировка` vs `Кодирование`). Take it from a
+`gst-plugins-*` string that is about video, not from `gtk40`.
 
 1. **Keep format placeholders**
    ```po

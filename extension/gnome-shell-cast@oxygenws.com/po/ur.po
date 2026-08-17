@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-14 09:26+0200\n"
+"POT-Creation-Date: 2026-08-17 20:07+0200\n"
 "PO-Revision-Date: 2026-08-14 10:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Urdu <https://github.com/omid/gnome-shell-cast>\n"
@@ -25,7 +25,6 @@ msgid "Stop casting"
 msgstr "کاسٹ کرنا روکیں"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:228
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:25
 msgid "Preferences"
 msgstr "ترجیحات"
 
@@ -58,25 +57,30 @@ msgstr "آڈیو اسٹریم"
 msgid "HLS"
 msgstr "HLS"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:365
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:368
+#, javascript-format
+msgid "Encoder: %s"
+msgstr "اینکوڈر: %s"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:372
 #, javascript-format
 msgid "Receiver supports: %s"
 msgstr "وصول کنندہ معاونت کرتا ہے: %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:424
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:433
 msgid "The cast failed."
 msgstr "کاسٹ ناکام ہو گیا۔"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:431
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:440
 #, javascript-format
 msgid "The device ended the session (%s)."
 msgstr "آلے نے سیشن ختم کر دیا (%s)۔"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:432
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:441
 msgid "The device ended the session."
 msgstr "آلے نے سیشن ختم کر دیا۔"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:480
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:489
 #: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:62
 msgid "GNOME Shell Cast"
@@ -133,7 +137,7 @@ msgid "Close"
 msgstr "بند کریں"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:122
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:169
 msgid "Report an issue"
 msgstr "مسئلے کی اطلاع دیں"
 
@@ -175,7 +179,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "کمانڈ نقل کریں، پھر اسے ٹرمینل میں چسپاں کر کے چلائیں۔"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:121
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:168
 msgid "Homepage"
 msgstr "ویب سائٹ"
 
@@ -187,108 +191,162 @@ msgstr "کمانڈ نقل کریں"
 msgid "Copied! Paste it into a terminal and run it."
 msgstr "نقل ہو گیا۔ اسے ٹرمینل میں چسپاں کر کے چلائیں۔"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
 msgid "Native"
 msgstr "اصل"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
 msgid "4K (2160p)"
 msgstr "4K (2160p)"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
 msgid "1440p"
 msgstr "1440p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
 msgid "1080p"
 msgstr "1080p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:21
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
 msgid "720p"
 msgstr "720p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:22
-msgid "Top bar"
-msgstr "اوپری پٹی"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:22
-msgid "Quick settings"
-msgstr "فوری ترتیبات"
-
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:30
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:31
+msgid "Automatic"
+msgstr "خودکار"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:30
+msgid "Hardware only"
+msgstr "صرف ہارڈویئر"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:30
+msgid "Software only"
+msgstr "صرف سافٹ ویئر"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:34
+msgid "Video"
+msgstr "وڈیو"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:40
 msgid "Stream quality"
 msgstr "اسٹریم کا معیار"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:41
 msgid "Applied the next time a cast is started"
 msgstr "اگلی بار کاسٹ شروع ہونے پر لاگو ہوگا"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:46
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:14
 msgid "Maximum resolution"
 msgstr "زیادہ سے زیادہ ریزولوشن"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:38
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:47
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr "1080p سے اوپر ہارڈویئر اینکوڈر اور اس کے مطابق بٹ ریٹ درکار ہے"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:57
 msgid "Framerate"
 msgstr "فریم ریٹ"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:49
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:58
 msgid "Frames per second"
 msgstr "فریم فی سیکنڈ"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:60
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:69
 msgid "Video bitrate"
 msgstr "ویڈیو بٹ ریٹ"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:70
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr "kbit/s: 720p کے لیے تقریباً 4000، 1080p کے لیے 8000، 4K کے لیے 30000"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:81
+msgid "Encoding"
+msgstr "اینکوڈنگ"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:82
+msgid "Casting fails with a message when a forced choice cannot be used"
+msgstr ""
+"جب مقرر کردہ انتخاب استعمال نہ ہو سکے تو کاسٹ ایک پیغام کے ساتھ ناکام ہو "
+"جاتی ہے"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:87
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:35
+msgid "Video encoder"
+msgstr "وڈیو اینکوڈر"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:89
+msgid ""
+"Automatic prefers your graphics card; choose software if the picture breaks "
+"up"
+msgstr ""
+"خودکار آپ کے گرافکس کارڈ کو ترجیح دیتا ہے؛ تصویر ٹوٹنے پر سافٹ ویئر منتخب "
+"کریں"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:100
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:45
+msgid "Pixel format"
+msgstr "پکسل فارمیٹ"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:101
+msgid "Automatic suits every encoder; only change this to work around a driver"
+msgstr ""
+"خودکار ہر اینکوڈر کے لیے موزوں ہے؛ اسے صرف کسی ڈرائیور سے بچنے کے لیے بدلیں"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:112
+msgid "Top bar"
+msgstr "اوپری پٹی"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:112
+msgid "Quick settings"
+msgstr "فوری ترتیبات"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:115
+msgid "General"
+msgstr "عمومی"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:120
 msgid "Menu"
 msgstr "مینو"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:39
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:124
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
 msgid "Indicator location"
 msgstr "آئیکن کا مقام"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr "کاسٹ آئیکن اوپری پٹی میں دکھائیں، یا فوری ترتیبات کے مینو میں"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:86
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:30
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:135
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:50
 msgid "Show cast details"
 msgstr "کاسٹ کی تفصیلات دکھائیں"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:87
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:31
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:136
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:51
 msgid "Show the transport and codecs under the active device while casting"
 msgstr "کاسٹ کرتے وقت فعال آلے کے نیچے ٹرانسپورٹ اور کوڈیکس دکھائیں"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:99
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:146
 msgid "About"
 msgstr "تعارف"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:110
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:157
 #, javascript-format
 msgid "Version %s"
 msgstr "ورژن %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:172
 msgid "Help"
 msgstr "مدد"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:126
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:173
 msgid "Common problems and their fixes"
 msgstr "عام مسائل اور ان کے حل"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:176
 msgid "Troubleshooting guide"
 msgstr "مسائل کے حل کی رہنمائی"
 
@@ -318,7 +376,30 @@ msgstr ""
 "720p کے لیے تقریباً 4000، 1080p کے لیے 8000، 1440p کے لیے 16000 اور 4K کے لیے "
 "30000؛ تیزی سے بدلتے مواد کے لیے زیادہ۔"
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:40
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:36
+msgid ""
+"Which encoder to use. \"auto\" prefers hardware (VA-API, NVENC) and falls "
+"back to software. Choose software when a graphics driver produces a broken "
+"or stuttering picture; casting fails with a message if the choice cannot be "
+"met."
+msgstr ""
+"کون سا اینکوڈر استعمال ہو۔ ”auto“ ہارڈویئر (VA-API، NVENC) کو ترجیح دیتا ہے "
+"اور سافٹ ویئر پر واپس آتا ہے۔ جب گرافکس ڈرائیور ٹوٹی یا رکتی تصویر بنائے تو "
+"سافٹ ویئر منتخب کریں؛ انتخاب پورا نہ ہو سکے تو کاسٹ ایک پیغام کے ساتھ ناکام "
+"ہو جاتی ہے۔"
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:46
+msgid ""
+"The raw video format handed to the encoder. \"auto\" lets each encoder take "
+"the one it prefers: NV12 for hardware encoders, I420 for software ones. "
+"Forcing a format restricts casting to encoders that accept it."
+msgstr ""
+"خام وڈیو فارمیٹ جو اینکوڈر کو دیا جاتا ہے۔ ”auto“ ہر اینکوڈر کو اس کا "
+"پسندیدہ فارمیٹ لینے دیتا ہے: ہارڈویئر اینکوڈرز کے لیے NV12، سافٹ ویئر کے لیے "
+"I420۔ کوئی فارمیٹ مقرر کرنے پر کاسٹ صرف اُنہی اینکوڈرز تک محدود ہو جاتی ہے جو "
+"اسے قبول کرتے ہیں۔"
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:60
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."
