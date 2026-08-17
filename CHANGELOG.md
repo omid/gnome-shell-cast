@@ -6,48 +6,56 @@ daemon ship together under one version.
 
 ## [Unreleased]
 
-## [3] - 2026-08-14
+### Added
+
+- Eleven more interface languages: Arabic, Bengali, Bulgarian, Chinese
+  (Simplified), French, Hindi, Indonesian, Portuguese (Brazil), Russian,
+  Spanish and Urdu.
+- Video encoder and pixel format settings, both automatic by default. Choose
+  software encoding when a graphics driver produces a broken or stuttering
+  picture.
+- Cast details now name the encoder and pixel format actually in use, so you can
+  see what "automatic" chose.
+
+### Changed
+
+- The menu entry and the preferences window it opens now both say "Preferences".
+- Stream quality and the new encoding settings now live on their own Video page
+  in preferences.
 
 ### Fixed
 
-- **Mirroring showed a black screen, then dropped after a few seconds.** Three
-  faults compounded: RTP packets were discarded locally whenever a frame's burst
-  filled the socket buffer (thousands per minute, shredding the opening key
-  frame); the retransmit history was wiped by a frame-id sign error, so the
-  receiver's requests for the missing packets could never be answered; and VP8,
-  VP9 and AV1 only emitted a key frame every 3000 frames — 75 seconds at 40fps —
-  so a decoder that lost sync stayed black until then.
-- **Casts failed with "Network is unreachable", or silently fell back to HLS
-  even though the device had accepted VP9.** A device announcing only its IPv6
-  address — common for a few minutes after a suspend — stranded the cast on an
-  address the machine had no route to. Discovery now remembers every address a
-  device announces, prefers one that is actually reachable, and never downgrades
-  a working address; the media socket matches the device's address family.
-- **Stopping the screen share from GNOME's orange indicator left the cast
-  running.** The picture froze on the last frame while the extension still said
-  "casting". The cast now ends when the compositor ends the share.
-- **The panel icon and quick-settings toggle did not light up while casting**
-  until the menu was opened, and the cast volume slider could move on its own.
-- **Starting a new cast could race the previous one's teardown**, leaving the
-  receiver with a dead or duplicated capture.
-- **The extension could fail to load at login on GNOME Shell 50**, which builds
-  its quick-settings items asynchronously.
-- **Error messages no longer leak internal detail** — no more library
-  documentation URLs or `os error` numbers in notifications.
+- Casting failed to start at all on machines with VA-API installed
+  (`gst-plugin-va`): the hardware H.264 encoder was offered to the device and
+  then could not be used.
+- Without a hardware encoder, the HLS fallback produced a picture that
+  Chromecast receivers cannot decode.
+- German and Persian are now used in every region, not only Germany and Iran.
+
+## [3] - 2026-08-14
 
 ### Added
 
-- **Choose what to cast**: a second action on each device that opens GNOME's own
-  Display/Window picker, alongside the existing one-click screen cast.
-- **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)**, linked from the preferences
-  About page — including the most common surprise, a picture cropped on all four
-  sides, which is the TV's overscan rather than the cast.
+- Choose what to cast: a second action on each device that opens GNOME's
+  Display/Window picker, alongside the one-click screen cast.
+- [TROUBLESHOOTING.md](TROUBLESHOOTING.md), linked from the preferences About
+  page.
 
 ### Changed
 
 - Each device is now a single row with its cast actions as buttons, instead of a
   submenu.
-- Devices are discovered with mdns-sd 0.21; dependencies updated.
+
+### Fixed
+
+- Mirroring no longer shows a black screen or drops after a few seconds.
+- Casts no longer fail with "Network is unreachable" or fall back to HLS when a
+  device announces only its IPv6 address.
+- Stopping the screen share from GNOME's orange indicator now ends the cast.
+- The panel icon and quick-settings toggle light up as soon as a cast starts.
+- Starting a new cast no longer races the previous one's teardown.
+- The extension no longer fails to load at login on GNOME Shell 50.
+- Error messages no longer leak documentation URLs or `os error` numbers.
 
 ## [2] - 2026-08-05
 
