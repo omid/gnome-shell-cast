@@ -32,6 +32,76 @@ impl VideoCodec {
     }
 }
 
+/// Which encoders the user will accept. `Auto` keeps the hardware-first order
+/// in `factories`; the other two are an escape hatch for a driver that is
+/// present but misbehaving.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum EncoderPolicy {
+    #[default]
+    Auto,
+    Hardware,
+    Software,
+}
+
+/// The raw format fed to the encoder. Forcing one narrows the candidate list
+/// rather than the caps, because an encoder that cannot take the format would
+/// otherwise fail to link.
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum FormatPolicy {
+    #[default]
+    Auto,
+    Nv12,
+    I420,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct EncodingPolicy {
+    pub encoder: EncoderPolicy,
+    pub format: FormatPolicy,
+}
+
+impl EncoderPolicy {
+    /// Anything unrecognised means `Auto`: the extension sending the option can
+    /// be a different version than the daemon reading it.
+    pub fn parse(value: &str) -> Self {
+        match value {
+            "hardware" => Self::Hardware,
+            "software" => Self::Software,
+            _ => Self::Auto,
+        }
+    }
+}
+
+impl FormatPolicy {
+    pub fn parse(value: &str) -> Self {
+        match value {
+            "nv12" => Self::Nv12,
+            "i420" => Self::I420,
+            _ => Self::Auto,
+        }
+    }
+
+    /// The `format` field for the raw caps feeding the encoder. `Auto` offers
+    /// both, letting negotiation pick NV12 for VA-API and I420 for the rest -
+    /// leaving it out entirely would let videoconvert choose 4:4:4.
+    pub fn caps_format(self) -> &'static str {
+        match self {
+            Self::Auto => "{NV12,I420}",
+            Self::Nv12 => "NV12",
+            Self::I420 => "I420",
+        }
+    }
+
+    /// The format an encoder is required to accept, or `None` when unconstrained.
+    fn required(self) -> Option<&'static str> {
+        match self {
+            Self::Auto => None,
+            Self::Nv12 => Some("NV12"),
+            Self::I420 => Some("I420"),
+        }
+    }
+}
+
 /// Efficiency order, best first - used to break ties among codecs at the same
 /// hardware tier. VP8 is last and mandatory (every Cast-V2 receiver decodes
 /// it), so it is the guaranteed fallback.
@@ -66,6 +136,39 @@ fn factories(codec: VideoCodec) -> &'static [&'static str] {
 /// VA-API / NVENC / V4L2 elements are hardware; everything else is software.
 fn is_hardware(factory: &str) -> bool {
     factory.starts_with("va") || factory.starts_with("nv") || factory.starts_with("v4l2")
+}
+
+/// Whether `factory` accepts raw video in `format` on its sink pad, read from
+/// the element's own template caps so it stays right across plugin versions.
+/// The probe carries no caps features, so it matches only the system-memory
+/// variant - which is the one the pipeline actually feeds.
+fn accepts_format(factory: &str, format: &str) -> bool {
+    let Some(found) = gst::ElementFactory::find(factory) else {
+        return false;
+    };
+    let probe = gst::Caps::builder("video/x-raw")
+        .field("format", format)
+        .build();
+    found
+        .static_pad_templates()
+        .iter()
+        .filter(|template| template.direction() == gst::PadDirection::Sink)
+        .any(|template| template.caps().can_intersect(&probe))
+}
+
+/// Whether `factory` may be used under `policy`. Shared with the HLS path so
+/// both pipelines honour the setting the same way.
+pub fn allowed(factory: &str, policy: EncodingPolicy) -> bool {
+    let encoder_ok = match policy.encoder {
+        EncoderPolicy::Auto => true,
+        EncoderPolicy::Hardware => is_hardware(factory),
+        EncoderPolicy::Software => !is_hardware(factory),
+    };
+    encoder_ok
+        && policy
+            .format
+            .required()
+            .is_none_or(|format| accepts_format(factory, format))
 }
 
 /// The launch fragment configuring `factory` for low-latency CBR at
@@ -117,22 +220,57 @@ fn fragment_parses(fragment: &str) -> bool {
 }
 
 /// The encoder fragment for `codec` and whether it is hardware, or `None` when
-/// no working encoder for it is installed. Returns the first candidate that
-/// actually parses.
-pub fn video_encoder(codec: VideoCodec, bitrate_bps: u32, fps: u32) -> Option<(String, bool)> {
-    factories(codec).iter().find_map(|&factory| {
-        let fragment = launch_for(factory, bitrate_bps, fps);
-        fragment_parses(&fragment).then(|| (fragment, is_hardware(factory)))
-    })
+/// no encoder for it is installed **and** permitted by `policy`. Returns the
+/// first candidate that actually parses.
+pub fn video_encoder(
+    codec: VideoCodec,
+    bitrate_bps: u32,
+    fps: u32,
+    policy: EncodingPolicy,
+) -> Option<(String, bool)> {
+    factories(codec)
+        .iter()
+        .filter(|&&factory| allowed(factory, policy))
+        .find_map(|&factory| {
+            let fragment = launch_for(factory, bitrate_bps, fps);
+            fragment_parses(&fragment).then(|| (fragment, is_hardware(factory)))
+        })
+}
+
+/// Why no encoder was usable, phrased for the user - this reaches them verbatim
+/// through `user_message()`, so it names the setting to change rather than the
+/// `GStreamer` element that was missing.
+pub fn policy_failure_message(policy: EncodingPolicy) -> String {
+    match (policy.encoder, policy.format) {
+        (EncoderPolicy::Auto, FormatPolicy::Auto) => {
+            "No video encoder is installed. Install the GStreamer encoder plugins for your system."
+                .to_owned()
+        }
+        (EncoderPolicy::Hardware, _) => {
+            "No hardware video encoder can be used for this device. Set the video encoder \
+             preference back to automatic."
+                .to_owned()
+        }
+        (EncoderPolicy::Software, _) => {
+            "No software video encoder can be used for this device. Set the video encoder \
+             preference back to automatic."
+                .to_owned()
+        }
+        (EncoderPolicy::Auto, _) => {
+            "No video encoder accepts the selected pixel format. Set the pixel format \
+             preference back to automatic."
+                .to_owned()
+        }
+    }
 }
 
 /// The codecs we can encode on this host, **hardware-encodable ones first**,
 /// then by efficiency. Used to build the OFFER - we advertise only codecs we
 /// can produce, in the order we prefer to use them.
-pub fn available_video_codecs() -> Vec<VideoCodec> {
+pub fn available_video_codecs(policy: EncodingPolicy) -> Vec<VideoCodec> {
     let mut avail: Vec<(VideoCodec, bool)> = EFFICIENCY_ORDER
         .into_iter()
-        .filter_map(|codec| video_encoder(codec, 4_000_000, 30).map(|(_, hw)| (codec, hw)))
+        .filter_map(|codec| video_encoder(codec, 4_000_000, 30, policy).map(|(_, hw)| (codec, hw)))
         .collect();
     avail.sort_by_key(|&(codec, hw)| (!hw, efficiency_rank(codec)));
     avail.into_iter().map(|(codec, _)| codec).collect()
@@ -190,6 +328,72 @@ mod tests {
         // 4 Mbit/s -> 4000 kbit/s for VA/NVENC.
         assert!(launch_for("vah264enc", 4_000_000, 30).contains("bitrate=4000"));
         assert!(launch_for("nvh264enc", 4_000_000, 30).contains("rc-mode=cbr"));
+    }
+
+    /// The format lookup has to agree with what the pipeline can actually link:
+    /// VA-API H.264 takes only NV12, the VPX/AV1 encoders only I420. Each
+    /// assertion is skipped when the plugin is not installed, so this passes on
+    /// a CI box without gst-plugin-va.
+    #[test]
+    fn accepted_formats_match_the_encoders() {
+        gst::init().unwrap();
+        let installed = |factory| gst::ElementFactory::find(factory).is_some();
+
+        if installed("vah264enc") {
+            assert!(accepts_format("vah264enc", "NV12"));
+            assert!(!accepts_format("vah264enc", "I420"));
+        }
+        if installed("vp8enc") {
+            assert!(accepts_format("vp8enc", "I420"));
+            assert!(!accepts_format("vp8enc", "NV12"));
+        }
+        if installed("x264enc") {
+            assert!(accepts_format("x264enc", "I420"));
+            assert!(accepts_format("x264enc", "NV12"));
+        }
+        assert!(!accepts_format("no-such-encoder", "I420"));
+    }
+
+    #[test]
+    fn policy_filters_the_candidate_list() {
+        gst::init().unwrap();
+        let auto = EncodingPolicy::default();
+        let software = EncodingPolicy {
+            encoder: EncoderPolicy::Software,
+            ..auto
+        };
+        let hardware = EncodingPolicy {
+            encoder: EncoderPolicy::Hardware,
+            ..auto
+        };
+
+        assert!(allowed("x264enc", auto));
+        assert!(allowed("x264enc", software));
+        assert!(!allowed("x264enc", hardware));
+        assert!(allowed("vah264enc", hardware));
+        assert!(!allowed("vah264enc", software));
+
+        // A forced format rules out encoders that cannot take it, which is what
+        // keeps a forced value from producing a pipeline that will not link.
+        if gst::ElementFactory::find("vah264enc").is_some() {
+            let i420 = EncodingPolicy {
+                format: FormatPolicy::I420,
+                ..auto
+            };
+            assert!(!allowed("vah264enc", i420));
+            assert!(allowed("x264enc", i420));
+        }
+    }
+
+    #[test]
+    fn unknown_option_values_fall_back_to_auto() {
+        assert_eq!(EncoderPolicy::parse("software"), EncoderPolicy::Software);
+        assert_eq!(EncoderPolicy::parse("nonsense"), EncoderPolicy::Auto);
+        assert_eq!(EncoderPolicy::parse(""), EncoderPolicy::Auto);
+        assert_eq!(FormatPolicy::parse("nv12"), FormatPolicy::Nv12);
+        assert_eq!(FormatPolicy::parse("yuv"), FormatPolicy::Auto);
+        assert_eq!(FormatPolicy::Auto.caps_format(), "{NV12,I420}");
+        assert_eq!(FormatPolicy::I420.caps_format(), "I420");
     }
 
     #[test]

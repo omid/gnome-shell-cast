@@ -46,6 +46,12 @@ pub struct CastDetails {
     pub transport: String,
     /// The video codec actually in use (e.g. "vp9", "h264").
     pub codec: String,
+    /// The `GStreamer` encoder element chosen (e.g. "vah264enc"); empty for an
+    /// audio-only cast. Worth showing because the choice is usually automatic.
+    pub encoder: String,
+    /// The raw format the encoder negotiated ("NV12"/"I420"). Filled in once
+    /// the pipeline has prerolled, so it is empty for the first moment.
+    pub format: String,
     /// Codecs the receiver accepted from our OFFER (mirroring only).
     pub receiver_codecs: Vec<String>,
 }
@@ -105,12 +111,14 @@ impl SharedState {
         self.status.lock().clone()
     }
 
-    pub fn set_details(&self, transport: &str, codec: &str, receiver_codecs: Vec<String>) {
-        *self.details.lock() = CastDetails {
-            transport: transport.to_owned(),
-            codec: codec.to_owned(),
-            receiver_codecs,
-        };
+    pub fn set_details(&self, details: CastDetails) {
+        *self.details.lock() = details;
+    }
+
+    /// Records the negotiated raw format, which is only known once the pipeline
+    /// has prerolled - after `set_details` has already run.
+    pub fn set_detail_format(&self, format: &str) {
+        format.clone_into(&mut self.details.lock().format);
     }
 
     pub fn clear_details(&self) {
@@ -183,12 +191,13 @@ impl ShellCast {
         self.state.status()
     }
 
-    /// (transport, video codec, codecs the receiver accepted) for the active
-    /// cast; all empty when idle. Shown as extra detail in the menu.
-    fn get_details(&self) -> (String, String, Vec<String>) {
+    /// (transport, video codec, encoder element, raw format, codecs the
+    /// receiver accepted) for the active cast; all empty when idle. Shown as
+    /// extra detail in the menu.
+    fn get_details(&self) -> (String, String, String, String, Vec<String>) {
         self.state.touch();
         let d = self.state.details();
-        (d.transport, d.codec, d.receiver_codecs)
+        (d.transport, d.codec, d.encoder, d.format, d.receiver_codecs)
     }
 
     /// How the last session ended: (kind, message), kind ∈ ""|"error"|"ended".

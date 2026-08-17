@@ -7,7 +7,7 @@
 //! original glue that drives it.
 
 mod channel;
-mod encoder;
+pub mod encoder;
 mod openscreen;
 
 use std::os::fd::AsRawFd;
@@ -21,10 +21,10 @@ use gstreamer_app::AppSink;
 use log::{info, warn};
 use tokio::sync::{mpsc, oneshot};
 
-use crate::SharedState;
 use crate::capture::Capture;
 use crate::discovery::Device;
 use crate::pipeline::{self, PipelineStop, StreamSettings};
+use crate::{CastDetails, SharedState};
 use channel::{ChannelControl, ChannelEvent, MirrorChannel};
 use openscreen::sender::{
     ChunkSender, EncodedChunk, MediaSender, StreamConfig, StreamKind, chunk_channel,
@@ -95,16 +95,10 @@ pub async fn run(
         bit_rate: AUDIO_BIT_RATE,
     });
 
-    // One video variant per codec we can encode locally, best first; the
-    // receiver picks one in its ANSWER. Empty for an audio-only cast.
-    let codecs = if capture.is_some() {
-        encoder::available_video_codecs()
-    } else {
-        Vec::new()
+    let codecs = match offer_codecs(capture, settings) {
+        Ok(codecs) => codecs,
+        Err(outcome) => return outcome,
     };
-    if capture.is_some() && codecs.is_empty() {
-        return Outcome::Unavailable(anyhow!("no video encoder is installed"));
-    }
     let video_params = video_params(&codecs, settings, video_bps);
     let offer = messages::offer(1, audio_params.as_ref(), &video_params);
 
@@ -169,14 +163,9 @@ pub async fn run(
         state,
         device,
         chosen_video.map(|(codec, ..)| codec),
+        &pipeline,
         video_encoder.as_ref().is_some_and(|(_, hw)| *hw),
-        // Codecs the receiver accepted from our OFFER, for "show details".
-        video_params
-            .iter()
-            .zip(codecs.iter())
-            .filter(|(p, _)| answer.send_indexes.contains(&p.index))
-            .map(|(_, codec)| codec.codec_name().to_owned())
-            .collect(),
+        accepted_codec_names(&answer, &video_params, &codecs),
         settings,
     );
 
@@ -189,6 +178,46 @@ pub async fn run(
     drop(media_sender);
     drop(channel_control);
     Outcome::Finished(result)
+}
+
+/// One video variant per codec we can encode locally, best first; the receiver
+/// picks one in its ANSWER. Empty for an audio-only cast; `Err` carries the
+/// outcome `run` returns when nothing can be offered.
+fn offer_codecs(
+    capture: Option<&Capture>,
+    settings: &StreamSettings,
+) -> Result<Vec<encoder::VideoCodec>, Outcome> {
+    if capture.is_none() {
+        return Ok(Vec::new());
+    }
+    let codecs = encoder::available_video_codecs(settings.encoding);
+    if !codecs.is_empty() {
+        return Ok(codecs);
+    }
+    let error = anyhow!(encoder::policy_failure_message(settings.encoding));
+    // A forced setting that rules everything out is reported, not worked
+    // around: falling back to HLS would quietly defeat the user's choice.
+    // With no forced setting this is just "nothing installed" - still worth
+    // trying HLS, which needs only H.264.
+    Err(if settings.encoding == encoder::EncodingPolicy::default() {
+        Outcome::Unavailable(error)
+    } else {
+        Outcome::Finished(Err(error))
+    })
+}
+
+/// Codecs the receiver accepted from our OFFER, for "show details".
+fn accepted_codec_names(
+    answer: &messages::Answer,
+    video_params: &[messages::VideoParams],
+    codecs: &[encoder::VideoCodec],
+) -> Vec<String> {
+    video_params
+        .iter()
+        .zip(codecs.iter())
+        .filter(|(p, _)| answer.send_indexes.contains(&p.index))
+        .map(|(_, codec)| codec.codec_name().to_owned())
+        .collect()
 }
 
 /// What `start_media` needs to know about the negotiated streams.
@@ -264,7 +293,10 @@ fn select_streams(
     let fps = u32::try_from(settings.fps).unwrap_or(30);
     let encoder = match video {
         // (launch fragment, is-hardware)
-        Some((codec, ..)) => match encoder::video_encoder(codec, video_bps, fps) {
+        // Same policy as the OFFER above, or we would advertise a codec we then
+        // refuse to encode and the receiver would already have committed to it.
+        Some((codec, ..)) => match encoder::video_encoder(codec, video_bps, fps, settings.encoding)
+        {
             Some(picked) => Some(picked),
             None => bail!("no encoder for the negotiated video codec"),
         },
@@ -282,23 +314,35 @@ fn announce(
     state: &Arc<SharedState>,
     device: &Device,
     codec: Option<encoder::VideoCodec>,
+    pipeline: &gst::Pipeline,
     hardware: bool,
     receiver_codecs: Vec<String>,
     settings: &StreamSettings,
 ) {
     if let Some(codec) = codec {
         let (width, height) = settings.size.unwrap_or((1920, 1080));
+        let element = pipeline::encoder_element(pipeline).unwrap_or_default();
         info!(
-            "mirroring started ({} {}, {width}x{height} @{}fps, {} kbit/s)",
+            "mirroring started ({} via {element} {}, {width}x{height} @{}fps, {} kbit/s)",
             codec.codec_name(),
             if hardware { "hardware" } else { "software" },
             settings.fps,
             settings.bitrate_kbps,
         );
-        state.set_details("mirror", codec.codec_name(), receiver_codecs);
+        state.set_details(CastDetails {
+            transport: "mirror".to_owned(),
+            codec: codec.codec_name().to_owned(),
+            encoder: element,
+            format: String::new(),
+            receiver_codecs,
+        });
     } else {
         info!("audio-only mirroring started ({AUDIO_BIT_RATE} bps)");
-        state.set_details("mirror", "opus", Vec::new());
+        state.set_details(CastDetails {
+            transport: "mirror".to_owned(),
+            codec: "opus".to_owned(),
+            ..CastDetails::default()
+        });
     }
     state.set_status("casting", &device.id);
 }
@@ -409,6 +453,14 @@ async fn run_until_stopped(
                 if let Some(error) = bus.as_ref().and_then(pop_bus_error) {
                     return Err(error);
                 }
+                // Caps are only fixed once the pipeline has prerolled, so this
+                // is read here rather than at announce time. Once is enough.
+                if state.details().format.is_empty()
+                    && let Some(format) = pipeline::negotiated_format(pipeline)
+                {
+                    info!("encoder negotiated {format}");
+                    state.set_detail_format(&format);
+                }
             }
         }
     }
@@ -446,10 +498,12 @@ fn build_pipeline(
     // The video branch exists only when we have both a capture and a chosen
     // encoder (audio-only casts have neither). `video_encoder` already carries
     // its codec, bitrate and low-latency settings and names the element `venc`.
-    // The format must stay a set: VA-API encoders take only NV12, the VPX/AV1
-    // ones only I420, and leaving it open lets videoconvert pick 4:4:4.
+    // The format must stay a set unless forced: VA-API encoders take only NV12,
+    // the VPX/AV1 ones only I420, and leaving it open lets videoconvert pick
+    // 4:4:4. A forced value already filtered the encoder list, so it can link.
     if let (Some(capture), Some(venc)) = (capture, video_encoder) {
         let fps = settings.fps;
+        let format = settings.encoding.format.caps_format();
         let fd = capture.fd.as_raw_fd();
         let node = capture.node_id;
         let _ = write!(
@@ -457,7 +511,7 @@ fn build_pipeline(
             "pipewiresrc fd={fd} path={node} do-timestamp=true keepalive-time=1000 resend-last=true \
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
              ! videoconvert ! videoscale ! videorate \
-             ! video/x-raw,format={{NV12,I420}},framerate={fps}/1,width={width},height={height},pixel-aspect-ratio=1/1 \
+             ! video/x-raw,format={format},framerate={fps}/1,width={width},height={height},pixel-aspect-ratio=1/1 \
              ! {venc} ! appsink name=vsink sync=false max-buffers=32 "
         );
     }

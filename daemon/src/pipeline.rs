@@ -8,6 +8,8 @@ use gstreamer::prelude::*;
 use log::{info, warn};
 use zbus::zvariant::OwnedValue;
 
+use crate::streaming::encoder::{self, EncoderPolicy, EncodingPolicy, FormatPolicy};
+
 pub const PLAYLIST_NAME: &str = "stream.m3u8";
 
 #[derive(Debug, Clone)]
@@ -16,6 +18,8 @@ pub struct StreamSettings {
     pub size: Option<(i32, i32)>,
     pub fps: i32,
     pub bitrate_kbps: i32,
+    /// Which encoder and raw format the user will accept; `Auto` by default.
+    pub encoding: EncodingPolicy,
 }
 
 impl Default for StreamSettings {
@@ -24,6 +28,7 @@ impl Default for StreamSettings {
             size: Some((1280, 720)),
             fps: 20,
             bitrate_kbps: 4000,
+            encoding: EncodingPolicy::default(),
         }
     }
 }
@@ -46,6 +51,14 @@ impl StreamSettings {
         if let Some(bitrate) = get_i32("bitrate-kbps") {
             settings.bitrate_kbps = bitrate.clamp(1000, 60_000);
         }
+
+        let mut get_string = |key: &str| options.remove(key).and_then(|v| String::try_from(v).ok());
+        if let Some(encoder) = get_string("video-encoder") {
+            settings.encoding.encoder = EncoderPolicy::parse(&encoder);
+        }
+        if let Some(format) = get_string("video-format") {
+            settings.encoding.format = FormatPolicy::parse(&format);
+        }
         settings
     }
 }
@@ -64,26 +77,34 @@ pub fn find_aac_encoder() -> Option<&'static str> {
 
 /// H.264 encoders for the HLS path, hardware first (VA-API, then NVENC), then
 /// software `x264enc`. Each candidate is parse-checked, so a hardware encoder
-/// that is present but mis-parametrised falls back to the next one.
+/// that is present but mis-parametrised falls back to the next one. `None` when
+/// the user's encoder or pixel-format choice rules every one of them out.
 const H264_ENCODERS: &[&str] = &["vah264enc", "vah264lpenc", "nvh264enc", "x264enc"];
 
-fn find_h264_encoder(bitrate_kbps: i32, key_int: i32) -> String {
+fn find_h264_encoder(bitrate_kbps: i32, key_int: i32, policy: EncodingPolicy) -> Option<String> {
     let software = format!(
-        "x264enc tune=zerolatency speed-preset=veryfast bitrate={bitrate_kbps} key-int-max={key_int} bframes=0"
+        "x264enc name=venc tune=zerolatency speed-preset=veryfast bitrate={bitrate_kbps} key-int-max={key_int} bframes=0"
     );
     for &f in H264_ENCODERS {
+        if !encoder::allowed(f, policy) {
+            continue;
+        }
         let fragment = match f {
             "x264enc" => software.clone(),
             _ if f.starts_with("nv") => {
-                format!("{f} bitrate={bitrate_kbps} rc-mode=cbr gop-size={key_int} bframes=0")
+                format!(
+                    "{f} name=venc bitrate={bitrate_kbps} rc-mode=cbr gop-size={key_int} bframes=0"
+                )
             }
-            _ => format!("{f} bitrate={bitrate_kbps} rate-control=cbr key-int-max={key_int}"),
+            _ => format!(
+                "{f} name=venc bitrate={bitrate_kbps} rate-control=cbr key-int-max={key_int}"
+            ),
         };
         if gst::parse::launch(&fragment).is_ok() {
-            return fragment;
+            return Some(fragment);
         }
     }
-    software
+    None
 }
 
 /// Builds the gst-launch description writing a live HLS stream into
@@ -120,12 +141,13 @@ pub fn launch_description(
         // `video_encoder` is the chosen H.264 element (hardware if available).
         // NV12 for the VA-API encoders, I420 for x264enc; unconstrained,
         // videoconvert picks Y444 and x264enc emits 4:4:4 no receiver decodes.
+        let format = settings.encoding.format.caps_format();
         let _ = write!(
             desc,
             "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 resend-last=true \
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
              ! videoconvert ! videoscale ! videorate \
-             ! video/x-raw,format={{NV12,I420}},framerate={fps}/1{size_caps} \
+             ! video/x-raw,format={format},framerate={fps}/1{size_caps} \
              ! {video_encoder} ! h264parse ! queue \
              ! hls.video "
         );
@@ -207,8 +229,23 @@ pub fn build(
 
     // Keyframe every segment (target-duration = 1s) so segments decode alone.
     let key_int = settings.fps.max(1);
-    let video_encoder = find_h264_encoder(settings.bitrate_kbps, key_int);
-    let desc = launch_description(video, settings, hls_dir, audio, &video_encoder);
+    // A forced encoder or pixel format can rule out every candidate; fail with
+    // the reason rather than quietly ignoring the user's choice.
+    let video_encoder = match video {
+        Some(_) => Some(
+            find_h264_encoder(settings.bitrate_kbps, key_int, settings.encoding).ok_or_else(
+                || anyhow::anyhow!(encoder::policy_failure_message(settings.encoding)),
+            )?,
+        ),
+        None => None,
+    };
+    let desc = launch_description(
+        video,
+        settings,
+        hls_dir,
+        audio,
+        video_encoder.as_deref().unwrap_or_default(),
+    );
     info!("pipeline: {desc}");
 
     let pipeline = gst::parse::launch(&desc)
@@ -216,6 +253,24 @@ pub fn build(
         .downcast::<gst::Pipeline>()
         .map_err(|_| anyhow::anyhow!("parsed element is not a pipeline"))?;
     Ok(pipeline)
+}
+
+/// The `GStreamer` encoder element a built pipeline actually uses (e.g.
+/// "vah264enc"), read back from the pipeline so it cannot drift from the
+/// fragment that was chosen.
+pub fn encoder_element(pipeline: &gst::Pipeline) -> Option<String> {
+    Some(pipeline.by_name("venc")?.factory()?.name().to_string())
+}
+
+/// The raw video format the encoder negotiated, once the pipeline has
+/// prerolled. With the pixel format preference on automatic this is the only
+/// way to know whether NV12 or I420 was picked - the caps offered both.
+pub fn negotiated_format(pipeline: &gst::Pipeline) -> Option<String> {
+    let caps = pipeline
+        .by_name("venc")?
+        .static_pad("sink")?
+        .current_caps()?;
+    caps.structure(0)?.get::<String>("format").ok()
 }
 
 /// Finds the PulseAudio/PipeWire monitor source of the default sink, used to
@@ -311,6 +366,26 @@ mod tests {
         assert!(desc.contains("x264enc bitrate=4000 ! h264parse"));
         assert!(desc.contains("/run/x/stream.m3u8"));
         assert!(!desc.contains("pulsesrc"));
+    }
+
+    #[test]
+    fn forced_pixel_format_reaches_the_caps() {
+        let settings = StreamSettings {
+            encoding: EncodingPolicy {
+                format: FormatPolicy::Nv12,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let desc = launch_description(
+            Some((3, 42)),
+            &settings,
+            &PathBuf::from("/run/x"),
+            None,
+            "x264enc bitrate=4000",
+        );
+        assert!(desc.contains("format=NV12,"), "{desc}");
+        assert!(!desc.contains("{NV12,I420}"));
     }
 
     #[test]

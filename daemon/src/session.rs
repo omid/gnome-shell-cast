@@ -14,7 +14,7 @@ use tokio::sync::{mpsc, oneshot};
 use crate::capture::{self, SourceKind};
 use crate::discovery::Device;
 use crate::pipeline::{self, PLAYLIST_NAME, PipelineStop, StreamSettings};
-use crate::{SharedState, cast, http, streaming, volume};
+use crate::{CastDetails, SharedState, cast, http, streaming, volume};
 
 /// Runs one cast session end to end: portal capture → `GStreamer` HLS encode →
 /// HTTP serve → Chromecast playback, then cleans everything up when `stop_rx`
@@ -204,10 +204,13 @@ async fn run_cast_loop(
     device: &Device,
     stop_rx: &mut oneshot::Receiver<()>,
     cast_events: &mut mpsc::UnboundedReceiver<cast::CastEvent>,
-    bus: &gst::Bus,
+    pipeline: &gst::Pipeline,
     capture: Option<&capture::Capture>,
     (transport, codec): (&str, &str),
 ) -> Result<()> {
+    let bus = pipeline
+        .bus()
+        .ok_or_else(|| anyhow!("pipeline has no bus"))?;
     let mut bus_poll = tokio::time::interval(Duration::from_millis(500));
     // Subscribed once: re-creating it per iteration would resubscribe on every
     // tick and could miss the signal in between.
@@ -225,7 +228,12 @@ async fn run_cast_loop(
             }
             event = cast_events.recv() => match event {
                 Some(cast::CastEvent::Playing) => {
-                    state.set_details(transport, codec, Vec::new());
+                    state.set_details(CastDetails {
+                        transport: transport.to_owned(),
+                        codec: codec.to_owned(),
+                        encoder: pipeline::encoder_element(pipeline).unwrap_or_default(),
+                        ..CastDetails::default()
+                    });
                     state.set_status("casting", &device.id);
                 }
                 Some(cast::CastEvent::Ended(reason)) => {
@@ -245,6 +253,14 @@ async fn run_cast_loop(
                     if matches!(view, MessageView::Eos(_)) {
                         return Err(anyhow!("pipeline reached EOS"));
                     }
+                }
+                // Caps are only fixed once the pipeline has prerolled, so the
+                // negotiated format is picked up here rather than up front.
+                if state.details().format.is_empty()
+                    && let Some(format) = pipeline::negotiated_format(pipeline)
+                {
+                    info!("encoder negotiated {format}");
+                    state.set_detail_format(&format);
                 }
             }
         }
@@ -274,15 +290,12 @@ async fn run_cast_to_device(
 
     let _ = url_tx.send(media);
 
-    let bus = pipeline
-        .bus()
-        .ok_or_else(|| anyhow!("pipeline has no bus"))?;
     let result = run_cast_loop(
         state,
         device,
         stop_rx,
         &mut cast_events,
-        &bus,
+        pipeline,
         capture,
         details,
     )
