@@ -11,19 +11,28 @@ import {
 
 const RESOLUTION_VALUES = ['native', '2160', '1440', '1080', '720'];
 const LOCATION_VALUES = ['tray', 'quick-settings'];
+const ENCODER_VALUES = ['auto', 'hardware', 'software'];
+const FORMAT_VALUES = ['auto', 'nv12', 'i420'];
 
 export default class GnomeShellCastPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
 
+        this._addGeneralPage(window, settings);
+        this._addVideoPage(window, settings);
+        this._addAboutPage(window);
+    }
+
+    _addVideoPage(window, settings) {
         // Built here (not at module scope) so each label is a literal `_()`
         // call that xgettext can extract and the gettext domain is bound.
         const resolutionLabels = [_('Native'), _('4K (2160p)'), _('1440p'), _('1080p'), _('720p')];
-        const locationLabels = [_('Top bar'), _('Quick settings')];
+        const encoderLabels = [_('Automatic'), _('Hardware only'), _('Software only')];
+        const formatLabels = [_('Automatic'), 'NV12', 'I420'];
 
         const page = new Adw.PreferencesPage({
-            title: _('Preferences'),
-            icon_name: 'preferences-system-symbolic',
+            title: _('Video'),
+            icon_name: 'video-display-symbolic',
         });
         window.add(page);
 
@@ -68,6 +77,46 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         settings.bind('bitrate-kbps', bitrateRow, 'value', Gio.SettingsBindFlags.DEFAULT);
         group.add(bitrateRow);
 
+        const encodingGroup = new Adw.PreferencesGroup({
+            title: _('Encoding'),
+            description: _('Casting fails with a message when a forced choice cannot be used'),
+        });
+        page.add(encodingGroup);
+
+        const encoderRow = new Adw.ComboRow({
+            title: _('Video encoder'),
+            subtitle: _(
+                'Automatic prefers your graphics card; choose software if the picture breaks up',
+            ),
+            model: new Gtk.StringList({ strings: encoderLabels }),
+            selected: ENCODER_VALUES.indexOf(settings.get_string('video-encoder')),
+        });
+        encoderRow.connect('notify::selected', (row) => {
+            settings.set_string('video-encoder', ENCODER_VALUES[row.selected]);
+        });
+        encodingGroup.add(encoderRow);
+
+        const formatRow = new Adw.ComboRow({
+            title: _('Pixel format'),
+            subtitle: _('Automatic suits every encoder; only change this to work around a driver'),
+            model: new Gtk.StringList({ strings: formatLabels }),
+            selected: FORMAT_VALUES.indexOf(settings.get_string('video-format')),
+        });
+        formatRow.connect('notify::selected', (row) => {
+            settings.set_string('video-format', FORMAT_VALUES[row.selected]);
+        });
+        encodingGroup.add(formatRow);
+    }
+
+    _addGeneralPage(window, settings) {
+        const locationLabels = [_('Top bar'), _('Quick settings')];
+
+        const page = new Adw.PreferencesPage({
+            title: _('General'),
+            icon_name: 'preferences-system-symbolic',
+        });
+        window.add(page);
+
         const menuGroup = new Adw.PreferencesGroup({ title: _('Menu') });
         page.add(menuGroup);
 
@@ -88,8 +137,6 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         });
         settings.bind('show-details', detailsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
         menuGroup.add(detailsRow);
-
-        this._addAboutPage(window);
     }
 
     _addAboutPage(window) {

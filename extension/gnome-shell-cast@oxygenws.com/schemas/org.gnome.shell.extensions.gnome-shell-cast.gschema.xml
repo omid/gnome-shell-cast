@@ -25,6 +25,26 @@
       <summary>Video bitrate in kbit/s</summary>
       <description>Roughly 4000 for 720p, 8000 for 1080p, 16000 for 1440p and 30000 for 4K; more for fast-moving content.</description>
     </key>
+    <key name="video-encoder" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="hardware"/>
+        <choice value="software"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>Video encoder</summary>
+      <description>Which encoder to use. "auto" prefers hardware (VA-API, NVENC) and falls back to software. Choose software when a graphics driver produces a broken or stuttering picture; casting fails with a message if the choice cannot be met.</description>
+    </key>
+    <key name="video-format" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="nv12"/>
+        <choice value="i420"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>Pixel format</summary>
+      <description>The raw video format handed to the encoder. "auto" lets each encoder take the one it prefers: NV12 for hardware encoders, I420 for software ones. Forcing a format restricts casting to encoders that accept it.</description>
+    </key>
     <key name="show-details" type="b">
       <default>false</default>
       <summary>Show cast details</summary>

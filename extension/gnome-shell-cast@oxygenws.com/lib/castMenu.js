@@ -355,11 +355,18 @@ export class CastMenu {
     // Populated from GetDetails when the "show details" setting is on.
     _addDetailLines() {
         if (!this._details || !this._settings.get_boolean('show-details')) return;
-        const { transport, codec, receiverCodecs } = this._details;
+        const { transport, codec, encoder, format, receiverCodecs } = this._details;
         if (!transport) return;
         const TRANSPORT_LABELS = { mirror: _('Cast streaming'), audio: _('Audio stream') };
         const transportLabel = TRANSPORT_LABELS[transport] ?? _('HLS');
         this._addDetailLine(codec ? `${transportLabel} · ${formatCodec(codec)}` : transportLabel);
+        // Which encoder and pixel format were picked is worth showing precisely
+        // because both settings default to automatic. The format arrives a
+        // moment later than the encoder, once the pipeline has negotiated.
+        if (encoder)
+            this._addDetailLine(
+                _('Encoder: %s').replace('%s', format ? `${encoder} · ${format}` : encoder),
+            );
         if (receiverCodecs.length > 0)
             this._addDetailLine(
                 _('Receiver supports: %s').replace(
@@ -387,6 +394,8 @@ export class CastMenu {
         const options = {
             fps: new GLib.Variant('i', this._settings.get_int('fps')),
             'bitrate-kbps': new GLib.Variant('i', this._settings.get_int('bitrate-kbps')),
+            'video-encoder': new GLib.Variant('s', this._settings.get_string('video-encoder')),
+            'video-format': new GLib.Variant('s', this._settings.get_string('video-format')),
         };
 
         const size = RESOLUTIONS[this._settings.get_string('resolution')];

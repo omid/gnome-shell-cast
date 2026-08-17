@@ -24,6 +24,8 @@ const CAST_IFACE_XML = `
     <method name="GetDetails">
       <arg type="s" direction="out" name="transport"/>
       <arg type="s" direction="out" name="codec"/>
+      <arg type="s" direction="out" name="encoder"/>
+      <arg type="s" direction="out" name="format"/>
       <arg type="as" direction="out" name="receiver_codecs"/>
     </method>
     <method name="GetLastEvent">
@@ -187,8 +189,8 @@ export class CastDaemon {
                     callback(null);
                     return;
                 }
-                const [transport, codec, receiverCodecs] = result;
-                callback({ transport, codec, receiverCodecs });
+                const [transport, codec, encoder, format, receiverCodecs] = result;
+                callback({ transport, codec, encoder, format, receiverCodecs });
             }),
             this._cancellable,
         );
