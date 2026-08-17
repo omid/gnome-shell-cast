@@ -60,6 +60,14 @@ was. `TROUBLESHOOTING.md` has the user-facing versions.
   connecting to an IPv6 device fails with `EAFNOSUPPORT` and silently drops
   mirroring to HLS. Use `net::connected_udp()`, which also doubles as a
   reachability probe.
+- **`connect()` on the RTP socket pins our *local* address, not just the
+  peer's.** A connected UDP socket matches the full 4-tuple, so RTCP the
+  receiver sends to another of our addresses (a host with both a GUA and a ULA
+  has two) arrives at the port, matches no socket and is dropped - visible only
+  as a rising `Udp6NoPorts` in `/proc/net/snmp6`. It looks exactly like "the
+  receiver is not getting our RTP" when the receiver is in fact answering.
+  Mirroring sends from an unconnected socket and probes the route separately.
+
 - **One mDNS resolve can carry a partial record.** After a resume the AAAA
   often arrives minutes before the A. Discovery accumulates every announced
   address and prefers a *reachable* one.

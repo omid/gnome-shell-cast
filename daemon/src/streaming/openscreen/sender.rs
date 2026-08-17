@@ -6,7 +6,7 @@
 
 use std::collections::VecDeque;
 use std::io::ErrorKind;
-use std::net::UdpSocket;
+use std::net::{SocketAddr, UdpSocket};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::thread;
@@ -198,6 +198,7 @@ impl MediaSender {
     /// receiver reports picture loss.
     pub fn spawn(
         socket: UdpSocket,
+        peer: SocketAddr,
         streams: Vec<StreamConfig>,
         chunks: ChunkReceiver,
         request_keyframe: Box<dyn Fn() + Send>,
@@ -210,7 +211,16 @@ impl MediaSender {
         )]
         let handle = thread::Builder::new()
             .name("mirror-sender".into())
-            .spawn(move || run(&socket, &streams, &chunks, &*request_keyframe, &stop_flag))
+            .spawn(move || {
+                run(
+                    &socket,
+                    peer,
+                    &streams,
+                    &chunks,
+                    &*request_keyframe,
+                    &stop_flag,
+                );
+            })
             .expect("failed to spawn mirror-sender thread");
         Self {
             stop,
@@ -233,6 +243,7 @@ impl Drop for MediaSender {
 
 fn run(
     socket: &UdpSocket,
+    peer: SocketAddr,
     configs: &[StreamConfig],
     chunks: &ChunkReceiver,
     request_keyframe: &dyn Fn(),
@@ -264,7 +275,7 @@ fn run(
                         info!("sending first video frame to the receiver");
                         video_started_at = Some(Instant::now());
                     }
-                    let dropped = send_frame(socket, stream, &chunk);
+                    let dropped = send_frame(socket, peer, stream, &chunk);
                     if dropped > 0 && !reported_drops {
                         warn!(
                             "the network would not take {dropped} packet(s) of a frame; \
@@ -289,8 +300,9 @@ fn run(
             reported_silence = true;
         }
 
-        // 2. Receiver RTCP.
-        while let Ok(size) = socket.recv(&mut receive_buffer) {
+        // 2. Receiver RTCP. The socket is unconnected: a receiver may answer
+        // from a different port than the one it gave us in the ANSWER.
+        while let Ok((size, _from)) = socket.recv_from(&mut receive_buffer) {
             let Some(packet) = receive_buffer.get(..size) else {
                 continue;
             };
@@ -309,7 +321,7 @@ fn run(
                     }
                 }
                 for nack in &events.nacks {
-                    retransmit(socket, stream, nack);
+                    retransmit(socket, peer, stream, nack);
                 }
                 if events.picture_loss && stream.kind == StreamKind::Video {
                     debug!("receiver reported picture loss, forcing a key frame");
@@ -343,10 +355,10 @@ fn run(
 /// the socket is non-blocking (so RTCP can be polled), so a frame's packet
 /// burst hits `WouldBlock`, and a dropped packet costs the receiver the whole
 /// frame. Waiting paces us to what the link accepts. False if it never went.
-fn send_packet(socket: &UdpSocket, packet: &[u8]) -> bool {
+fn send_packet(socket: &UdpSocket, peer: SocketAddr, packet: &[u8]) -> bool {
     let deadline = Instant::now().checked_add(SEND_TIMEOUT);
     loop {
-        match socket.send(packet) {
+        match socket.send_to(packet, peer) {
             Ok(_) => return true,
             Err(e) if e.kind() == ErrorKind::WouldBlock => {
                 if deadline.is_none_or(|deadline| Instant::now() >= deadline) {
@@ -364,7 +376,12 @@ fn send_packet(socket: &UdpSocket, packet: &[u8]) -> bool {
 }
 
 /// Returns how many packets of the frame could not be sent.
-fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) -> u32 {
+fn send_frame(
+    socket: &UdpSocket,
+    peer: SocketAddr,
+    stream: &mut Stream,
+    chunk: &EncodedChunk,
+) -> u32 {
     let frame_id = stream.next_frame_id;
     stream.next_frame_id = stream.next_frame_id.wrapping_add(1);
 
@@ -396,7 +413,7 @@ fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) -> 
         stream.octet_count = stream
             .octet_count
             .wrapping_add(u32::try_from(packet.len()).unwrap_or(u32::MAX));
-        if !send_packet(socket, packet) {
+        if !send_packet(socket, peer, packet) {
             dropped = dropped.saturating_add(1);
         }
     }
@@ -409,7 +426,7 @@ fn send_frame(socket: &UdpSocket, stream: &mut Stream, chunk: &EncodedChunk) -> 
     dropped
 }
 
-fn retransmit(socket: &UdpSocket, stream: &Stream, nack: &rtcp::Nack) {
+fn retransmit(socket: &UdpSocket, peer: SocketAddr, stream: &Stream, nack: &rtcp::Nack) {
     let Some(frame) = stream
         .history
         .iter()
@@ -419,10 +436,10 @@ fn retransmit(socket: &UdpSocket, stream: &Stream, nack: &rtcp::Nack) {
     };
     if nack.packet_id == rtcp::ALL_PACKETS_LOST {
         for packet in frame.packets.iter() {
-            send_packet(socket, packet);
+            send_packet(socket, peer, packet);
         }
     } else if let Some(packet) = frame.packets.packet(nack.packet_id) {
-        send_packet(socket, packet);
+        send_packet(socket, peer, packet);
     } else {
         // The receiver NACKed a packet id we never produced; nothing to resend.
     }

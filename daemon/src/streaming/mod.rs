@@ -236,7 +236,12 @@ fn start_media(
     size: (i32, i32),
     streams: &MediaStreams<'_>,
 ) -> Result<(gst::Pipeline, MediaSender)> {
-    let socket = crate::net::connected_udp(peer.0, peer.1).context("connecting the RTP socket")?;
+    // Probe the route first (a connect only consults the routing table), then
+    // send from an unconnected socket: connecting would pin our local address,
+    // and a receiver may answer RTCP to a different address of ours than the
+    // one the route picked, which the kernel would then discard.
+    drop(crate::net::connected_udp(peer.0, peer.1).context("connecting the RTP socket")?);
+    let socket = crate::net::bound_udp(peer.0).context("opening the RTP socket")?;
 
     let (chunks_tx, chunks_rx) = chunk_channel();
     let pipeline = build_pipeline(
@@ -251,7 +256,13 @@ fn start_media(
     let pipeline = pipeline.context("building mirroring pipeline")?;
 
     let configs = stream_configs(streams.video, streams.audio);
-    let sender = MediaSender::spawn(socket, configs, chunks_rx, keyframe_forcer(&pipeline));
+    let sender = MediaSender::spawn(
+        socket,
+        std::net::SocketAddr::new(peer.0, peer.1),
+        configs,
+        chunks_rx,
+        keyframe_forcer(&pipeline),
+    );
     Ok((pipeline, sender))
 }
 
