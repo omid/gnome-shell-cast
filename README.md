@@ -118,6 +118,19 @@ gnome-extensions enable gnome-shell-cast@oxygenws.com
 already has the extension from extensions.gnome.org but no supported prebuilt
 binary.)
 
+### NixOS
+
+Neither the prebuilt binary nor `make install` works on NixOS, so the repo ships
+a flake instead. It builds both halves from the same revision and bundles the
+GStreamer plugins and `pactl` into the daemon, so the session needs no setup.
+
+```nix
+inputs.gnome-shell-cast.url = "github:omid/gnome-shell-cast";
+```
+
+See [nix/README.md](nix/README.md) for installing it, running it without
+changing your configuration, and the firewall and portal settings to check.
+
 ## Usage
 
 1. Click the cast icon in the top panel.
