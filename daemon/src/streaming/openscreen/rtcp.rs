@@ -4,9 +4,10 @@
 //! `cast/streaming/impl/rtp_defines.h`, `rtcp_common.cc`,
 //! `sender_report_builder.cc` and `compound_rtcp_parser.cc`.
 
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const PT_SENDER_REPORT: u8 = 200;
+const PT_RECEIVER_REPORT: u8 = 201;
 const PT_PAYLOAD_SPECIFIC: u8 = 206;
 
 const SUBTYPE_PICTURE_LOSS: u8 = 1;
@@ -82,6 +83,8 @@ pub struct ReceiverEvents {
     pub nacks: Vec<Nack>,
     /// The receiver lost decoder state and needs a key frame.
     pub picture_loss: bool,
+    /// Round-trip time from a Receiver Report's LSR/DLSR, when one arrived.
+    pub round_trip: Option<Duration>,
 }
 
 impl ReceiverEvents {
@@ -89,6 +92,7 @@ impl ReceiverEvents {
         self.checkpoint_frame_id = None;
         self.nacks.clear();
         self.picture_loss = false;
+        self.round_trip = None;
     }
 }
 
@@ -122,8 +126,12 @@ pub fn parse(data: &[u8], sender_ssrc: u32, checkpoint_hint: i64, events: &mut R
             (PT_PAYLOAD_SPECIFIC, SUBTYPE_PICTURE_LOSS) if be_u32(body, 4) == Some(sender_ssrc) => {
                 events.picture_loss = true;
             }
-            // Receiver reports, extended reports, SDES, etc. carry nothing we
-            // act on; only Cast Feedback and PLI matter to the sender.
+            (PT_RECEIVER_REPORT, _) => {
+                if let Some(rtt) = parse_round_trip(body, count_or_subtype) {
+                    events.round_trip = Some(rtt);
+                }
+            }
+            // Extended reports, SDES, etc. carry nothing we act on.
             _ => {}
         }
         let Some(next) = rest.get(total..) else {
@@ -131,6 +139,37 @@ pub fn parse(data: &[u8], sender_ssrc: u32, checkpoint_hint: i64, events: &mut R
         };
         rest = next;
     }
+}
+
+/// RTT from the first report block: the receiver echoes the middle 32 bits of
+/// our last Sender Report's NTP stamp (LSR) plus how long it sat on it (DLSR),
+/// both in 1/65536 s. Anything implausible is discarded rather than trusted.
+fn parse_round_trip(body: &[u8], block_count: u8) -> Option<Duration> {
+    if block_count == 0 {
+        return None;
+    }
+    // [sender ssrc][report block: ssrc, loss, ext seq, jitter, LSR, DLSR]
+    let lsr = be_u32(body, 4 + 16)?;
+    let dlsr = be_u32(body, 4 + 20)?;
+    if lsr == 0 {
+        return None;
+    }
+    let now = ntp_middle_32(ntp_now());
+    let elapsed = now.wrapping_sub(lsr).wrapping_sub(dlsr);
+    // A negative or absurd result means the stamps did not line up.
+    if elapsed == 0 || elapsed > u32::from(u16::MAX) {
+        return None;
+    }
+    let micros = u64::from(elapsed)
+        .saturating_mul(1_000_000)
+        .checked_div(65_536)?;
+    log::debug!("receiver round trip {micros} us");
+    Some(Duration::from_micros(micros))
+}
+
+/// The middle 32 bits of an NTP timestamp, as RTCP report blocks carry them.
+fn ntp_middle_32(ntp: u64) -> u32 {
+    u32::try_from((ntp >> 16) & 0xFFFF_FFFF).unwrap_or(0)
 }
 
 fn parse_feedback(body: &[u8], sender_ssrc: u32, hint: i64, events: &mut ReceiverEvents) {
@@ -255,6 +294,7 @@ mod tests {
                 packet_id: 0,
             }],
             picture_loss: false,
+            round_trip: Some(Duration::from_secs(99)),
         };
         parse(data, sender_ssrc, checkpoint_hint, &mut events);
         events

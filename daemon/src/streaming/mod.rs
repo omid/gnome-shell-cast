@@ -8,7 +8,9 @@
 
 mod channel;
 pub mod encoder;
+pub mod ladder;
 mod openscreen;
+pub mod quality;
 
 use std::os::fd::AsRawFd;
 use std::sync::Arc;
@@ -27,14 +29,13 @@ use crate::pipeline::{self, PipelineStop, StreamSettings};
 use crate::{CastDetails, SharedState};
 use channel::{ChannelControl, ChannelEvent, MirrorChannel};
 use openscreen::sender::{
-    ChunkSender, EncodedChunk, MediaSender, StreamConfig, StreamKind, chunk_channel,
+    ChunkSender, EncodedChunk, MediaSender, RateControl, StreamConfig, StreamKind, chunk_channel,
 };
 use openscreen::{messages, rtcp};
 
 const AUDIO_INDEX: u32 = 0;
 /// First video stream index; each offered codec gets the next one up.
 const VIDEO_INDEX_BASE: u32 = 1;
-const AUDIO_BIT_RATE: u32 = 128_000;
 
 pub enum Outcome {
     /// Mirroring ran (successfully or not); do not fall back.
@@ -70,8 +71,10 @@ pub async fn run(
 ) -> Outcome {
     // 1. Stream parameters. "Native" (no explicit size) is advertised to the
     // receiver as 1080p; it scales anyway.
-    let (width, height) = settings.size.unwrap_or((1920, 1080));
-    let video_bps = u32::try_from(settings.bitrate_kbps)
+    // Offered before the receiver has told us anything, so only our own
+    // limits apply; the ANSWER may narrow every one of these.
+    let offered = settings.resolve_local();
+    let video_bps = u32::try_from(offered.video_bitrate_kbps)
         .unwrap_or(0)
         .saturating_mul(1000);
 
@@ -92,14 +95,14 @@ pub async fn run(
         ssrc: audio_keys.ssrc,
         aes_key: audio_keys.aes_key,
         aes_iv_mask: audio_keys.aes_iv_mask,
-        bit_rate: AUDIO_BIT_RATE,
+        bit_rate: u32::try_from(offered.audio_bitrate_bps).unwrap_or(128_000),
     });
 
     let codecs = match offer_codecs(capture, settings) {
         Ok(codecs) => codecs,
         Err(outcome) => return outcome,
     };
-    let video_params = video_params(&codecs, settings, video_bps);
+    let video_params = video_params(&codecs, offered.size, offered.fps, video_bps);
     let offer = messages::offer(1, audio_params.as_ref(), &video_params);
 
     // 2. Launch the mirroring app and negotiate (blocking I/O on a worker).
@@ -119,12 +122,16 @@ pub async fn run(
     // The receiver accepts one video variant; take our highest-priority one
     // (video_params is already in preference order). Keep only the scalar
     // stream data so nothing borrows video_params past here.
+    // The receiver's constraints outrank the request; automatic settings are
+    // filled in from them entirely.
+    let resolved = settings.resolve(&answer.constraints);
     let selected = match select_streams(
         &answer,
         &video_params,
         &codecs,
         (audio_params.is_some(), capture.is_some()),
         settings,
+        &resolved,
     ) {
         Ok(selected) => selected,
         Err(e) => return Outcome::Unavailable(e),
@@ -141,7 +148,7 @@ pub async fn run(
         (addr, answer.udp_port),
         capture,
         settings,
-        (width, height),
+        &resolved,
         &MediaStreams {
             video: chosen_video,
             audio: audio_accepted.then_some(&audio_keys),
@@ -166,7 +173,7 @@ pub async fn run(
         &pipeline,
         video_encoder.as_ref().is_some_and(|(_, hw)| *hw),
         accepted_codec_names(&answer, &video_params, &codecs),
-        settings,
+        &resolved,
     );
 
     let result = run_until_stopped(state, capture, &pipeline, stop_rx, &mut channel_events).await;
@@ -233,7 +240,7 @@ fn start_media(
     peer: (std::net::IpAddr, u16),
     capture: Option<&Capture>,
     settings: &StreamSettings,
-    size: (i32, i32),
+    resolved: &quality::Resolved,
     streams: &MediaStreams<'_>,
 ) -> Result<(gst::Pipeline, MediaSender)> {
     // Probe the route first (a connect only consults the routing table), then
@@ -247,7 +254,7 @@ fn start_media(
     let pipeline = build_pipeline(
         capture,
         settings,
-        size,
+        resolved,
         streams.encoder,
         streams.audio_monitor,
         &chunks_tx,
@@ -262,8 +269,47 @@ fn start_media(
         configs,
         chunks_rx,
         keyframe_forcer(&pipeline),
+        rate_control(&pipeline, settings, resolved),
     );
     Ok((pipeline, sender))
+}
+
+/// The bitrate window the control loop may move in. An explicitly chosen
+/// bitrate is left alone; only automatic follows the link.
+fn rate_control(
+    pipeline: &gst::Pipeline,
+    settings: &StreamSettings,
+    resolved: &quality::Resolved,
+) -> RateControl {
+    let start_bps = u32::try_from(resolved.video_bitrate_kbps)
+        .unwrap_or(0)
+        .saturating_mul(1000);
+    let adaptive = settings.bitrate_kbps.is_none();
+    // A pinned resolution is honoured; only automatic climbs the ladder.
+    let adaptive_size = settings.size.is_none();
+    let weak = pipeline.downgrade();
+    let weak_size = pipeline.downgrade();
+    RateControl {
+        start_bps,
+        min_bps: u32::try_from(resolved.video_min_bitrate_bps).unwrap_or(300_000),
+        max_bps: u32::try_from(resolved.video_max_bitrate_bps).unwrap_or(start_bps),
+        set_bitrate: adaptive.then(|| -> openscreen::sender::SetBitrate {
+            Box::new(move |bps: u32| {
+                if let Some(pipeline) = weak.upgrade() {
+                    pipeline::set_encoder_bitrate(&pipeline, bps);
+                }
+            })
+        }),
+        set_size: adaptive_size.then(|| -> openscreen::sender::SetSize {
+            Box::new(move |size: (i32, i32)| {
+                if let Some(pipeline) = weak_size.upgrade() {
+                    pipeline::set_capture_size(&pipeline, size);
+                }
+            })
+        }),
+        sizes: ladder::snapped_sizes(resolved.size, (320, 180), resolved.size),
+        start_size: resolved.size,
+    }
 }
 
 /// What the receiver accepted from the OFFER, and the encoder to feed it.
@@ -281,6 +327,7 @@ fn select_streams(
     codecs: &[encoder::VideoCodec],
     offered: (bool, bool),
     settings: &StreamSettings,
+    resolved: &quality::Resolved,
 ) -> Result<Selected> {
     let (audio_offered, has_capture) = offered;
     // The receiver accepts one video variant; take our highest-priority one
@@ -298,10 +345,10 @@ fn select_streams(
         bail!("receiver did not accept the audio stream");
     }
 
-    let video_bps = u32::try_from(settings.bitrate_kbps)
+    let video_bps = u32::try_from(resolved.video_bitrate_kbps)
         .unwrap_or(0)
         .saturating_mul(1000);
-    let fps = u32::try_from(settings.fps).unwrap_or(30);
+    let fps = u32::try_from(resolved.fps).unwrap_or(30);
     let encoder = match video {
         // (launch fragment, is-hardware)
         // Same policy as the OFFER above, or we would advertise a codec we then
@@ -328,17 +375,17 @@ fn announce(
     pipeline: &gst::Pipeline,
     hardware: bool,
     receiver_codecs: Vec<String>,
-    settings: &StreamSettings,
+    resolved: &quality::Resolved,
 ) {
     if let Some(codec) = codec {
-        let (width, height) = settings.size.unwrap_or((1920, 1080));
+        let (width, height) = resolved.size;
         let element = pipeline::encoder_element(pipeline).unwrap_or_default();
         info!(
             "mirroring started ({} via {element} {}, {width}x{height} @{}fps, {} kbit/s)",
             codec.codec_name(),
             if hardware { "hardware" } else { "software" },
-            settings.fps,
-            settings.bitrate_kbps,
+            resolved.fps,
+            resolved.video_bitrate_kbps,
         );
         state.set_details(CastDetails {
             transport: "mirror".to_owned(),
@@ -348,7 +395,10 @@ fn announce(
             receiver_codecs,
         });
     } else {
-        info!("audio-only mirroring started ({AUDIO_BIT_RATE} bps)");
+        info!(
+            "audio-only mirroring started ({} bps)",
+            resolved.audio_bitrate_bps
+        );
         state.set_details(CastDetails {
             transport: "mirror".to_owned(),
             codec: "opus".to_owned(),
@@ -361,12 +411,10 @@ fn announce(
 /// One OFFER variant per codec we can encode, each with its own SSRC and key.
 fn video_params(
     codecs: &[encoder::VideoCodec],
-    settings: &StreamSettings,
+    (width, height): (i32, i32),
+    fps: i32,
     video_bps: u32,
 ) -> Vec<messages::VideoParams> {
-    // The OFFER needs a frame size, so "native" (no explicit size) is
-    // advertised as 1080p; receivers scale anyway.
-    let (width, height) = settings.size.unwrap_or((1920, 1080));
     codecs
         .iter()
         .enumerate()
@@ -380,7 +428,7 @@ fn video_params(
                 aes_iv_mask: keys.aes_iv_mask,
                 codec_name: codec.codec_name(),
                 max_bit_rate: video_bps,
-                max_fps: u32::try_from(settings.fps).unwrap_or(0),
+                max_fps: u32::try_from(fps).unwrap_or(0),
                 width: u32::try_from(width).unwrap_or(0),
                 height: u32::try_from(height).unwrap_or(0),
             }
@@ -498,7 +546,7 @@ fn pop_bus_error(bus: &gst::Bus) -> Option<anyhow::Error> {
 fn build_pipeline(
     capture: Option<&Capture>,
     settings: &StreamSettings,
-    (width, height): (i32, i32),
+    resolved: &quality::Resolved,
     video_encoder: Option<&str>,
     audio_monitor: Option<&str>,
     chunks_tx: &ChunkSender,
@@ -513,7 +561,8 @@ fn build_pipeline(
     // the VPX/AV1 ones only I420, and leaving it open lets videoconvert pick
     // 4:4:4. A forced value already filtered the encoder list, so it can link.
     if let (Some(capture), Some(venc)) = (capture, video_encoder) {
-        let fps = settings.fps;
+        let (width, height) = resolved.size;
+        let fps = resolved.fps;
         let format = settings.encoding.format.caps_format();
         let fd = capture.fd.as_raw_fd();
         let node = capture.node_id;
@@ -527,12 +576,14 @@ fn build_pipeline(
         );
     }
     if let Some(monitor) = audio_monitor {
+        let audio_bps = resolved.audio_bitrate_bps;
+        let (rate, channels) = (resolved.sample_rate, resolved.channels);
         let _ = write!(
             desc,
             "pulsesrc device={monitor} provide-clock=false \
              ! queue ! audioconvert ! audioresample \
-             ! audio/x-raw,rate=48000,channels=2 \
-             ! opusenc bitrate={AUDIO_BIT_RATE} \
+             ! audio/x-raw,rate={rate},channels={channels} \
+             ! opusenc bitrate={audio_bps} \
              ! appsink name=asink sync=false max-buffers=32"
         );
     }

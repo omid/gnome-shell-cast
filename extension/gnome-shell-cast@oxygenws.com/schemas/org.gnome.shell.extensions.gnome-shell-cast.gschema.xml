@@ -4,26 +4,34 @@
           path="/org/gnome/shell/extensions/gnome-shell-cast/">
     <key name="resolution" type="s">
       <choices>
+        <choice value="auto"/>
         <choice value="native"/>
         <choice value="2160"/>
         <choice value="1440"/>
         <choice value="1080"/>
         <choice value="720"/>
       </choices>
-      <default>'720'</default>
+      <default>'auto'</default>
       <summary>Maximum resolution</summary>
-      <description>Scale the captured video down to this size before encoding. "native" keeps the captured size. Above 1080p, raise the bitrate to match and expect a hardware encoder to be needed for a smooth stream.</description>
+      <description>Scale the captured video down to this size before encoding. "auto" lets the receiver's own limits decide, which is what Chrome does. Above 1080p, raise the bitrate to match and expect a hardware encoder to be needed for a smooth stream.</description>
     </key>
     <key name="fps" type="i">
-      <range min="10" max="60"/>
-      <default>20</default>
+      <range min="0" max="60"/>
+      <default>0</default>
       <summary>Stream framerate</summary>
+      <description>Frames per second, or 0 to let the receiver's limits decide.</description>
     </key>
     <key name="bitrate-kbps" type="i">
-      <range min="1000" max="60000"/>
-      <default>4000</default>
+      <range min="0" max="60000"/>
+      <default>0</default>
       <summary>Video bitrate in kbit/s</summary>
-      <description>Roughly 4000 for 720p, 8000 for 1080p, 16000 for 1440p and 30000 for 4K; more for fast-moving content.</description>
+      <description>Roughly 4000 for 720p, 8000 for 1080p, 16000 for 1440p and 30000 for 4K; more for fast-moving content. 0 lets the receiver's limits decide.</description>
+    </key>
+    <key name="audio-bitrate-kbps" type="i">
+      <range min="0" max="512"/>
+      <default>0</default>
+      <summary>Audio bitrate in kbit/s</summary>
+      <description>Opus bitrate for the cast audio, or 0 to let the receiver's limits decide.</description>
     </key>
     <key name="video-encoder" type="s">
       <choices>
@@ -43,7 +51,7 @@
       </choices>
       <default>'auto'</default>
       <summary>Pixel format</summary>
-      <description>The raw video format handed to the encoder. "auto" lets each encoder take the one it prefers: NV12 for hardware encoders, I420 for software ones. Forcing a format restricts casting to encoders that accept it.</description>
+      <description>The raw video format handed to the encoder. "auto" offers both and lets negotiation pick whichever the chosen encoder accepts. Forcing a format restricts casting to encoders that accept it, which on most systems means forcing the encoder type too.</description>
     </key>
     <key name="show-details" type="b">
       <default>false</default>

@@ -113,6 +113,9 @@ pub struct Answer {
     pub udp_port: u16,
     /// Offer stream indexes the receiver accepted.
     pub send_indexes: Vec<u32>,
+    /// The quality envelope the receiver will accept. Most receivers send no
+    /// constraints at all, leaving this at the documented defaults.
+    pub constraints: crate::streaming::quality::Constraints,
 }
 
 /// Parses an ANSWER message body (already matched on seqNum by the caller).
@@ -136,6 +139,7 @@ pub fn parse_answer(message: &Value) -> Result<Answer> {
     Ok(Answer {
         udp_port,
         send_indexes,
+        constraints: crate::streaming::quality::parse(answer),
     })
 }
 

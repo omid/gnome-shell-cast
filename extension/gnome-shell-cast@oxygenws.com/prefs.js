@@ -9,7 +9,12 @@ import {
     gettext as _,
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-const RESOLUTION_VALUES = ['native', '2160', '1440', '1080', '720'];
+const RESOLUTION_VALUES = ['auto', 'native', '2160', '1440', '1080', '720'];
+// 0 is "automatic" for each of these: the daemon then takes the value from the
+// receiver's own limits instead of the setting.
+const FPS_VALUES = [0, 15, 20, 24, 30, 60];
+const BITRATE_VALUES = [0, 2000, 4000, 8000, 16000, 30000];
+const AUDIO_BITRATE_VALUES = [0, 64, 96, 128, 192, 256];
 const LOCATION_VALUES = ['tray', 'quick-settings'];
 const ENCODER_VALUES = ['auto', 'hardware', 'software'];
 const FORMAT_VALUES = ['auto', 'nv12', 'i420'];
@@ -26,7 +31,16 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
     _addVideoPage(window, settings) {
         // Built here (not at module scope) so each label is a literal `_()`
         // call that xgettext can extract and the gettext domain is bound.
-        const resolutionLabels = [_('Native'), _('4K (2160p)'), _('1440p'), _('1080p'), _('720p')];
+        const resolutionLabels = [
+            _('Automatic'),
+            _('Native'),
+            _('4K (2160p)'),
+            _('1440p'),
+            _('1080p'),
+            _('720p'),
+        ];
+        const numericLabels = (values) =>
+            values.map((value) => (value === 0 ? _('Automatic') : String(value)));
         const encoderLabels = [_('Automatic'), _('Hardware only'), _('Software only')];
         const formatLabels = [_('Automatic'), 'NV12', 'I420'];
 
@@ -46,36 +60,47 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             title: _('Maximum resolution'),
             subtitle: _('Above 1080p needs a hardware encoder and a matching bitrate'),
             model: new Gtk.StringList({ strings: resolutionLabels }),
-            selected: RESOLUTION_VALUES.indexOf(settings.get_string('resolution')),
+            selected: Math.max(0, RESOLUTION_VALUES.indexOf(settings.get_string('resolution'))),
         });
         resolutionRow.connect('notify::selected', (row) => {
             settings.set_string('resolution', RESOLUTION_VALUES[row.selected]);
         });
         group.add(resolutionRow);
 
-        const fpsRow = new Adw.SpinRow({
+        const fpsRow = new Adw.ComboRow({
             title: _('Framerate'),
             subtitle: _('Frames per second'),
-            adjustment: new Gtk.Adjustment({
-                lower: 10,
-                upper: 60,
-                step_increment: 5,
-            }),
+            model: new Gtk.StringList({ strings: numericLabels(FPS_VALUES) }),
+            selected: Math.max(0, FPS_VALUES.indexOf(settings.get_int('fps'))),
         });
-        settings.bind('fps', fpsRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        fpsRow.connect('notify::selected', (row) => {
+            settings.set_int('fps', FPS_VALUES[row.selected]);
+        });
         group.add(fpsRow);
 
-        const bitrateRow = new Adw.SpinRow({
+        const bitrateRow = new Adw.ComboRow({
             title: _('Video bitrate'),
             subtitle: _('kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K'),
-            adjustment: new Gtk.Adjustment({
-                lower: 1000,
-                upper: 60000,
-                step_increment: 500,
-            }),
+            model: new Gtk.StringList({ strings: numericLabels(BITRATE_VALUES) }),
+            selected: Math.max(0, BITRATE_VALUES.indexOf(settings.get_int('bitrate-kbps'))),
         });
-        settings.bind('bitrate-kbps', bitrateRow, 'value', Gio.SettingsBindFlags.DEFAULT);
+        bitrateRow.connect('notify::selected', (row) => {
+            settings.set_int('bitrate-kbps', BITRATE_VALUES[row.selected]);
+        });
         group.add(bitrateRow);
+
+        const audioBitrateRow = new Adw.ComboRow({
+            title: _('Audio bitrate'),
+            model: new Gtk.StringList({ strings: numericLabels(AUDIO_BITRATE_VALUES) }),
+            selected: Math.max(
+                0,
+                AUDIO_BITRATE_VALUES.indexOf(settings.get_int('audio-bitrate-kbps')),
+            ),
+        });
+        audioBitrateRow.connect('notify::selected', (row) => {
+            settings.set_int('audio-bitrate-kbps', AUDIO_BITRATE_VALUES[row.selected]);
+        });
+        group.add(audioBitrateRow);
 
         const encodingGroup = new Adw.PreferencesGroup({
             title: _('Encoding'),
@@ -89,7 +114,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
                 'Automatic prefers your graphics card; choose software if the picture breaks up',
             ),
             model: new Gtk.StringList({ strings: encoderLabels }),
-            selected: ENCODER_VALUES.indexOf(settings.get_string('video-encoder')),
+            selected: Math.max(0, ENCODER_VALUES.indexOf(settings.get_string('video-encoder'))),
         });
         encoderRow.connect('notify::selected', (row) => {
             settings.set_string('video-encoder', ENCODER_VALUES[row.selected]);
@@ -100,7 +125,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             title: _('Pixel format'),
             subtitle: _('Automatic suits every encoder; only change this to work around a driver'),
             model: new Gtk.StringList({ strings: formatLabels }),
-            selected: FORMAT_VALUES.indexOf(settings.get_string('video-format')),
+            selected: Math.max(0, FORMAT_VALUES.indexOf(settings.get_string('video-format'))),
         });
         formatRow.connect('notify::selected', (row) => {
             settings.set_string('video-format', FORMAT_VALUES[row.selected]);

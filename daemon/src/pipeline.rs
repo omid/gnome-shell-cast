@@ -12,28 +12,41 @@ use crate::streaming::encoder::{self, EncoderPolicy, EncodingPolicy, FormatPolic
 
 pub const PLAYLIST_NAME: &str = "stream.m3u8";
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct StreamSettings {
-    /// Cap the video size; None keeps the captured size.
+    /// Every field is a request: `None` means automatic, which defers to the
+    /// receiver's constraints and our own limits (see `streaming::quality`).
     pub size: Option<(i32, i32)>,
-    pub fps: i32,
-    pub bitrate_kbps: i32,
+    pub fps: Option<i32>,
+    pub bitrate_kbps: Option<i32>,
+    pub audio_bitrate_kbps: Option<i32>,
     /// Which encoder and raw format the user will accept; `Auto` by default.
     pub encoding: EncodingPolicy,
 }
 
-impl Default for StreamSettings {
-    fn default() -> Self {
-        Self {
-            size: Some((1280, 720)),
-            fps: 20,
-            bitrate_kbps: 4000,
-            encoding: EncodingPolicy::default(),
-        }
-    }
-}
-
 impl StreamSettings {
+    /// The values to build a pipeline from when there is no receiver to
+    /// negotiate with (the HLS fallback), or before an ANSWER has arrived.
+    pub fn resolve_local(&self) -> crate::streaming::quality::Resolved {
+        self.resolve(&crate::streaming::quality::Constraints::default())
+    }
+
+    /// Combines this request with `constraints`; automatic fields are filled
+    /// in from the envelope. `size` doubles as the captured size when set.
+    pub fn resolve(
+        &self,
+        constraints: &crate::streaming::quality::Constraints,
+    ) -> crate::streaming::quality::Resolved {
+        crate::streaming::quality::resolve(
+            self.size,
+            self.fps,
+            self.bitrate_kbps,
+            self.audio_bitrate_kbps,
+            self.size.unwrap_or((1920, 1080)),
+            constraints,
+        )
+    }
+
     pub fn from_options(mut options: HashMap<String, OwnedValue>) -> Self {
         let mut get_i32 = |key: &str| options.remove(key).and_then(|v| i32::try_from(&v).ok());
 
@@ -45,11 +58,15 @@ impl StreamSettings {
             // Capped at 8K so a bad request can't ask for an absurd frame size.
             settings.size = Some((w.min(7680), h.min(4320)));
         }
-        if let Some(fps) = get_i32("fps") {
-            settings.fps = fps.clamp(10, 60);
+        // 0 is how the extension spells "automatic" over D-Bus.
+        if let Some(fps) = get_i32("fps").filter(|fps| *fps > 0) {
+            settings.fps = Some(fps.clamp(1, 60));
         }
-        if let Some(bitrate) = get_i32("bitrate-kbps") {
-            settings.bitrate_kbps = bitrate.clamp(1000, 60_000);
+        if let Some(bitrate) = get_i32("bitrate-kbps").filter(|b| *b > 0) {
+            settings.bitrate_kbps = Some(bitrate.clamp(100, 60_000));
+        }
+        if let Some(bitrate) = get_i32("audio-bitrate-kbps").filter(|b| *b > 0) {
+            settings.audio_bitrate_kbps = Some(bitrate.clamp(16, 512));
         }
 
         let mut get_string = |key: &str| options.remove(key).and_then(|v| String::try_from(v).ok());
@@ -60,6 +77,61 @@ impl StreamSettings {
             settings.encoding.format = FormatPolicy::parse(&format);
         }
         settings
+    }
+}
+
+/// Applies a new target bitrate to the running encoder. The property and its
+/// unit differ per element, so this maps by factory name; anything unknown is
+/// left alone rather than guessed at.
+pub fn set_encoder_bitrate(pipeline: &gst::Pipeline, bits_per_second: u32) {
+    let Some(venc) = pipeline.by_name("venc") else {
+        return;
+    };
+    let factory = venc
+        .factory()
+        .map(|f| f.name().to_string())
+        .unwrap_or_default();
+    let kbps = bits_per_second.checked_div(1000).unwrap_or(1).max(1);
+    match factory.as_str() {
+        // The VPX base takes bit/s.
+        "vp8enc" | "vp9enc" => venc.set_property(
+            "target-bitrate",
+            i32::try_from(bits_per_second).unwrap_or(i32::MAX),
+        ),
+        "svtav1enc" | "av1enc" => venc.set_property("target-bitrate", kbps),
+        "x264enc" => venc.set_property("bitrate", kbps),
+        other if other.starts_with("va") || other.starts_with("nv") => {
+            venc.set_property("bitrate", kbps);
+        }
+        _ => {}
+    }
+}
+
+/// Retargets the running capture to `size`. The caps between videoscale and
+/// the encoder come from the launch string, so the filter is unnamed; it is
+/// found by factory and its existing fields are preserved.
+pub fn set_capture_size(pipeline: &gst::Pipeline, (width, height): (i32, i32)) {
+    let mut elements = pipeline.iterate_elements();
+    while let Ok(Some(element)) = elements.next() {
+        let is_capsfilter = element
+            .factory()
+            .is_some_and(|factory| factory.name() == "capsfilter");
+        if !is_capsfilter {
+            continue;
+        }
+        let caps = element.property::<Option<gst::Caps>>("caps");
+        let Some(caps) = caps else { continue };
+        let Some(structure) = caps.structure(0) else {
+            continue;
+        };
+        if structure.name() != "video/x-raw" {
+            continue;
+        }
+        let mut updated = structure.to_owned();
+        updated.set("width", width);
+        updated.set("height", height);
+        element.set_property("caps", gst::Caps::builder_full().structure(updated).build());
+        return;
     }
 }
 
@@ -122,7 +194,8 @@ pub fn launch_description(
     use std::fmt::Write as _;
 
     let dir = hls_dir.display();
-    let fps = settings.fps;
+    let resolved = settings.resolve_local();
+    let fps = resolved.fps;
     // Short segments keep both startup and live lag low: the player is
     // roughly 3 target-durations behind the encoder. Keyframe every segment
     // so segments are independently decodable.
@@ -228,14 +301,17 @@ pub fn build(
     };
 
     // Keyframe every segment (target-duration = 1s) so segments decode alone.
-    let key_int = settings.fps.max(1);
+    let key_int = settings.resolve_local().fps.max(1);
     // A forced encoder or pixel format can rule out every candidate; fail with
     // the reason rather than quietly ignoring the user's choice.
     let video_encoder = match video {
         Some(_) => Some(
-            find_h264_encoder(settings.bitrate_kbps, key_int, settings.encoding).ok_or_else(
-                || anyhow::anyhow!(encoder::policy_failure_message(settings.encoding)),
-            )?,
+            find_h264_encoder(
+                settings.resolve_local().video_bitrate_kbps,
+                key_int,
+                settings.encoding,
+            )
+            .ok_or_else(|| anyhow::anyhow!(encoder::policy_failure_message(settings.encoding)))?,
         ),
         None => None,
     };
@@ -308,11 +384,24 @@ mod tests {
     use std::path::PathBuf;
 
     #[test]
+    /// Nothing requested means automatic everywhere; the values come from the
+    /// receiver's envelope later, not from a hardcoded default here.
     fn default_settings_from_empty_options() {
         let settings = StreamSettings::from_options(HashMap::new());
-        assert_eq!(settings.size, Some((1280, 720)));
-        assert_eq!(settings.fps, 20);
-        assert_eq!(settings.bitrate_kbps, 4000);
+        assert_eq!(settings.size, None);
+        assert_eq!(settings.fps, None);
+        assert_eq!(settings.bitrate_kbps, None);
+        assert_eq!(settings.audio_bitrate_kbps, None);
+    }
+
+    #[test]
+    fn zero_means_automatic() {
+        let mut options = HashMap::new();
+        options.insert("fps".to_owned(), OwnedValue::from(0_i32));
+        options.insert("bitrate-kbps".to_owned(), OwnedValue::from(0_i32));
+        let settings = StreamSettings::from_options(options);
+        assert_eq!(settings.fps, None);
+        assert_eq!(settings.bitrate_kbps, None);
     }
 
     #[test]
@@ -321,8 +410,8 @@ mod tests {
         options.insert("fps".to_owned(), OwnedValue::from(500_i32));
         options.insert("bitrate-kbps".to_owned(), OwnedValue::from(1_i32));
         let settings = StreamSettings::from_options(options);
-        assert_eq!(settings.fps, 60);
-        assert_eq!(settings.bitrate_kbps, 1000);
+        assert_eq!(settings.fps, Some(60));
+        assert_eq!(settings.bitrate_kbps, Some(100));
     }
 
     #[test]
@@ -333,7 +422,7 @@ mod tests {
         options.insert("bitrate-kbps".to_owned(), OwnedValue::from(30_000_i32));
         let settings = StreamSettings::from_options(options);
         assert_eq!(settings.size, Some((3840, 2160)));
-        assert_eq!(settings.bitrate_kbps, 30_000);
+        assert_eq!(settings.bitrate_kbps, Some(30_000));
     }
 
     #[test]
@@ -344,7 +433,7 @@ mod tests {
         options.insert("bitrate-kbps".to_owned(), OwnedValue::from(999_999_i32));
         let settings = StreamSettings::from_options(options);
         assert_eq!(settings.size, Some((7680, 4320)));
-        assert_eq!(settings.bitrate_kbps, 60_000);
+        assert_eq!(settings.bitrate_kbps, Some(60_000));
     }
 
     #[test]

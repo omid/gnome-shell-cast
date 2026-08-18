@@ -17,9 +17,11 @@ use gstreamer::buffer::{MappedBuffer, Readable};
 use log::{debug, info, warn};
 use parking_lot::{Condvar, Mutex};
 
+use super::bandwidth::{self, BandwidthEstimator};
 use super::crypto::FrameCrypto;
 use super::rtcp;
 use super::rtp::{OutboundFrame, PacketizedFrame, Packetizer};
+use crate::streaming::ladder::ResolutionLadder;
 
 /// Matches openscreen's kMaxUnackedFrames.
 const MAX_HISTORY_FRAMES: usize = 120;
@@ -202,6 +204,7 @@ impl MediaSender {
         streams: Vec<StreamConfig>,
         chunks: ChunkReceiver,
         request_keyframe: Box<dyn Fn() + Send>,
+        rate_control: RateControl,
     ) -> Self {
         let stop = Arc::new(AtomicBool::new(false));
         let stop_flag = Arc::clone(&stop);
@@ -218,6 +221,7 @@ impl MediaSender {
                     &streams,
                     &chunks,
                     &*request_keyframe,
+                    &rate_control,
                     &stop_flag,
                 );
             })
@@ -241,12 +245,145 @@ impl Drop for MediaSender {
     }
 }
 
+/// Drains pending receiver RTCP: acknowledgements (which retire history and
+/// feed the bandwidth estimate), NACKs and picture-loss reports.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "one call site, all of it per-loop state"
+)]
+fn service_rtcp(
+    socket: &UdpSocket,
+    peer: SocketAddr,
+    streams: &mut [Stream],
+    events: &mut rtcp::ReceiverEvents,
+    receive_buffer: &mut [u8; 1500],
+    estimator: &mut BandwidthEstimator,
+    acked: &mut bool,
+    request_keyframe: &dyn Fn(),
+) {
+    // 2. Receiver RTCP. The socket is unconnected: a receiver may answer
+    // from a different port than the one it gave us in the ANSWER.
+    while let Ok((size, _from)) = socket.recv_from(receive_buffer) {
+        let Some(packet) = receive_buffer.get(..size) else {
+            continue;
+        };
+        if let Some(rtt) = events.round_trip {
+            estimator.on_round_trip(rtt);
+        }
+        for stream in streams.iter_mut() {
+            rtcp::parse(packet, stream.ssrc, stream.checkpoint, events);
+            if let Some(checkpoint) = events.checkpoint_frame_id {
+                if !*acked && checkpoint >= 0 && stream.kind == StreamKind::Video {
+                    info!("receiver acknowledged video up to frame {checkpoint}");
+                    *acked = true;
+                }
+                stream.checkpoint = stream.checkpoint.max(checkpoint);
+                while stream.history.front().is_some_and(|f| {
+                    i64::try_from(f.frame_id).unwrap_or(i64::MAX) <= stream.checkpoint
+                }) {
+                    // Retiring a frame is the receiver confirming its bytes.
+                    let confirmed = stream
+                        .history
+                        .front()
+                        .map_or(0, |f| frame_bytes(&f.packets));
+                    estimator.on_bytes_confirmed(confirmed, Instant::now());
+                    stream.evict_oldest();
+                }
+            }
+            for nack in &events.nacks {
+                retransmit(socket, peer, stream, nack);
+            }
+            if events.picture_loss && stream.kind == StreamKind::Video {
+                debug!("receiver reported picture loss, forcing a key frame");
+                request_keyframe();
+            }
+        }
+    }
+}
+
+/// Moves the encoder bitrate towards what the link is actually carrying, and
+/// the capture resolution when the bitrate alone cannot close the gap.
+fn control_rate(rate_control: &RateControl, state: &mut RateState) {
+    let now = Instant::now();
+    if now.duration_since(state.last_control) < bandwidth::CONTROL_INTERVAL {
+        return;
+    }
+    state.last_control = now;
+    let Some(estimate) = state.estimator.estimate_bps(now) else {
+        return;
+    };
+    debug!(
+        "bandwidth estimate {estimate} bps at {} bps encoded",
+        state.current_bps
+    );
+
+    if let Some(set_bitrate) = rate_control.set_bitrate.as_ref()
+        && let Some(next) = bandwidth::next_bitrate(
+            state.current_bps,
+            estimate,
+            rate_control.min_bps,
+            rate_control.max_bps,
+        )
+    {
+        debug!("link is carrying {estimate} bps; encoder bitrate -> {next} bps");
+        set_bitrate(next);
+        state.current_bps = next;
+    }
+
+    // The bitrate loop has run out of room in one direction or the other.
+    let at_floor = state.current_bps <= rate_control.min_bps;
+    let at_ceiling = state.current_bps >= rate_control.max_bps;
+    if let Some(set_size) = rate_control.set_size.as_ref()
+        && let Some(ladder) = state.ladder.as_mut()
+        && let Some(size) = ladder.observe(at_floor, at_ceiling, now)
+    {
+        info!("capture resolution -> {}x{}", size.0, size.1);
+        set_size(size);
+    }
+}
+
+/// Total wire bytes of a packetized frame, counted when the receiver confirms it.
+fn frame_bytes(packets: &PacketizedFrame) -> u64 {
+    packets.iter().fold(0_u64, |sum, packet| {
+        sum.saturating_add(u64::try_from(packet.len()).unwrap_or(0))
+    })
+}
+
+/// How the bitrate control loop may move, and how to apply a new value.
+/// `set_bitrate` is `None` when the user pinned a bitrate: an explicit setting
+/// is honoured rather than adapted away.
+/// Applies a new encoder bitrate, in bits per second.
+pub type SetBitrate = Box<dyn Fn(u32) + Send>;
+/// Applies a new capture size.
+pub type SetSize = Box<dyn Fn((i32, i32)) + Send>;
+
+pub struct RateControl {
+    pub start_bps: u32,
+    pub min_bps: u32,
+    pub max_bps: u32,
+    pub set_bitrate: Option<SetBitrate>,
+    /// Applies a new capture size. `None` when the user pinned a resolution.
+    pub set_size: Option<SetSize>,
+    /// The rungs the capture may move between, smallest first.
+    pub sizes: Vec<(i32, i32)>,
+    pub start_size: (i32, i32),
+}
+
+/// Per-run state for the bitrate and resolution loops.
+struct RateState {
+    estimator: BandwidthEstimator,
+    current_bps: u32,
+    last_control: Instant,
+    ladder: Option<ResolutionLadder>,
+}
+
 fn run(
     socket: &UdpSocket,
     peer: SocketAddr,
     configs: &[StreamConfig],
     chunks: &ChunkReceiver,
     request_keyframe: &dyn Fn(),
+    rate_control: &RateControl,
     stop: &AtomicBool,
 ) {
     let mut streams: Vec<Stream> = configs.iter().map(Stream::new).collect();
@@ -261,6 +398,18 @@ fn run(
     let mut acked = false;
     let mut reported_silence = false;
     let mut reported_drops = false;
+    let mut rate_state = RateState {
+        estimator: BandwidthEstimator::new(Instant::now()),
+        current_bps: rate_control.start_bps,
+        last_control: Instant::now(),
+        ladder: rate_control.set_size.as_ref().map(|_| {
+            ResolutionLadder::new(
+                rate_control.sizes.clone(),
+                rate_control.start_size,
+                Instant::now(),
+            )
+        }),
+    };
 
     loop {
         if stop.load(Ordering::Relaxed) {
@@ -275,7 +424,13 @@ fn run(
                         info!("sending first video frame to the receiver");
                         video_started_at = Some(Instant::now());
                     }
+                    let before = (stream.octet_count, stream.packet_count);
                     let dropped = send_frame(socket, peer, stream, &chunk);
+                    rate_state.estimator.on_burst_sent(
+                        u64::from(stream.octet_count.wrapping_sub(before.0)),
+                        u64::from(stream.packet_count.wrapping_sub(before.1)),
+                        Instant::now(),
+                    );
                     if dropped > 0 && !reported_drops {
                         warn!(
                             "the network would not take {dropped} packet(s) of a frame; \
@@ -300,37 +455,22 @@ fn run(
             reported_silence = true;
         }
 
-        // 2. Receiver RTCP. The socket is unconnected: a receiver may answer
-        // from a different port than the one it gave us in the ANSWER.
-        while let Ok((size, _from)) = socket.recv_from(&mut receive_buffer) {
-            let Some(packet) = receive_buffer.get(..size) else {
-                continue;
-            };
-            for stream in &mut streams {
-                rtcp::parse(packet, stream.ssrc, stream.checkpoint, &mut events);
-                if let Some(checkpoint) = events.checkpoint_frame_id {
-                    if !acked && checkpoint >= 0 && stream.kind == StreamKind::Video {
-                        info!("receiver acknowledged video up to frame {checkpoint}");
-                        acked = true;
-                    }
-                    stream.checkpoint = stream.checkpoint.max(checkpoint);
-                    while stream.history.front().is_some_and(|f| {
-                        i64::try_from(f.frame_id).unwrap_or(i64::MAX) <= stream.checkpoint
-                    }) {
-                        stream.evict_oldest();
-                    }
-                }
-                for nack in &events.nacks {
-                    retransmit(socket, peer, stream, nack);
-                }
-                if events.picture_loss && stream.kind == StreamKind::Video {
-                    debug!("receiver reported picture loss, forcing a key frame");
-                    request_keyframe();
-                }
-            }
-        }
+        service_rtcp(
+            socket,
+            peer,
+            &mut streams,
+            &mut events,
+            &mut receive_buffer,
+            &mut rate_state.estimator,
+            &mut acked,
+            request_keyframe,
+        );
 
-        // 3. Periodic Sender Reports.
+        // 3. Bitrate control: what the receiver is confirming decides what the
+        // encoder is asked for next.
+        control_rate(rate_control, &mut rate_state);
+
+        // 4. Periodic Sender Reports.
         for stream in &mut streams {
             let due = stream
                 .last_report

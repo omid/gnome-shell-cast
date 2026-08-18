@@ -6,6 +6,7 @@
 //! BSD-3-Clause licence, not the project's MIT licence. See the `NOTICE` file
 //! in this directory for the required copyright notice and disclaimer.
 
+pub(crate) mod bandwidth;
 pub(crate) mod crypto;
 pub(crate) mod messages;
 pub(crate) mod rtcp;

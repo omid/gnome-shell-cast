@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-17 20:07+0200\n"
+"POT-Creation-Date: 2026-08-18 07:59+0200\n"
 "PO-Revision-Date: 2026-08-14 10:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Indonesian <https://github.com/omid/gnome-shell-cast>\n"
@@ -15,72 +15,77 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:176
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:181
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:57
 msgid "Cast"
 msgstr "Cast"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:220
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:225
 msgid "Stop casting"
 msgstr "Hentikan cast"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:228
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:233
 msgid "Preferences"
 msgstr "Preferensi"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:285
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:290
 #, javascript-format
 msgid "%s (casting)"
 msgstr "%s (sedang cast)"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:293
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:298
 msgid "Searching for Chromecast devices…"
 msgstr "Mencari perangkat Chromecast…"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:342
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:347
 msgid "Cast screen"
 msgstr "Cast layar"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:347
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:352
 msgid "Choose what to cast"
 msgstr "Pilih apa yang akan di-cast"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:360
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:365
 msgid "Cast streaming"
 msgstr "Cast Streaming"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:360
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:365
 msgid "Audio stream"
 msgstr "Aliran audio"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:361
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:366
 msgid "HLS"
 msgstr "HLS"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:368
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:374
 #, javascript-format
-msgid "Encoder: %s"
-msgstr "Enkoder: %s"
+msgid "Encoder: %s (hardware)"
+msgstr "Enkoder: %s (perangkat keras)"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:372
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:375
+#, javascript-format
+msgid "Encoder: %s (software)"
+msgstr "Enkoder: %s (perangkat lunak)"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:381
 #, javascript-format
 msgid "Receiver supports: %s"
 msgstr "Penerima mendukung: %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:433
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:446
 msgid "The cast failed."
 msgstr "Cast gagal."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:440
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:453
 #, javascript-format
 msgid "The device ended the session (%s)."
 msgstr "Perangkat mengakhiri sesi (%s)."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:441
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:454
 msgid "The device ended the session."
 msgstr "Perangkat mengakhiri sesi."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:489
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:502
 #: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:62
 msgid "GNOME Shell Cast"
@@ -138,7 +143,7 @@ msgid "Close"
 msgstr "Tutup"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:169
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:194
 msgid "Report an issue"
 msgstr "Laporkan masalah"
 
@@ -180,7 +185,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "Salin perintah, lalu tempelkan ke terminal dan jalankan."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:168
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:193
 msgid "Homepage"
 msgstr "Situs web"
 
@@ -192,93 +197,99 @@ msgstr "Salin perintah"
 msgid "Copied! Paste it into a terminal and run it."
 msgstr "Tersalin. Tempelkan ke terminal dan jalankan."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
-msgid "Native"
-msgstr "Natif"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
-msgid "4K (2160p)"
-msgstr "4K (2160p)"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
-msgid "1440p"
-msgstr "1440p"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
-msgid "1080p"
-msgstr "1080p"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:29
-msgid "720p"
-msgstr "720p"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:30
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:31
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:35
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:45
 msgid "Automatic"
 msgstr "Otomatis"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:30
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+msgid "Native"
+msgstr "Natif"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
+msgid "4K (2160p)"
+msgstr "4K (2160p)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:38
+msgid "1440p"
+msgstr "1440p"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+msgid "1080p"
+msgstr "1080p"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:40
+msgid "720p"
+msgstr "720p"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
 msgid "Hardware only"
 msgstr "Hanya perangkat keras"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:30
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
 msgid "Software only"
 msgstr "Hanya perangkat lunak"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:34
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
 msgid "Video"
 msgstr "Video"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:40
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:54
 msgid "Stream quality"
 msgstr "Kualitas aliran"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:41
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:55
 msgid "Applied the next time a cast is started"
 msgstr "Diterapkan saat cast berikutnya dimulai"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:46
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:14
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:60
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
 msgid "Maximum resolution"
 msgstr "Resolusi maksimum"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:47
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr ""
 "Di atas 1080p memerlukan enkoder perangkat keras dan bitrate yang sesuai"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:57
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
 msgid "Framerate"
 msgstr "Laju bingkai"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:58
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:72
 msgid "Frames per second"
 msgstr "Bingkai per detik"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:69
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:82
 msgid "Video bitrate"
 msgstr "Bitrate video"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:70
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:83
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr "kbit/s: sekitar 4000 untuk 720p, 8000 untuk 1080p, 30000 untuk 4K"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:81
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:93
+msgid "Audio bitrate"
+msgstr "Bitrate audio"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:106
 msgid "Encoding"
 msgstr "Pengkodean"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:82
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
 msgid "Casting fails with a message when a forced choice cannot be used"
 msgstr ""
 "Cast gagal dengan sebuah pesan bila pilihan yang dipaksakan tidak dapat "
 "dipakai"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:87
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:35
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:112
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:43
 msgid "Video encoder"
 msgstr "Enkoder video"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:89
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:114
 msgid ""
 "Automatic prefers your graphics card; choose software if the picture breaks "
 "up"
@@ -286,101 +297,119 @@ msgstr ""
 "Otomatis mengutamakan kartu grafis Anda; pilih perangkat lunak bila gambar "
 "pecah"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:100
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:45
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:53
 msgid "Pixel format"
 msgstr "Format piksel"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:101
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:126
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr ""
 "Otomatis cocok untuk semua enkoder; ubah hanya untuk menyiasati suatu "
 "penggerak"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:112
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:137
 msgid "Top bar"
 msgstr "Bar atas"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:112
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:137
 msgid "Quick settings"
 msgstr "Pengaturan cepat"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:115
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
 msgid "General"
 msgstr "Umum"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:120
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:145
 msgid "Menu"
 msgstr "Menu"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:124
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:149
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
 msgid "Indicator location"
 msgstr "Lokasi ikon"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr "Tampilkan ikon cast di bar atas, atau di menu pengaturan cepat"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:135
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:50
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
 msgid "Show cast details"
 msgstr "Tampilkan detail cast"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:136
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:51
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
 msgid "Show the transport and codecs under the active device while casting"
 msgstr ""
 "Tampilkan transport dan kodek di bawah perangkat aktif saat melakukan cast"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:146
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:171
 msgid "About"
 msgstr "Tentang"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:157
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:182
 #, javascript-format
 msgid "Version %s"
 msgstr "Versi %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:172
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
 msgid "Help"
 msgstr "Bantuan"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:173
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:198
 msgid "Common problems and their fixes"
 msgstr "Masalah umum dan solusinya"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:176
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
 msgid "Troubleshooting guide"
 msgstr "Panduan pemecahan masalah"
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:16
 msgid ""
-"Scale the captured video down to this size before encoding. \"native\" keeps "
-"the captured size. Above 1080p, raise the bitrate to match and expect a "
-"hardware encoder to be needed for a smooth stream."
+"Scale the captured video down to this size before encoding. \"auto\" lets "
+"the receiver's own limits decide, which is what Chrome does. Above 1080p, "
+"raise the bitrate to match and expect a hardware encoder to be needed for a "
+"smooth stream."
 msgstr ""
-"Perkecil video yang ditangkap ke ukuran ini sebelum dikodekan. “native” "
-"mempertahankan ukuran tangkapan. Di atas 1080p, naikkan bitrate seimbang dan "
-"perkirakan enkoder perangkat keras diperlukan agar aliran mulus."
+"Perkecil video yang ditangkap ke ukuran ini sebelum dikodekan. “auto” "
+"membiarkan batas penerima sendiri yang menentukan, seperti yang dilakukan "
+"Chrome. Di atas 1080p, naikkan bitrate yang sepadan dan perkirakan perlunya "
+"enkoder perangkat keras agar aliran mulus."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:20
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:21
 msgid "Stream framerate"
 msgstr "Laju bingkai aliran"
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:25
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:22
+msgid "Frames per second, or 0 to let the receiver's limits decide."
+msgstr "Bingkai per detik, atau 0 agar batas penerima yang menentukan."
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:27
 msgid "Video bitrate in kbit/s"
 msgstr "Bitrate video dalam kbit/s"
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:26
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:28
 msgid ""
 "Roughly 4000 for 720p, 8000 for 1080p, 16000 for 1440p and 30000 for 4K; "
-"more for fast-moving content."
+"more for fast-moving content. 0 lets the receiver's limits decide."
 msgstr ""
 "Kira-kira 4000 untuk 720p, 8000 untuk 1080p, 16000 untuk 1440p dan 30000 "
-"untuk 4K; lebih tinggi untuk konten yang bergerak cepat."
+"untuk 4K; lebih tinggi untuk konten yang bergerak cepat. 0 membiarkan batas "
+"penerima yang menentukan."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:36
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:33
+msgid "Audio bitrate in kbit/s"
+msgstr "Bitrate audio dalam kbit/s"
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:34
+msgid ""
+"Opus bitrate for the cast audio, or 0 to let the receiver's limits decide."
+msgstr ""
+"Bitrate Opus untuk audio yang disiarkan, atau 0 agar batas penerima yang "
+"menentukan."
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:44
 msgid ""
 "Which encoder to use. \"auto\" prefers hardware (VA-API, NVENC) and falls "
 "back to software. Choose software when a graphics driver produces a broken "
@@ -392,18 +421,19 @@ msgstr ""
 "menghasilkan gambar rusak atau tersendat; cast gagal dengan sebuah pesan "
 "bila pilihan tak dapat dipenuhi."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:46
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:54
 msgid ""
-"The raw video format handed to the encoder. \"auto\" lets each encoder take "
-"the one it prefers: NV12 for hardware encoders, I420 for software ones. "
-"Forcing a format restricts casting to encoders that accept it."
+"The raw video format handed to the encoder. \"auto\" offers both and lets "
+"negotiation pick whichever the chosen encoder accepts. Forcing a format "
+"restricts casting to encoders that accept it, which on most systems means "
+"forcing the encoder type too."
 msgstr ""
-"Format video mentah yang diberikan ke enkoder. “auto” membiarkan setiap "
-"enkoder mengambil yang disukainya: NV12 untuk enkoder perangkat keras, I420 "
-"untuk perangkat lunak. Memaksakan suatu format membatasi cast hanya pada "
-"enkoder yang menerimanya."
+"Format video mentah yang diberikan ke enkoder. “auto” menawarkan keduanya "
+"dan membiarkan negosiasi memilih mana yang diterima enkoder terpilih. "
+"Memaksa suatu format membatasi penyiaran ke enkoder yang menerimanya, yang "
+"di sebagian besar sistem berarti memaksa jenis enkoder juga."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:60
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:68
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."

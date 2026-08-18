@@ -36,6 +36,11 @@ function formatCodec(codec) {
     return CODEC_LABELS[codec] ?? codec;
 }
 
+// Mirrors the daemon's rule: VA-API, NVENC and V4L2 elements are hardware.
+function isHardwareEncoder(element) {
+    return element.startsWith('va') || element.startsWith('nv') || element.startsWith('v4l2');
+}
+
 function createMenuItem(label, icon, styleClass = null) {
     const item = new PopupMenu.PopupImageMenuItem(label, icon);
     if (styleClass) item.label.add_style_class_name(styleClass);
@@ -363,10 +368,14 @@ export class CastMenu {
         // Which encoder and pixel format were picked is worth showing precisely
         // because both settings default to automatic. The format arrives a
         // moment later than the encoder, once the pipeline has negotiated.
-        if (encoder)
-            this._addDetailLine(
-                _('Encoder: %s').replace('%s', format ? `${encoder} · ${format}` : encoder),
-            );
+        if (encoder) {
+            const line = (
+                isHardwareEncoder(encoder)
+                    ? _('Encoder: %s (hardware)')
+                    : _('Encoder: %s (software)')
+            ).replace('%s', encoder);
+            this._addDetailLine(format ? `${line} · ${format}` : line);
+        }
         if (receiverCodecs.length > 0)
             this._addDetailLine(
                 _('Receiver supports: %s').replace(
@@ -394,6 +403,10 @@ export class CastMenu {
         const options = {
             fps: new GLib.Variant('i', this._settings.get_int('fps')),
             'bitrate-kbps': new GLib.Variant('i', this._settings.get_int('bitrate-kbps')),
+            'audio-bitrate-kbps': new GLib.Variant(
+                'i',
+                this._settings.get_int('audio-bitrate-kbps'),
+            ),
             'video-encoder': new GLib.Variant('s', this._settings.get_string('video-encoder')),
             'video-format': new GLib.Variant('s', this._settings.get_string('video-format')),
         };
