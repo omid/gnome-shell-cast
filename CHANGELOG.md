@@ -14,8 +14,11 @@ daemon ship together under one version.
 - Video encoder and pixel format settings, both automatic by default. Choose
   software encoding when a graphics driver produces a broken or stuttering
   picture.
-- Cast details now name the encoder and pixel format actually in use, so you can
-  see what "automatic" chose.
+- Cast details now name the encoder and pixel format actually in use, and say
+  whether that encoder is hardware or software, so you can see what "automatic"
+  chose.
+- NixOS support: a Nix flake builds both halves, with the GStreamer plugins and
+  `pactl` bundled into the daemon so no session setup is needed.
 
 ### Changed
 
