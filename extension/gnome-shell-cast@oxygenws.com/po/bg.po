@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-18 07:59+0200\n"
+"POT-Creation-Date: 2026-08-18 22:43+0200\n"
 "PO-Revision-Date: 2026-08-17 12:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Bulgarian <https://github.com/omid/gnome-shell-cast>\n"
@@ -143,7 +143,7 @@ msgid "Close"
 msgstr "Затваряне"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:194
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
 msgid "Report an issue"
 msgstr "Докладване на грешка"
 
@@ -185,7 +185,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "Копирайте командата, поставете я в терминал и я изпълнете."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:193
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:196
 msgid "Homepage"
 msgstr "Начална страница"
 
@@ -233,8 +233,8 @@ msgid "Software only"
 msgstr "Само софтуерен"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
-msgid "Video"
-msgstr "Видео"
+msgid "Advanced"
+msgstr "Разширени"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:54
 msgid "Stream quality"
@@ -308,63 +308,64 @@ msgstr ""
 "Автоматично е подходящо за всеки кодер; променяйте само за да заобиколите "
 "драйвер"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:137
-msgid "Top bar"
-msgstr "Горна лента"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:137
-msgid "Quick settings"
-msgstr "Бързи настройки"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
-msgid "General"
-msgstr "Общи"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:145
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:135
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:155
 msgid "Menu"
 msgstr "Меню"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:149
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
-msgid "Indicator location"
-msgstr "Местоположение на индикатора"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
-msgid "Show the cast icon in the top bar, or in the quick settings menu"
-msgstr ""
-"Показване на иконата за предаване в горната лента или в менюто за бързи "
-"настройки"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:139
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
 msgid "Show cast details"
 msgstr "Показване на подробности за предаването"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
 msgid "Show the transport and codecs under the active device while casting"
 msgstr ""
 "Показване на транспорта и кодеците под активното устройство по време на "
 "предаване"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:171
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+msgid "Top bar"
+msgstr "Горна лента"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+msgid "Quick settings"
+msgstr "Бързи настройки"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+msgid "General"
+msgstr "Общи"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:159
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
+msgid "Indicator location"
+msgstr "Местоположение на индикатора"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+msgid "Show the cast icon in the top bar, or in the quick settings menu"
+msgstr ""
+"Показване на иконата за предаване в горната лента или в менюто за бързи "
+"настройки"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:174
 msgid "About"
 msgstr "Относно"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:182
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:185
 #, javascript-format
 msgid "Version %s"
 msgstr "Версия %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:200
 msgid "Help"
 msgstr "Помощ"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:198
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
 msgid "Common problems and their fixes"
 msgstr "Често срещани проблеми и решенията им"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
 msgid "Troubleshooting guide"
 msgstr "Ръководство за справяне с проблеми"
 
@@ -442,3 +443,6 @@ msgid ""
 msgstr ""
 "Къде да се показва индикаторът за предаване: в горната лента или в менюто за "
 "бързи настройки."
+
+#~ msgid "Video"
+#~ msgstr "Видео"

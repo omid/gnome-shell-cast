@@ -24,11 +24,11 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         const settings = this.getSettings();
 
         this._addGeneralPage(window, settings);
-        this._addVideoPage(window, settings);
+        this._addAdvancedPage(window, settings);
         this._addAboutPage(window);
     }
 
-    _addVideoPage(window, settings) {
+    _addAdvancedPage(window, settings) {
         // Built here (not at module scope) so each label is a literal `_()`
         // call that xgettext can extract and the gettext domain is bound.
         const resolutionLabels = [
@@ -45,8 +45,8 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         const formatLabels = [_('Automatic'), 'NV12', 'I420'];
 
         const page = new Adw.PreferencesPage({
-            title: _('Video'),
-            icon_name: 'video-display-symbolic',
+            title: _('Advanced'),
+            icon_name: 'applications-engineering-symbolic',
         });
         window.add(page);
 
@@ -131,6 +131,20 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             settings.set_string('video-format', FORMAT_VALUES[row.selected]);
         });
         encodingGroup.add(formatRow);
+
+        this._addCastDetailsGroup(page, settings);
+    }
+
+    _addCastDetailsGroup(page, settings) {
+        const menuGroup = new Adw.PreferencesGroup({ title: _('Menu') });
+        page.add(menuGroup);
+
+        const detailsRow = new Adw.SwitchRow({
+            title: _('Show cast details'),
+            subtitle: _('Show the transport and codecs under the active device while casting'),
+        });
+        settings.bind('show-details', detailsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+        menuGroup.add(detailsRow);
     }
 
     _addGeneralPage(window, settings) {
@@ -155,13 +169,6 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             settings.set_string('indicator-location', LOCATION_VALUES[row.selected]);
         });
         menuGroup.add(locationRow);
-
-        const detailsRow = new Adw.SwitchRow({
-            title: _('Show cast details'),
-            subtitle: _('Show the transport and codecs under the active device while casting'),
-        });
-        settings.bind('show-details', detailsRow, 'active', Gio.SettingsBindFlags.DEFAULT);
-        menuGroup.add(detailsRow);
     }
 
     _addAboutPage(window) {

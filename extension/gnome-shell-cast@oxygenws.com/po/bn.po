@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-18 07:59+0200\n"
+"POT-Creation-Date: 2026-08-18 22:43+0200\n"
 "PO-Revision-Date: 2026-08-14 10:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Bengali <https://github.com/omid/gnome-shell-cast>\n"
@@ -141,7 +141,7 @@ msgid "Close"
 msgstr "বন্ধ করুন"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:194
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
 msgid "Report an issue"
 msgstr "সমস্যা রিপোর্ট করুন"
 
@@ -182,7 +182,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "কমান্ডটি অনুলিপি করুন, তারপর টার্মিনালে পেস্ট করে চালান।"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:193
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:196
 msgid "Homepage"
 msgstr "ওয়েবসাইট"
 
@@ -230,8 +230,8 @@ msgid "Software only"
 msgstr "শুধু সফটওয়্যার"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
-msgid "Video"
-msgstr "ভিডিও"
+msgid "Advanced"
+msgstr "উন্নত"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:54
 msgid "Stream quality"
@@ -298,59 +298,60 @@ msgstr "পিক্সেল বিন্যাস"
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr "স্বয়ংক্রিয় সব এনকোডারের জন্য উপযুক্ত; শুধু ড্রাইভারের সমস্যা এড়াতে বদলান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:137
-msgid "Top bar"
-msgstr "শীর্ষ বার"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:137
-msgid "Quick settings"
-msgstr "দ্রুত সেটিংস"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
-msgid "General"
-msgstr "সাধারণ"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:145
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:135
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:155
 msgid "Menu"
 msgstr "মেনু"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:149
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
-msgid "Indicator location"
-msgstr "আইকনের অবস্থান"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
-msgid "Show the cast icon in the top bar, or in the quick settings menu"
-msgstr "কাস্ট আইকন শীর্ষ বারে, নাকি দ্রুত সেটিংস মেনুতে দেখান"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:139
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
 msgid "Show cast details"
 msgstr "কাস্টের বিবরণ দেখান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
 msgid "Show the transport and codecs under the active device while casting"
 msgstr "কাস্ট করার সময় সক্রিয় ডিভাইসের নিচে ট্রান্সপোর্ট ও কোডেক দেখান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:171
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+msgid "Top bar"
+msgstr "শীর্ষ বার"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+msgid "Quick settings"
+msgstr "দ্রুত সেটিংস"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+msgid "General"
+msgstr "সাধারণ"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:159
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
+msgid "Indicator location"
+msgstr "আইকনের অবস্থান"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+msgid "Show the cast icon in the top bar, or in the quick settings menu"
+msgstr "কাস্ট আইকন শীর্ষ বারে, নাকি দ্রুত সেটিংস মেনুতে দেখান"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:174
 msgid "About"
 msgstr "পরিচিতি"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:182
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:185
 #, javascript-format
 msgid "Version %s"
 msgstr "সংস্করণ %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:200
 msgid "Help"
 msgstr "সহায়তা"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:198
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
 msgid "Common problems and their fixes"
 msgstr "সাধারণ সমস্যা ও তার সমাধান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
 msgid "Troubleshooting guide"
 msgstr "সমস্যা সমাধানের নির্দেশিকা"
 
@@ -423,3 +424,6 @@ msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."
 msgstr "কাস্ট আইকন কোথায় দেখানো হবে: শীর্ষ বারে, নাকি দ্রুত সেটিংস মেনুতে।"
+
+#~ msgid "Video"
+#~ msgstr "ভিডিও"

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-18 07:59+0200\n"
+"POT-Creation-Date: 2026-08-18 22:43+0200\n"
 "PO-Revision-Date: 2026-08-14 10:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Simplified Chinese <https://github.com/omid/gnome-shell-"
@@ -138,7 +138,7 @@ msgid "Close"
 msgstr "关闭"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:194
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
 msgid "Report an issue"
 msgstr "报告问题"
 
@@ -178,7 +178,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "复制命令，然后粘贴到终端中运行。"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:193
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:196
 msgid "Homepage"
 msgstr "主页"
 
@@ -226,8 +226,8 @@ msgid "Software only"
 msgstr "仅软件"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
-msgid "Video"
-msgstr "视频"
+msgid "Advanced"
+msgstr "高级"
 
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:54
 msgid "Stream quality"
@@ -294,59 +294,60 @@ msgstr "像素格式"
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr "自动适用于所有编码器；仅在需要绕开驱动问题时才更改"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:137
-msgid "Top bar"
-msgstr "顶栏"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:137
-msgid "Quick settings"
-msgstr "快速设置"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
-msgid "General"
-msgstr "常规"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:145
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:135
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:155
 msgid "Menu"
 msgstr "菜单"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:149
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
-msgid "Indicator location"
-msgstr "图标位置"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
-msgid "Show the cast icon in the top bar, or in the quick settings menu"
-msgstr "在顶栏或快速设置菜单中显示投屏图标"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:139
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
 msgid "Show cast details"
 msgstr "显示投屏详细信息"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
 msgid "Show the transport and codecs under the active device while casting"
 msgstr "投屏时在活动设备下方显示传输方式和编解码器"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:171
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+msgid "Top bar"
+msgstr "顶栏"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+msgid "Quick settings"
+msgstr "快速设置"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+msgid "General"
+msgstr "常规"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:159
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
+msgid "Indicator location"
+msgstr "图标位置"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+msgid "Show the cast icon in the top bar, or in the quick settings menu"
+msgstr "在顶栏或快速设置菜单中显示投屏图标"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:174
 msgid "About"
 msgstr "关于"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:182
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:185
 #, javascript-format
 msgid "Version %s"
 msgstr "版本 %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:200
 msgid "Help"
 msgstr "帮助"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:198
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
 msgid "Common problems and their fixes"
 msgstr "常见问题及其解决方法"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
 msgid "Troubleshooting guide"
 msgstr "故障排除指南"
 
@@ -416,3 +417,6 @@ msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."
 msgstr "投屏图标的显示位置：顶栏或快速设置菜单。"
+
+#~ msgid "Video"
+#~ msgstr "视频"
