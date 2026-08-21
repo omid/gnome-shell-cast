@@ -192,12 +192,16 @@ fn parse_feedback(body: &[u8], sender_ssrc: u32, hint: i64, events: &mut Receive
         return;
     };
     // [frame id u8][lost packet id u16][bit vector for the next 8 u8]
-    for field in loss_fields.chunks_exact(4).take(usize::from(loss_count)) {
-        let [id, packet_hi, packet_lo, bits] = field else {
-            return;
-        };
-        let frame_id = expand_frame_id(*id, checkpoint.saturating_add(1));
-        let packet_id = u16::from_be_bytes([*packet_hi, *packet_lo]);
+    // `as_chunks` drops a trailing partial field, which is what a short record
+    // deserves; the fixed-size chunk is what lets this destructure infallibly.
+    for &[id, packet_hi, packet_lo, bits] in loss_fields
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .take(usize::from(loss_count))
+    {
+        let frame_id = expand_frame_id(id, checkpoint.saturating_add(1));
+        let packet_id = u16::from_be_bytes([packet_hi, packet_lo]);
         events.nacks.push(Nack {
             frame_id,
             packet_id,
