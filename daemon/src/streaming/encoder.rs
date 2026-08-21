@@ -11,6 +11,7 @@
 //! ultimately software) rather than failing the cast.
 
 use gstreamer as gst;
+use gstreamer::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum VideoCodec {
@@ -32,15 +33,20 @@ impl VideoCodec {
     }
 }
 
-/// Which encoders the user will accept. `Auto` keeps the hardware-first order
-/// in `factories`; the other two are an escape hatch for a driver that is
-/// present but misbehaving.
+/// Which encoders the user will accept. `Auto` keeps the hardware-first order in
+/// `factories`; the rest are escape hatches - `Software` for a driver that is
+/// present but misbehaving, and the three API choices for a machine with more
+/// than one hardware path, where the automatic order picks the wrong one (a
+/// hybrid laptop always prefers its integrated VA-API encoder over NVENC).
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum EncoderPolicy {
     #[default]
     Auto,
     Hardware,
     Software,
+    VaApi,
+    Nvenc,
+    V4l2,
 }
 
 /// The raw format fed to the encoder. Forcing one narrows the candidate list
@@ -67,6 +73,9 @@ impl EncoderPolicy {
         match value {
             "hardware" => Self::Hardware,
             "software" => Self::Software,
+            "vaapi" => Self::VaApi,
+            "nvenc" => Self::Nvenc,
+            "v4l2" => Self::V4l2,
             _ => Self::Auto,
         }
     }
@@ -125,17 +134,60 @@ fn efficiency_rank(codec: VideoCodec) -> u8 {
 /// (VA-API, then NVENC) ahead of software.
 fn factories(codec: VideoCodec) -> &'static [&'static str] {
     match codec {
-        VideoCodec::H264 => &["vah264enc", "vah264lpenc", "nvh264enc", "x264enc"],
-        VideoCodec::Vp8 => &["vavp8enc", "vp8enc"],
-        VideoCodec::Vp9 => &["vavp9enc", "vp9enc"],
+        // The v4l2* elements exist only when a kernel device advertises that
+        // codec, which is how Arm boards (Raspberry Pi, Rockchip, Amlogic)
+        // expose their encoders. Absent everywhere else, and dropped by the
+        // usability check when they are.
+        VideoCodec::H264 => &[
+            "vah264enc",
+            "vah264lpenc",
+            "nvh264enc",
+            "v4l2h264enc",
+            "x264enc",
+        ],
+        VideoCodec::Vp8 => &["vavp8enc", "vavp8lpenc", "v4l2vp8enc", "vp8enc"],
+        // Intel encodes VP9 only in low power mode, so the `lp` element is the
+        // only VA-API VP9 encoder that exists on most machines.
+        VideoCodec::Vp9 => &["vavp9enc", "vavp9lpenc", "v4l2vp9enc", "vp9enc"],
         // SVT-AV1 is far faster than aom's av1enc, so prefer it in software.
-        VideoCodec::Av1 => &["vaav1enc", "nvav1enc", "svtav1enc", "av1enc"],
+        VideoCodec::Av1 => &[
+            "vaav1enc",
+            "vaav1lpenc",
+            "nvav1enc",
+            "v4l2av1enc",
+            "svtav1enc",
+            "av1enc",
+        ],
+    }
+}
+
+/// The hardware API an encoder element belongs to, or `None` for software. The
+/// three prefixes are how `GStreamer` names these plugins' elements, and each
+/// one reaches different silicon: VA-API for Intel and AMD, NVENC for NVIDIA,
+/// V4L2 for the stateful encoders on Arm boards.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Api {
+    Va,
+    Nvenc,
+    V4l2,
+}
+
+fn api_of(factory: &str) -> Option<Api> {
+    // v4l2 first: it is the only prefix that could be read as another's.
+    if factory.starts_with("v4l2") {
+        Some(Api::V4l2)
+    } else if factory.starts_with("va") {
+        Some(Api::Va)
+    } else if factory.starts_with("nv") {
+        Some(Api::Nvenc)
+    } else {
+        None
     }
 }
 
 /// VA-API / NVENC / V4L2 elements are hardware; everything else is software.
 fn is_hardware(factory: &str) -> bool {
-    factory.starts_with("va") || factory.starts_with("nv") || factory.starts_with("v4l2")
+    api_of(factory).is_some()
 }
 
 /// Whether `factory` accepts raw video in `format` on its sink pad, read from
@@ -163,6 +215,9 @@ pub fn allowed(factory: &str, policy: EncodingPolicy) -> bool {
         EncoderPolicy::Auto => true,
         EncoderPolicy::Hardware => is_hardware(factory),
         EncoderPolicy::Software => !is_hardware(factory),
+        EncoderPolicy::VaApi => api_of(factory) == Some(Api::Va),
+        EncoderPolicy::Nvenc => api_of(factory) == Some(Api::Nvenc),
+        EncoderPolicy::V4l2 => api_of(factory) == Some(Api::V4l2),
     };
     encoder_ok
         && policy
@@ -209,6 +264,12 @@ fn launch_for(factory: &str, bitrate_bps: u32, fps: u32) -> String {
         f if f.starts_with("nv") => {
             format!("{factory} name=venc bitrate={kbps} rc-mode=cbr")
         }
+        // V4L2 stateful encoders take no bitrate property: everything goes
+        // through V4L2 controls, in bit/s. The structure name is arbitrary, and
+        // controls a device does not implement are ignored rather than fatal.
+        f if f.starts_with("v4l2") => format!(
+            "{factory} name=venc extra-controls=\"controls,video_bitrate={bitrate_bps},video_gop_size={key_int}\""
+        ),
         other => format!("{other} name=venc"),
     }
 }
@@ -217,6 +278,36 @@ fn launch_for(factory: &str, bitrate_bps: u32, fps: u32) -> String {
 /// properties/enum values, without disturbing the real pipeline.
 fn fragment_parses(fragment: &str) -> bool {
     gst::parse::launch(fragment).is_ok()
+}
+
+/// Whether the element in `fragment` can also *open* its device, not merely be
+/// created. A hardware encoder is registered from what the plugin believed about
+/// the driver when the registry was built, which is regularly a lie: a discrete
+/// GPU asleep under runtime power management, a `GStreamer` registry cached from
+/// before the driver was installed, a VA-API driver advertising a profile it
+/// cannot open, a V4L2 node another process holds. `READY` is where
+/// `GstVideoEncoder` opens the device, so it is the cheapest question that gets
+/// a truthful answer, and it is asked before the encoder is ever put in a
+/// pipeline - a mirroring session has no way back to software once it starts.
+fn element_opens(fragment: &str) -> bool {
+    let Ok(element) = gst::parse::launch(fragment) else {
+        return false;
+    };
+    let opened = element.set_state(gst::State::Ready).is_ok();
+    // Back to NULL either way, so the probe never holds the device.
+    let _ = element.set_state(gst::State::Null);
+    opened
+}
+
+/// Whether `factory`'s `fragment` is usable here. Hardware candidates have to
+/// open their device; software ones only have to parse, since they cannot fail
+/// that way and the probe is not free.
+pub fn fragment_usable(factory: &str, fragment: &str) -> bool {
+    if is_hardware(factory) {
+        element_opens(fragment)
+    } else {
+        fragment_parses(fragment)
+    }
 }
 
 /// The encoder fragment for `codec` and whether it is hardware, or `None` when
@@ -233,8 +324,173 @@ pub fn video_encoder(
         .filter(|&&factory| allowed(factory, policy))
         .find_map(|&factory| {
             let fragment = launch_for(factory, bitrate_bps, fps);
-            fragment_parses(&fragment).then(|| (fragment, is_hardware(factory)))
+            fragment_usable(factory, &fragment).then(|| (fragment, is_hardware(factory)))
         })
+}
+
+/// Whether any VA-API or NVENC encoder element is installed. A registry lookup
+/// rather than the parse-check `video_encoder` uses: instantiating a VA element
+/// initialises the libva driver, which costs hundreds of milliseconds, and this
+/// only answers a hint in preferences.
+fn hardware_encoder_available() -> bool {
+    EFFICIENCY_ORDER
+        .into_iter()
+        .flat_map(|codec| factories(codec).iter().copied())
+        .any(|factory| is_hardware(factory) && gst::ElementFactory::find(factory).is_some())
+}
+
+/// Whether the `GStreamer` va plugin is loaded at all, regardless of which
+/// elements it managed to register. It registers one element per capability the
+/// libva driver reports, so "plugin loaded but no encoder" means the driver is
+/// missing or cannot encode, which needs different advice than a missing plugin.
+fn va_plugin_registered() -> bool {
+    gst::Registry::get().find_plugin("va").is_some()
+}
+
+/// What a graphics card means for hardware encoding. Only these three groups
+/// lead anywhere different: silicon reached through VA-API, silicon reached
+/// through NVENC, and silicon we cannot send the user shopping for.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Gpu {
+    VaApi,
+    Nvenc,
+    Neither,
+}
+
+/// Classifies a DRM driver name into the encoder API it leads to.
+///
+/// `Neither` is the honest answer for a lot of real hardware, and it produces no
+/// advice at all: a system on chip (`v3d`/`vc4` on a Raspberry Pi,
+/// `panfrost`/`panthor` on
+/// Mali, `msm`, `rockchip`, `sun4i`, `mediatek`, `meson`) encodes through V4L2,
+/// which this daemon does not drive yet; a VM (`virtio_gpu`, `vmwgfx`, `qxl`,
+/// `vkms`, `simpledrm`) has no encoder to reach; a server display chip (`ast`,
+/// `mgag200`) never had one; and Apple Silicon under `asahi` has no open encoder
+/// driver. Telling any of those users to install a VA-API driver would send them
+/// after something that does not exist for their machine.
+fn gpu_class(driver: &str) -> Gpu {
+    match driver {
+        // Intel: i915 through Alder Lake and friends, xe from Lunar Lake on.
+        // AMD: amdgpu for GCN and later, radeon for the older cards - whose
+        // encode support is thin, but the packages to install are the same.
+        "i915" | "xe" | "amdgpu" | "radeon" => Gpu::VaApi,
+        // The proprietary driver and its open kernel module both expose NVENC.
+        // Nouveau does not expose it at all, so the fix there is the same swap.
+        "nvidia" | "nvidia-drm" | "nouveau" => Gpu::Nvenc,
+        _ => Gpu::Neither,
+    }
+}
+
+/// The DRM driver behind each render node, e.g. `["nvidia", "i915"]` on a hybrid
+/// laptop. Read from sysfs rather than probed, so it costs nothing and answers
+/// the same with a discrete GPU powered down.
+fn render_node_drivers() -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir("/sys/class/drm") else {
+        return Vec::new();
+    };
+    entries
+        .flatten()
+        .filter(|entry| entry.file_name().to_string_lossy().starts_with("renderD"))
+        .filter_map(|entry| node_driver(&entry.path()))
+        .collect()
+}
+
+/// The driver for one `/sys/class/drm/renderD*`: the `DRIVER=` line of its
+/// device uevent, or the name its `driver` symlink points at when the uevent
+/// carries no such line.
+fn node_driver(node: &std::path::Path) -> Option<String> {
+    let uevent = std::fs::read_to_string(node.join("device/uevent")).unwrap_or_default();
+    let named = uevent
+        .lines()
+        .find_map(|line| line.strip_prefix("DRIVER="))
+        .map(str::trim)
+        .filter(|name| !name.is_empty());
+    if let Some(name) = named {
+        return Some(name.to_owned());
+    }
+    std::fs::read_link(node.join("device/driver"))
+        .ok()
+        .and_then(|path| {
+            path.file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+        })
+}
+
+/// The `ID` and `ID_LIKE` values from an os-release file, in that order.
+fn os_release_ids(text: &str) -> Vec<&str> {
+    let value = |key: &str| {
+        text.lines()
+            .filter_map(|line| line.split_once('='))
+            .find(|(name, _)| name.trim() == key)
+            .map_or("", |(_, value)| value.trim().trim_matches('"'))
+    };
+    ["ID", "ID_LIKE"]
+        .into_iter()
+        .flat_map(|key| value(key).split_whitespace())
+        .collect()
+}
+
+/// The package carrying the `GStreamer` `va` plugin (`vah264enc` and friends) on
+/// the distributions we know, matched on `ID` then `ID_LIKE`. Empty for the
+/// rest: the extension then phrases the hint without naming a package.
+fn va_package_for(ids: &[&str]) -> &'static str {
+    ids.iter()
+        .find_map(|id| match *id {
+            "arch" => Some("gst-plugin-va"),
+            "ubuntu" | "debian" => Some("gstreamer1.0-plugins-bad"),
+            "fedora" | "rhel" | "centos" => Some("gstreamer1-plugins-bad-free"),
+            "opensuse" | "suse" => Some("gstreamer-plugins-bad"),
+            _ => None,
+        })
+        .unwrap_or_default()
+}
+
+/// The package to install for hardware encoding on this host, or empty when the
+/// distribution is unknown.
+fn va_plugin_package() -> &'static str {
+    let text = std::fs::read_to_string("/etc/os-release")
+        .or_else(|_| std::fs::read_to_string("/usr/lib/os-release"))
+        .unwrap_or_default();
+    va_package_for(&os_release_ids(&text))
+}
+
+/// Why hardware encoding is unavailable, as a token the extension turns into a
+/// translated sentence: `plugin` for VA-API silicon with no va plugin, `driver`
+/// for a va plugin that registered no encoder, `nvidia` for a machine whose only
+/// hardware path is NVENC. Empty when hardware encoding already works, and empty
+/// for hardware no install would help - saying nothing beats sending someone
+/// after a package that does not exist for their GPU.
+///
+/// VA-API wins on a hybrid machine: its packages are the ones a user can
+/// realistically install, and the integrated GPU is the one always present.
+fn hardware_gap(hardware: bool, gpus: &[Gpu], plugin: bool) -> &'static str {
+    if hardware {
+        return "";
+    }
+    if gpus.contains(&Gpu::VaApi) {
+        return if plugin { "driver" } else { "plugin" };
+    }
+    if gpus.contains(&Gpu::Nvenc) {
+        return "nvidia";
+    }
+    ""
+}
+
+/// Why hardware encoding is unavailable on this host, and the package that would
+/// fix it when we know its name.
+pub fn hardware_encoding_gap() -> (&'static str, &'static str) {
+    let gpus: Vec<Gpu> = render_node_drivers()
+        .iter()
+        .map(|driver| gpu_class(driver))
+        .collect();
+    let gap = hardware_gap(hardware_encoder_available(), &gpus, va_plugin_registered());
+    // Only the missing-plugin advice names a package, so only it reads os-release.
+    let package = if gap == "plugin" {
+        va_plugin_package()
+    } else {
+        ""
+    };
+    (gap, package)
 }
 
 /// Why no encoder was usable, phrased for the user - this reaches them verbatim
@@ -254,6 +510,22 @@ pub fn policy_failure_message(policy: EncodingPolicy) -> String {
         (EncoderPolicy::Software, _) => {
             "No software video encoder can be used for this device. Set the video encoder \
              preference back to automatic."
+                .to_owned()
+        }
+        // Named per API, because "hardware" is not what the user chose here.
+        (EncoderPolicy::VaApi, _) => {
+            "No VA-API encoder can be used for this device. Set the video encoder preference \
+             back to automatic."
+                .to_owned()
+        }
+        (EncoderPolicy::Nvenc, _) => {
+            "No NVENC encoder can be used for this device. Set the video encoder preference \
+             back to automatic."
+                .to_owned()
+        }
+        (EncoderPolicy::V4l2, _) => {
+            "No V4L2 encoder can be used for this device. Set the video encoder preference \
+             back to automatic."
                 .to_owned()
         }
         (EncoderPolicy::Auto, _) => {
@@ -385,6 +657,87 @@ mod tests {
         }
     }
 
+    /// Whichever VA-API VP9 element a driver offers - full power or low power -
+    /// the hardware policy has to find it, or a VP9 cast silently runs in
+    /// software on hardware that can encode it. Skipped where neither exists.
+    #[test]
+    fn a_va_api_vp9_encoder_is_picked_when_one_is_installed() {
+        gst::init().unwrap();
+        let hardware = EncodingPolicy {
+            encoder: EncoderPolicy::Hardware,
+            format: FormatPolicy::Auto,
+        };
+        let installed = ["vavp9enc", "vavp9lpenc"]
+            .into_iter()
+            .any(|f| gst::ElementFactory::find(f).is_some());
+        let picked = video_encoder(VideoCodec::Vp9, 4_000_000, 30, hardware);
+        assert_eq!(installed, picked.is_some());
+        if let Some((fragment, is_hw)) = picked {
+            assert!(is_hw);
+            assert!(fragment.starts_with("vavp9"), "{fragment}");
+        }
+    }
+
+    /// A machine with two hardware paths needs each one pinnable, and the V4L2
+    /// elements have to survive the same filters as VA-API and NVENC.
+    #[test]
+    fn each_hardware_api_can_be_pinned() {
+        let pin = |encoder| EncodingPolicy {
+            encoder,
+            format: FormatPolicy::Auto,
+        };
+        let va = pin(EncoderPolicy::VaApi);
+        let nvenc = pin(EncoderPolicy::Nvenc);
+        let v4l2 = pin(EncoderPolicy::V4l2);
+
+        assert!(allowed("vah264enc", va));
+        assert!(!allowed("nvh264enc", va));
+        assert!(!allowed("v4l2h264enc", va));
+        assert!(allowed("nvh264enc", nvenc));
+        assert!(!allowed("vah264lpenc", nvenc));
+        assert!(allowed("v4l2h264enc", v4l2));
+        assert!(!allowed("x264enc", v4l2));
+        // Every API choice is a hardware choice, so software never qualifies.
+        for policy in [va, nvenc, v4l2] {
+            assert!(!allowed("x264enc", policy));
+            assert!(!allowed("vp9enc", policy));
+        }
+        // "v4l2" must not be read as the "va" or "nv" prefix.
+        assert_eq!(api_of("v4l2vp8enc"), Some(Api::V4l2));
+        assert_eq!(api_of("vavp9lpenc"), Some(Api::Va));
+        assert_eq!(api_of("nvav1enc"), Some(Api::Nvenc));
+        assert_eq!(api_of("vp8enc"), None);
+    }
+
+    /// V4L2 encoders take no bitrate property, so the controls carry it - in
+    /// bit/s, unlike the kbit/s properties everywhere else.
+    #[test]
+    fn v4l2_settings_travel_in_extra_controls() {
+        let f = launch_for("v4l2h264enc", 4_000_000, 30);
+        assert!(f.starts_with("v4l2h264enc name=venc"));
+        assert!(f.contains("video_bitrate=4000000"));
+        assert!(f.contains("video_gop_size=60"));
+        assert!(!f.contains("bitrate=4000 "));
+    }
+
+    /// A registered element that cannot open its device must not be picked: the
+    /// mirroring path has no way back to software once a session starts.
+    #[test]
+    fn an_encoder_that_cannot_open_its_device_is_not_usable() {
+        gst::init().unwrap();
+        assert!(!fragment_usable("vah264enc", "no-such-encoder name=venc"));
+        assert!(!fragment_usable("x264enc", "no-such-encoder name=venc"));
+        // Software still only needs to parse, so this holds with no GPU at all.
+        assert_eq!(
+            fragment_usable("x264enc", &launch_for("x264enc", 4_000_000, 30)),
+            gst::ElementFactory::find("x264enc").is_some()
+        );
+        // Where a VA-API encoder is installed, opening it is what proves it.
+        if gst::ElementFactory::find("vah264enc").is_some() {
+            assert!(element_opens(&launch_for("vah264enc", 4_000_000, 30)));
+        }
+    }
+
     #[test]
     fn unknown_option_values_fall_back_to_auto() {
         assert_eq!(EncoderPolicy::parse("software"), EncoderPolicy::Software);
@@ -394,6 +747,128 @@ mod tests {
         assert_eq!(FormatPolicy::parse("yuv"), FormatPolicy::Auto);
         assert_eq!(FormatPolicy::Auto.caps_format(), "{NV12,I420}");
         assert_eq!(FormatPolicy::I420.caps_format(), "I420");
+    }
+
+    #[test]
+    fn os_release_ids_take_id_before_id_like() {
+        let text =
+            "NAME=\"openSUSE Tumbleweed\"\nID=\"opensuse-tumbleweed\"\nID_LIKE=\"suse opensuse\"\n";
+        assert_eq!(
+            os_release_ids(text),
+            ["opensuse-tumbleweed", "suse", "opensuse"]
+        );
+        assert!(os_release_ids("").is_empty());
+    }
+
+    /// Every DRM driver a user might boot this on, grouped by the encoder API it
+    /// actually leads to - the table decides whose advice is right, so a wrong
+    /// entry sends real people after the wrong package.
+    #[test]
+    fn drm_drivers_map_to_the_encoder_api_they_offer() {
+        for driver in ["i915", "xe", "amdgpu", "radeon"] {
+            assert_eq!(gpu_class(driver), Gpu::VaApi, "{driver}");
+        }
+        for driver in ["nvidia", "nvidia-drm", "nouveau"] {
+            assert_eq!(gpu_class(driver), Gpu::Nvenc, "{driver}");
+        }
+        // SoCs encode through V4L2, VMs and server display chips not at all.
+        for driver in [
+            "v3d",
+            "vc4",
+            "panfrost",
+            "panthor",
+            "msm",
+            "rockchip",
+            "sun4i",
+            "mediatek",
+            "meson",
+            "virtio_gpu",
+            "vmwgfx",
+            "qxl",
+            "vkms",
+            "vgem",
+            "simpledrm",
+            "ast",
+            "mgag200",
+            "asahi",
+            "",
+        ] {
+            assert_eq!(gpu_class(driver), Gpu::Neither, "{driver}");
+        }
+    }
+
+    /// What preferences ends up saying, for each shape of machine this runs on.
+    #[test]
+    fn the_hardware_gap_names_the_missing_piece() {
+        let intel = [Gpu::VaApi];
+        let nvidia_only = [Gpu::Nvenc];
+        // A hybrid laptop: Intel plus NVIDIA, in either sysfs order.
+        let hybrid = [Gpu::Nvenc, Gpu::VaApi];
+        let pi = [Gpu::Neither];
+
+        // Working hardware encoding says nothing, whatever the machine is.
+        for gpus in [&intel[..], &nvidia_only[..], &hybrid[..], &pi[..], &[]] {
+            assert_eq!(hardware_gap(true, gpus, true), "");
+            assert_eq!(hardware_gap(true, gpus, false), "");
+        }
+
+        assert_eq!(hardware_gap(false, &intel, false), "plugin");
+        assert_eq!(hardware_gap(false, &intel, true), "driver");
+        // VA-API is the reachable path on a hybrid, so it wins over NVENC.
+        assert_eq!(hardware_gap(false, &hybrid, false), "plugin");
+        assert_eq!(hardware_gap(false, &hybrid, true), "driver");
+        // Only NVIDIA silicon: a VA-API package would not help.
+        assert_eq!(hardware_gap(false, &nvidia_only, false), "nvidia");
+        assert_eq!(hardware_gap(false, &nvidia_only, true), "nvidia");
+        // A Raspberry Pi, a VM, a headless box: nothing to suggest.
+        assert_eq!(hardware_gap(false, &pi, true), "");
+        assert_eq!(hardware_gap(false, &[], true), "");
+    }
+
+    /// Whatever this machine has, the sysfs walk has to classify it without
+    /// panicking and agree with what the gap logic is told.
+    #[test]
+    fn this_machine_classifies_its_own_render_nodes() {
+        for driver in render_node_drivers() {
+            assert!(!driver.is_empty());
+            let _ = gpu_class(&driver);
+        }
+    }
+
+    #[test]
+    fn va_package_follows_the_distribution() {
+        assert_eq!(va_package_for(&["arch"]), "gst-plugin-va");
+        assert_eq!(
+            va_package_for(&["ubuntu", "debian"]),
+            "gstreamer1.0-plugins-bad"
+        );
+        // Derivatives name themselves first and their base in ID_LIKE.
+        assert_eq!(
+            va_package_for(&["nobara", "fedora"]),
+            "gstreamer1-plugins-bad-free"
+        );
+        assert_eq!(
+            va_package_for(&["opensuse-leap", "suse"]),
+            "gstreamer-plugins-bad"
+        );
+        assert_eq!(va_package_for(&["nixos"]), "");
+        assert_eq!(va_package_for(&[]), "");
+    }
+
+    /// VA-API splits several codecs into a full-power and a low-power element,
+    /// and on Intel the low-power one is often the only one that exists.
+    #[test]
+    fn every_va_encoder_is_listed_with_its_low_power_variant() {
+        for codec in EFFICIENCY_ORDER {
+            let list = factories(codec);
+            for factory in list
+                .iter()
+                .filter(|f| f.starts_with("va") && !f.ends_with("lpenc"))
+            {
+                let lp = format!("{}lpenc", factory.trim_end_matches("enc"));
+                assert!(list.contains(&lp.as_str()), "{codec:?} is missing {lp}");
+            }
+        }
     }
 
     #[test]
