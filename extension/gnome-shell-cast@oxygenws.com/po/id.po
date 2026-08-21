@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-18 22:43+0200\n"
+"POT-Creation-Date: 2026-08-21 21:03+0200\n"
 "PO-Revision-Date: 2026-08-14 10:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Indonesian <https://github.com/omid/gnome-shell-cast>\n"
@@ -143,7 +143,7 @@ msgid "Close"
 msgstr "Tutup"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:266
 msgid "Report an issue"
 msgstr "Laporkan masalah"
 
@@ -185,7 +185,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "Salin perintah, lalu tempelkan ke terminal dan jalankan."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:196
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:265
 msgid "Homepage"
 msgstr "Situs web"
 
@@ -197,99 +197,133 @@ msgstr "Salin perintah"
 msgid "Copied! Paste it into a terminal and run it."
 msgstr "Tersalin. Tempelkan ke terminal dan jalankan."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:35
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
+msgid ""
+"No VA-API encoder for your graphics card. Install your distribution’s VA-API "
+"driver."
+msgstr ""
+"Tidak ada enkoder VA-API untuk kartu grafis Anda. Pasang driver VA-API dari "
+"distribusi Anda."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+msgid "Install the NVIDIA driver and the GStreamer nvcodec plugin."
+msgstr "Pasang driver NVIDIA dan plugin nvcodec GStreamer."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#, javascript-format
+msgid "The GStreamer VA-API plugin is missing. Install the %s package."
+msgstr "Plugin VA-API GStreamer tidak ada. Pasang paket %s."
+
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:45
+msgid ""
+"The GStreamer VA-API plugin is missing. Install it from your distribution."
+msgstr "Plugin VA-API GStreamer tidak ada. Pasang dari distribusi Anda."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:62
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:70
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:81
 msgid "Automatic"
 msgstr "Otomatis"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:63
 msgid "Native"
 msgstr "Natif"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:64
 msgid "4K (2160p)"
 msgstr "4K (2160p)"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:38
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:65
 msgid "1440p"
 msgstr "1440p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:66
 msgid "1080p"
 msgstr "1080p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:40
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:67
 msgid "720p"
 msgstr "720p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
 msgid "Hardware only"
 msgstr "Hanya perangkat keras"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
 msgid "Software only"
 msgstr "Hanya perangkat lunak"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:77
+msgid "VA-API (Intel, AMD)"
+msgstr "VA-API (Intel, AMD)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:78
+msgid "NVENC (NVIDIA)"
+msgstr "NVENC (NVIDIA)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:79
+msgid "V4L2 (Arm boards)"
+msgstr "V4L2 (papan Arm)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:84
 msgid "Advanced"
 msgstr "Tingkat lanjut"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:54
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
 msgid "Stream quality"
 msgstr "Kualitas aliran"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:55
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:91
 msgid "Applied the next time a cast is started"
 msgstr "Diterapkan saat cast berikutnya dimulai"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:60
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
 msgid "Maximum resolution"
 msgstr "Resolusi maksimum"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr ""
 "Di atas 1080p memerlukan enkoder perangkat keras dan bitrate yang sesuai"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
 msgid "Framerate"
 msgstr "Laju bingkai"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:72
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
 msgid "Frames per second"
 msgstr "Bingkai per detik"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:82
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
 msgid "Video bitrate"
 msgstr "Bitrate video"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:83
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:119
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr "kbit/s: sekitar 4000 untuk 720p, 8000 untuk 1080p, 30000 untuk 4K"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:93
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
 msgid "Audio bitrate"
 msgstr "Bitrate audio"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:106
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:142
 msgid "Encoding"
 msgstr "Pengkodean"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:143
 msgid "Casting fails with a message when a forced choice cannot be used"
 msgstr ""
 "Cast gagal dengan sebuah pesan bila pilihan yang dipaksakan tidak dapat "
 "dipakai"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:112
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:148
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:46
 msgid "Video encoder"
 msgstr "Enkoder video"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:114
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
 msgid ""
 "Automatic prefers your graphics card; choose software if the picture breaks "
 "up"
@@ -297,72 +331,76 @@ msgstr ""
 "Otomatis mengutamakan kartu grafis Anda; pilih perangkat lunak bila gambar "
 "pecah"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:53
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:56
 msgid "Pixel format"
 msgstr "Format piksel"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:126
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:162
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr ""
 "Otomatis cocok untuk semua enkoder; ubah hanya untuk menyiasati suatu "
 "penggerak"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:135
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:155
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:191
+msgid "Hardware encoding is unavailable"
+msgstr "Pengkodean perangkat keras tidak tersedia"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:224
 msgid "Menu"
 msgstr "Menu"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:139
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:208
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:61
 msgid "Show cast details"
 msgstr "Tampilkan detail cast"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:209
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:62
 msgid "Show the transport and codecs under the active device while casting"
 msgstr ""
 "Tampilkan transport dan kodek di bawah perangkat aktif saat melakukan cast"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
 msgid "Top bar"
 msgstr "Bar atas"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
 msgid "Quick settings"
 msgstr "Pengaturan cepat"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:219
 msgid "General"
 msgstr "Umum"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:159
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:228
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:70
 msgid "Indicator location"
 msgstr "Lokasi ikon"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:229
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr "Tampilkan ikon cast di bar atas, atau di menu pengaturan cepat"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:174
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:243
 msgid "About"
 msgstr "Tentang"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:185
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:254
 #, javascript-format
 msgid "Version %s"
 msgstr "Versi %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:200
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:269
 msgid "Help"
 msgstr "Bantuan"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:270
 msgid "Common problems and their fixes"
 msgstr "Masalah umum dan solusinya"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:273
 msgid "Troubleshooting guide"
 msgstr "Panduan pemecahan masalah"
 
@@ -410,19 +448,21 @@ msgstr ""
 "Bitrate Opus untuk audio yang disiarkan, atau 0 agar batas penerima yang "
 "menentukan."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:44
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:47
 msgid ""
-"Which encoder to use. \"auto\" prefers hardware (VA-API, NVENC) and falls "
-"back to software. Choose software when a graphics driver produces a broken "
-"or stuttering picture; casting fails with a message if the choice cannot be "
-"met."
+"Which encoder to use. \"auto\" prefers hardware (VA-API, NVENC, V4L2) and "
+"falls back to software. Choose software when a graphics driver produces a "
+"broken or stuttering picture. \"vaapi\" (Intel, AMD), \"nvenc\" (NVIDIA) and "
+"\"v4l2\" (Arm boards) pin one hardware API. Casting fails with a message if "
+"the choice cannot be met."
 msgstr ""
-"Enkoder yang dipakai. “auto” mengutamakan perangkat keras (VA-API, NVENC) "
-"dan kembali ke perangkat lunak. Pilih perangkat lunak bila penggerak grafis "
-"menghasilkan gambar rusak atau tersendat; cast gagal dengan sebuah pesan "
-"bila pilihan tak dapat dipenuhi."
+"Enkoder yang dipakai. “auto” mengutamakan perangkat keras (VA-API, NVENC, "
+"V4L2) dan kembali ke perangkat lunak. Pilih perangkat lunak bila penggerak "
+"grafis menghasilkan gambar rusak atau tersendat. “vaapi” (Intel, AMD), "
+"“nvenc” (NVIDIA), dan “v4l2” (papan Arm) mengunci satu antarmuka perangkat "
+"keras; cast gagal dengan sebuah pesan bila pilihan tak dapat dipenuhi."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:54
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:57
 msgid ""
 "The raw video format handed to the encoder. \"auto\" offers both and lets "
 "negotiation pick whichever the chosen encoder accepts. Forcing a format "
@@ -434,7 +474,7 @@ msgstr ""
 "Memaksa suatu format membatasi penyiaran ke enkoder yang menerimanya, yang "
 "di sebagian besar sistem berarti memaksa jenis enkoder juga."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:68
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:71
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."

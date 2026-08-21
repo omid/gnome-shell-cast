@@ -38,10 +38,13 @@
         <choice value="auto"/>
         <choice value="hardware"/>
         <choice value="software"/>
+        <choice value="vaapi"/>
+        <choice value="nvenc"/>
+        <choice value="v4l2"/>
       </choices>
       <default>'auto'</default>
       <summary>Video encoder</summary>
-      <description>Which encoder to use. "auto" prefers hardware (VA-API, NVENC) and falls back to software. Choose software when a graphics driver produces a broken or stuttering picture; casting fails with a message if the choice cannot be met.</description>
+      <description>Which encoder to use. "auto" prefers hardware (VA-API, NVENC, V4L2) and falls back to software. Choose software when a graphics driver produces a broken or stuttering picture. "vaapi" (Intel, AMD), "nvenc" (NVIDIA) and "v4l2" (Arm boards) pin one hardware API. Casting fails with a message if the choice cannot be met.</description>
     </key>
     <key name="video-format" type="s">
       <choices>

@@ -13,10 +13,15 @@ daemon ship together under one version.
   Spanish and Urdu.
 - Video encoder and pixel format settings, both automatic by default. Choose
   software encoding when a graphics driver produces a broken or stuttering
-  picture.
+  picture, or pin one hardware encoder - VA-API (Intel, AMD), NVENC (NVIDIA) or
+  V4L2 (Arm boards) - on a machine that has more than one.
 - Cast details now name the encoder and pixel format actually in use, and say
   whether that encoder is hardware or software, so you can see what "automatic"
   chose.
+- Preferences now points out when your graphics card could encode but something
+  is missing, names the package to install where it knows it, and links to the
+  per-card table in the troubleshooting guide. It stays quiet on hardware no
+  install would help, such as a virtual GPU.
 - NixOS support: a Nix flake builds both halves, with the GStreamer plugins and
   `pactl` bundled into the daemon so no session setup is needed.
 
@@ -28,6 +33,12 @@ daemon ship together under one version.
 
 ### Fixed
 
+- Hardware encoding is now used on Intel graphics for VP9, and on Arm boards
+  such as the Raspberry Pi 4 for H.264 - both previously fell back to software
+  even though the hardware could encode.
+- A cast no longer fails when the system reports an encoder it cannot actually
+  start, which happened with a discrete GPU asleep or a stale plugin cache. Each
+  hardware encoder is now opened before it is used, and skipped if it will not.
 - Casting failed to start at all on machines with VA-API installed
   (`gst-plugin-va`): the hardware H.264 encoder was offered to the device and
   then could not be used.

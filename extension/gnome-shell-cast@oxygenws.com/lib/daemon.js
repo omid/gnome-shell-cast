@@ -1,6 +1,7 @@
 'use strict';
 
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 
 export const SOURCE_SCREEN = 0;
 export const SOURCE_WINDOW = 1;
@@ -10,6 +11,7 @@ export const SOURCE_CHOOSE = 3;
 
 const BUS_NAME = 'org.gnome.ShellCast';
 const OBJECT_PATH = '/org/gnome/ShellCast';
+const IFACE_NAME = 'org.gnome.ShellCast1';
 
 const CAST_IFACE_XML = `
 <node>
@@ -57,6 +59,33 @@ const CAST_IFACE_XML = `
     </signal>
   </interface>
 </node>`;
+
+// Asked by preferences, which has no CastDaemon to borrow: a bare call needs no
+// proxy, no signals and no name watching. It activates the daemon like any other
+// call, so an error means the daemon isn't installed and the caller shows nothing.
+// `gap` is why hardware encoding is unavailable, empty when there is nothing to say.
+export function getEncodingSupport(callback, cancellable = null) {
+    Gio.DBus.session.call(
+        BUS_NAME,
+        OBJECT_PATH,
+        IFACE_NAME,
+        'GetEncodingSupport',
+        null,
+        new GLib.VariantType('(ss)'),
+        Gio.DBusCallFlags.NONE,
+        -1,
+        cancellable,
+        (bus, result) => {
+            if (cancellable?.is_cancelled()) return;
+            try {
+                const [gap, pluginPackage] = bus.call_finish(result).deepUnpack();
+                callback({ gap, pluginPackage });
+            } catch {
+                callback(null);
+            }
+        },
+    );
+}
 
 // Wraps the org.gnome.ShellCast1 D-Bus service. The daemon is D-Bus
 // activatable: constructing the proxy doesn't launch it, but a method call does.

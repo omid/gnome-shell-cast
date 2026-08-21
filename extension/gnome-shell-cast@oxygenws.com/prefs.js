@@ -9,6 +9,8 @@ import {
     gettext as _,
 } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
+import { getEncodingSupport } from './lib/daemon.js';
+
 const RESOLUTION_VALUES = ['auto', 'native', '2160', '1440', '1080', '720'];
 // 0 is "automatic" for each of these: the daemon then takes the value from the
 // receiver's own limits instead of the setting.
@@ -16,8 +18,33 @@ const FPS_VALUES = [0, 15, 20, 24, 30, 60];
 const BITRATE_VALUES = [0, 2000, 4000, 8000, 16000, 30000];
 const AUDIO_BITRATE_VALUES = [0, 64, 96, 128, 192, 256];
 const LOCATION_VALUES = ['tray', 'quick-settings'];
-const ENCODER_VALUES = ['auto', 'hardware', 'software'];
+const ENCODER_VALUES = ['auto', 'hardware', 'software', 'vaapi', 'nvenc', 'v4l2'];
 const FORMAT_VALUES = ['auto', 'nv12', 'i420'];
+
+// The daemon decides which piece is missing; this only phrases it, because the
+// wording has to go through gettext and the daemon's strings do not. A token we
+// do not know means silence rather than a guess: the daemon can be a different
+// version than the extension reading it.
+function hardwareHintText(support) {
+    switch (support.gap) {
+        case 'driver':
+            return _(
+                'No VA-API encoder for your graphics card. Install your distribution’s VA-API ' +
+                    'driver.',
+            );
+        case 'nvidia':
+            return _('Install the NVIDIA driver and the GStreamer nvcodec plugin.');
+        case 'plugin':
+            return support.pluginPackage
+                ? _('The GStreamer VA-API plugin is missing. Install the %s package.').replace(
+                      '%s',
+                      support.pluginPackage,
+                  )
+                : _('The GStreamer VA-API plugin is missing. Install it from your distribution.');
+        default:
+            return null;
+    }
+}
 
 export default class GnomeShellCastPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
@@ -41,9 +68,6 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         ];
         const numericLabels = (values) =>
             values.map((value) => (value === 0 ? _('Automatic') : String(value)));
-        const encoderLabels = [_('Automatic'), _('Hardware only'), _('Software only')];
-        const formatLabels = [_('Automatic'), 'NV12', 'I420'];
-
         const page = new Adw.PreferencesPage({
             title: _('Advanced'),
             icon_name: 'applications-engineering-symbolic',
@@ -102,6 +126,24 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         });
         group.add(audioBitrateRow);
 
+        this._addEncodingGroup(window, page, settings);
+
+        this._addCastDetailsGroup(page, settings);
+    }
+
+    _addEncodingGroup(window, page, settings) {
+        // The API choices matter on a machine with more than one: automatic
+        // always prefers VA-API, which is not always the better encoder there.
+        const encoderLabels = [
+            _('Automatic'),
+            _('Hardware only'),
+            _('Software only'),
+            _('VA-API (Intel, AMD)'),
+            _('NVENC (NVIDIA)'),
+            _('V4L2 (Arm boards)'),
+        ];
+        const formatLabels = [_('Automatic'), 'NV12', 'I420'];
+
         const encodingGroup = new Adw.PreferencesGroup({
             title: _('Encoding'),
             description: _('Casting fails with a message when a forced choice cannot be used'),
@@ -131,8 +173,35 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             settings.set_string('video-format', FORMAT_VALUES[row.selected]);
         });
         encodingGroup.add(formatRow);
+        this._addHardwareHint(window, encodingGroup);
+    }
 
-        this._addCastDetailsGroup(page, settings);
+    // The daemon reports why hardware encoding is unavailable, and says nothing
+    // when it works or when there is no graphics card to use - so an empty gap
+    // means no row. Added once the daemon answers.
+    _addHardwareHint(window, group) {
+        const cancellable = new Gio.Cancellable();
+        window.connect('destroy', () => cancellable.cancel());
+
+        // Which plugin and driver a card needs, per vendor and per distribution,
+        // is more than a row can hold - so the row opens that table instead.
+        const guide = 'TROUBLESHOOTING.md#hardware-encoding-by-graphics-card';
+        const uri = `${this.metadata.url}/blob/main/${guide}`;
+
+        getEncodingSupport((support) => {
+            const subtitle = support && hardwareHintText(support);
+            if (!subtitle) return;
+            const row = new Adw.ActionRow({
+                title: _('Hardware encoding is unavailable'),
+                subtitle,
+                subtitle_lines: 0,
+                activatable: true,
+            });
+            row.add_prefix(new Gtk.Image({ icon_name: 'dialog-warning-symbolic' }));
+            row.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
+            row.connect('activated', () => Gio.AppInfo.launch_default_for_uri(uri, null));
+            group.add(row);
+        }, cancellable);
     }
 
     _addCastDetailsGroup(page, settings) {

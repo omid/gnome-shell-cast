@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-18 22:43+0200\n"
+"POT-Creation-Date: 2026-08-21 21:03+0200\n"
 "PO-Revision-Date: 2026-08-14 10:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Brazilian Portuguese <https://github.com/omid/gnome-shell-"
@@ -144,7 +144,7 @@ msgid "Close"
 msgstr "Fechar"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:266
 msgid "Report an issue"
 msgstr "Relatar um problema"
 
@@ -186,7 +186,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "Copie o comando, cole-o em um terminal e execute-o."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:196
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:265
 msgid "Homepage"
 msgstr "Site"
 
@@ -198,100 +198,135 @@ msgstr "Copiar o comando"
 msgid "Copied! Paste it into a terminal and run it."
 msgstr "Copiado. Cole-o em um terminal e execute-o."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:35
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
+msgid ""
+"No VA-API encoder for your graphics card. Install your distribution’s VA-API "
+"driver."
+msgstr ""
+"Nenhum codificador VA-API para sua placa de vídeo. Instale o driver VA-API "
+"da sua distribuição."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+msgid "Install the NVIDIA driver and the GStreamer nvcodec plugin."
+msgstr "Instale o driver NVIDIA e o plug-in nvcodec do GStreamer."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#, javascript-format
+msgid "The GStreamer VA-API plugin is missing. Install the %s package."
+msgstr "O plug-in VA-API do GStreamer está ausente. Instale o pacote %s."
+
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:45
+msgid ""
+"The GStreamer VA-API plugin is missing. Install it from your distribution."
+msgstr ""
+"O plug-in VA-API do GStreamer está ausente. Instale-o pela sua distribuição."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:62
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:70
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:81
 msgid "Automatic"
 msgstr "Automático"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:63
 msgid "Native"
 msgstr "Nativa"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:64
 msgid "4K (2160p)"
 msgstr "4K (2160p)"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:38
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:65
 msgid "1440p"
 msgstr "1440p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:66
 msgid "1080p"
 msgstr "1080p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:40
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:67
 msgid "720p"
 msgstr "720p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
 msgid "Hardware only"
 msgstr "Somente hardware"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
 msgid "Software only"
 msgstr "Somente software"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:77
+msgid "VA-API (Intel, AMD)"
+msgstr "VA-API (Intel, AMD)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:78
+msgid "NVENC (NVIDIA)"
+msgstr "NVENC (NVIDIA)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:79
+msgid "V4L2 (Arm boards)"
+msgstr "V4L2 (placas Arm)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:84
 msgid "Advanced"
 msgstr "Avançado"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:54
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
 msgid "Stream quality"
 msgstr "Qualidade da transmissão"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:55
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:91
 msgid "Applied the next time a cast is started"
 msgstr "Aplicado na próxima vez que uma transmissão for iniciada"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:60
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
 msgid "Maximum resolution"
 msgstr "Resolução máxima"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr ""
 "Acima de 1080p é necessário um codificador de hardware e uma taxa de bits "
 "compatível"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
 msgid "Framerate"
 msgstr "Taxa de quadros"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:72
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
 msgid "Frames per second"
 msgstr "Quadros por segundo"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:82
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
 msgid "Video bitrate"
 msgstr "Taxa de bits do vídeo"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:83
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:119
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr "kbit/s: cerca de 4000 para 720p, 8000 para 1080p, 30000 para 4K"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:93
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
 msgid "Audio bitrate"
 msgstr "Taxa de bits do áudio"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:106
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:142
 msgid "Encoding"
 msgstr "Codificação"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:143
 msgid "Casting fails with a message when a forced choice cannot be used"
 msgstr ""
 "A transmissão falha com uma mensagem quando uma escolha forçada não pode ser "
 "usada"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:112
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:148
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:46
 msgid "Video encoder"
 msgstr "Codificador de vídeo"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:114
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
 msgid ""
 "Automatic prefers your graphics card; choose software if the picture breaks "
 "up"
@@ -299,75 +334,79 @@ msgstr ""
 "Automático prefere sua placa de vídeo; escolha software se a imagem se "
 "quebrar"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:53
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:56
 msgid "Pixel format"
 msgstr "Formato de pixel"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:126
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:162
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr ""
 "Automático serve para qualquer codificador; mude apenas para contornar um "
 "driver"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:135
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:155
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:191
+msgid "Hardware encoding is unavailable"
+msgstr "A codificação por hardware não está disponível"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:224
 msgid "Menu"
 msgstr "Menu"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:139
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:208
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:61
 msgid "Show cast details"
 msgstr "Mostrar detalhes da transmissão"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:209
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:62
 msgid "Show the transport and codecs under the active device while casting"
 msgstr ""
 "Mostrar o transporte e os codecs abaixo do dispositivo ativo durante a "
 "transmissão"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
 msgid "Top bar"
 msgstr "Barra superior"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
 msgid "Quick settings"
 msgstr "Configurações rápidas"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:219
 msgid "General"
 msgstr "Geral"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:159
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:228
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:70
 msgid "Indicator location"
 msgstr "Localização do ícone"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:229
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr ""
 "Mostrar o ícone de transmissão na barra superior ou no menu de configurações "
 "rápidas"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:174
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:243
 msgid "About"
 msgstr "Sobre"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:185
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:254
 #, javascript-format
 msgid "Version %s"
 msgstr "Versão %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:200
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:269
 msgid "Help"
 msgstr "Ajuda"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:270
 msgid "Common problems and their fixes"
 msgstr "Problemas comuns e suas soluções"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:273
 msgid "Troubleshooting guide"
 msgstr "Guia de solução de problemas"
 
@@ -416,19 +455,21 @@ msgstr ""
 "Taxa de bits do Opus para o áudio transmitido, ou 0 para deixar os limites "
 "do receptor decidirem."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:44
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:47
 msgid ""
-"Which encoder to use. \"auto\" prefers hardware (VA-API, NVENC) and falls "
-"back to software. Choose software when a graphics driver produces a broken "
-"or stuttering picture; casting fails with a message if the choice cannot be "
-"met."
+"Which encoder to use. \"auto\" prefers hardware (VA-API, NVENC, V4L2) and "
+"falls back to software. Choose software when a graphics driver produces a "
+"broken or stuttering picture. \"vaapi\" (Intel, AMD), \"nvenc\" (NVIDIA) and "
+"\"v4l2\" (Arm boards) pin one hardware API. Casting fails with a message if "
+"the choice cannot be met."
 msgstr ""
-"Qual codificador usar. “auto” prefere hardware (VA-API, NVENC) e recorre ao "
-"software. Escolha software quando um driver de vídeo produzir uma imagem "
-"quebrada ou travando; a transmissão falha com uma mensagem se a escolha não "
-"puder ser atendida."
+"Qual codificador usar. “auto” prefere hardware (VA-API, NVENC, V4L2) e "
+"recorre ao software. Escolha software quando um driver de vídeo produzir uma "
+"imagem quebrada ou travando. “vaapi” (Intel, AMD), “nvenc” (NVIDIA) e “v4l2” "
+"(placas Arm) fixam uma única interface de hardware; a transmissão falha com "
+"uma mensagem se a escolha não puder ser atendida."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:54
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:57
 msgid ""
 "The raw video format handed to the encoder. \"auto\" offers both and lets "
 "negotiation pick whichever the chosen encoder accepts. Forcing a format "
@@ -440,7 +481,7 @@ msgstr ""
 "um formato restringe a transmissão aos codificadores que o aceitam, o que na "
 "maioria dos sistemas significa forçar também o tipo de codificador."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:68
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:71
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."
