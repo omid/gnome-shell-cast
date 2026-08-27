@@ -108,7 +108,9 @@ whatever language you are translating into.
 | General, Automatic | `gnome-control-center-2.0` |
 | Video, Pixel format | `gtk40`, `gst-plugins-good-1.0` |
 | Encoder, Encoding | `gst-plugins-*` — the *video* sense, see below |
+| Mirror (as a display mode), Displays, Session | `gnome-shell`, `gnome-control-center-2.0` |
 | Cast, Chromecast, HLS, D-Bus, GNOME, NV12, I420 | not translated — keep as-is |
+| Wayland | `gnome-control-center-2.0` — untranslated in most languages, transliterated in a few |
 
 Three that catch people out: German *About* is `Info`, not `Über`; *Volume*
 means `Lautstärke` here, not the disk-utility `Datenträger`; and *Encoding* in

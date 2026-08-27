@@ -18,15 +18,26 @@ const FPS_VALUES = [0, 15, 20, 24, 30, 60];
 const BITRATE_VALUES = [0, 2000, 4000, 8000, 16000, 30000];
 const AUDIO_BITRATE_VALUES = [0, 64, 96, 128, 192, 256];
 const LOCATION_VALUES = ['tray', 'quick-settings'];
+const CAST_MODE_VALUES = ['mirror', 'virtual-monitor'];
 const ENCODER_VALUES = ['auto', 'hardware', 'software', 'vaapi', 'nvenc', 'v4l2'];
 const FORMAT_VALUES = ['auto', 'nv12', 'i420'];
+
+// An Adw.ActionRow that opens `uri`. Used for the about page's links and for the
+// hardware hint, which points at the per-card table in the troubleshooting guide.
+function linkRow(title, uri, { subtitle = uri, iconName = null } = {}) {
+    const row = new Adw.ActionRow({ title, subtitle, activatable: true });
+    if (iconName) row.add_prefix(new Gtk.Image({ icon_name: iconName }));
+    row.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
+    row.connect('activated', () => Gio.AppInfo.launch_default_for_uri(uri, null));
+    return row;
+}
 
 // The daemon decides which piece is missing; this only phrases it, because the
 // wording has to go through gettext and the daemon's strings do not. A token we
 // do not know means silence rather than a guess: the daemon can be a different
 // version than the extension reading it.
-function hardwareHintText(support) {
-    switch (support.gap) {
+function hardwareHintText(gap, pluginPackage) {
+    switch (gap) {
         case 'driver':
             return _(
                 'No VA-API encoder for your graphics card. Install your distribution’s VA-API ' +
@@ -35,14 +46,14 @@ function hardwareHintText(support) {
         case 'nvidia':
             return _('Install the NVIDIA driver and the GStreamer nvcodec plugin.');
         case 'plugin':
-            return support.pluginPackage
+            return pluginPackage
                 ? _('The GStreamer VA-API plugin is missing. Install the %s package.').replace(
                       '%s',
-                      support.pluginPackage,
+                      pluginPackage,
                   )
                 : _('The GStreamer VA-API plugin is missing. Install it from your distribution.');
         default:
-            return null;
+            return '';
     }
 }
 
@@ -185,21 +196,16 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
 
         // Which plugin and driver a card needs, per vendor and per distribution,
         // is more than a row can hold - so the row opens that table instead.
-        const guide = 'TROUBLESHOOTING.md#hardware-encoding-by-graphics-card';
-        const uri = `${this.metadata.url}/blob/main/${guide}`;
+        const uri = this._docsUri('TROUBLESHOOTING.md#hardware-encoding-by-graphics-card');
 
         getEncodingSupport((support) => {
-            const subtitle = support && hardwareHintText(support);
+            const subtitle = hardwareHintText(support?.gap, support?.pluginPackage);
             if (!subtitle) return;
-            const row = new Adw.ActionRow({
-                title: _('Hardware encoding is unavailable'),
+            const row = linkRow(_('Hardware encoding is unavailable'), uri, {
                 subtitle,
-                subtitle_lines: 0,
-                activatable: true,
+                iconName: 'dialog-warning-symbolic',
             });
-            row.add_prefix(new Gtk.Image({ icon_name: 'dialog-warning-symbolic' }));
-            row.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
-            row.connect('activated', () => Gio.AppInfo.launch_default_for_uri(uri, null));
+            row.subtitle_lines = 0;
             group.add(row);
         }, cancellable);
     }
@@ -218,12 +224,27 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
 
     _addGeneralPage(window, settings) {
         const locationLabels = [_('Top bar'), _('Quick settings')];
+        const castModeLabels = [_('Mirror screen'), _('New virtual monitor')];
 
         const page = new Adw.PreferencesPage({
             title: _('General'),
             icon_name: 'preferences-system-symbolic',
         });
         window.add(page);
+
+        const castingGroup = new Adw.PreferencesGroup({ title: _('Casting') });
+        page.add(castingGroup);
+
+        const castModeRow = new Adw.ComboRow({
+            title: _('Cast source'),
+            subtitle: _('A new virtual monitor needs a Wayland session'),
+            model: new Gtk.StringList({ strings: castModeLabels }),
+            selected: CAST_MODE_VALUES.indexOf(settings.get_string('cast-mode')),
+        });
+        castModeRow.connect('notify::selected', (row) => {
+            settings.set_string('cast-mode', CAST_MODE_VALUES[row.selected]);
+        });
+        castingGroup.add(castModeRow);
 
         const menuGroup = new Adw.PreferencesGroup({ title: _('Menu') });
         page.add(menuGroup);
@@ -238,6 +259,11 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             settings.set_string('indicator-location', LOCATION_VALUES[row.selected]);
         });
         menuGroup.add(locationRow);
+    }
+
+    // The docs live in the repository, so a link is the repo URL plus a path.
+    _docsUri(path) {
+        return `${this.metadata.url}/blob/main/${path}`;
     }
 
     _addAboutPage(window) {
@@ -259,13 +285,6 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             }),
         );
 
-        const linkRow = (title, uri) => {
-            const row = new Adw.ActionRow({ title, subtitle: uri, activatable: true });
-            row.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
-            row.connect('activated', () => Gio.AppInfo.launch_default_for_uri(uri, null));
-            return row;
-        };
-
         group.add(linkRow(_('Homepage'), url));
         group.add(linkRow(_('Report an issue'), `${url}/issues`));
 
@@ -274,6 +293,6 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             description: _('Common problems and their fixes'),
         });
         page.add(help);
-        help.add(linkRow(_('Troubleshooting guide'), `${url}/blob/main/TROUBLESHOOTING.md`));
+        help.add(linkRow(_('Troubleshooting guide'), this._docsUri('TROUBLESHOOTING.md')));
     }
 }

@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-21 21:03+0200\n"
+"POT-Creation-Date: 2026-08-27 15:26+0200\n"
 "PO-Revision-Date: 2026-08-14 10:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Bengali <https://github.com/omid/gnome-shell-cast>\n"
@@ -15,77 +15,90 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:181
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:193
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:57
 msgid "Cast"
 msgstr "কাস্ট"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:225
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:240
 msgid "Stop casting"
 msgstr "কাস্ট করা বন্ধ করুন"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:233
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:248
 msgid "Preferences"
 msgstr "পছন্দসমূহ"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:290
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:263
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:227
+msgid "Mirror screen"
+msgstr "স্ক্রিন মিরর করুন"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:264
+msgid "New monitor"
+msgstr "নতুন মনিটর"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:358
 #, javascript-format
 msgid "%s (casting)"
 msgstr "%s (কাস্ট হচ্ছে)"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:298
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:366
 msgid "Searching for Chromecast devices…"
 msgstr "Chromecast ডিভাইস খোঁজা হচ্ছে…"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:347
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:418
+msgid "Cast a new monitor"
+msgstr "নতুন মনিটর কাস্ট করুন"
+
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:418
 msgid "Cast screen"
 msgstr "স্ক্রিন কাস্ট করুন"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:352
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:423
 msgid "Choose what to cast"
 msgstr "কী কাস্ট করবেন তা বেছে নিন"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:365
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:436
 msgid "Cast streaming"
 msgstr "Cast Streaming"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:365
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:436
 msgid "Audio stream"
 msgstr "অডিও স্ট্রিম"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:366
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:437
 msgid "HLS"
 msgstr "HLS"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:374
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:445
 #, javascript-format
 msgid "Encoder: %s (hardware)"
 msgstr "এনকোডার: %s (হার্ডওয়্যার)"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:375
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:446
 #, javascript-format
 msgid "Encoder: %s (software)"
 msgstr "এনকোডার: %s (সফটওয়্যার)"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:381
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:452
 #, javascript-format
 msgid "Receiver supports: %s"
 msgstr "রিসিভার সমর্থন করে: %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:446
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:517
 msgid "The cast failed."
 msgstr "কাস্ট ব্যর্থ হয়েছে।"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:453
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:524
 #, javascript-format
 msgid "The device ended the session (%s)."
 msgstr "ডিভাইসটি সেশন শেষ করেছে (%s)।"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:454
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:525
 msgid "The device ended the session."
 msgstr "ডিভাইসটি সেশন শেষ করেছে।"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:502
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:573
 #: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:62
 msgid "GNOME Shell Cast"
@@ -141,7 +154,7 @@ msgid "Close"
 msgstr "বন্ধ করুন"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:266
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:289
 msgid "Report an issue"
 msgstr "সমস্যা রিপোর্ট করুন"
 
@@ -182,7 +195,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "কমান্ডটি অনুলিপি করুন, তারপর টার্মিনালে পেস্ট করে চালান।"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:265
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:288
 msgid "Homepage"
 msgstr "ওয়েবসাইট"
 
@@ -194,7 +207,7 @@ msgstr "কমান্ড অনুলিপি করুন"
 msgid "Copied! Paste it into a terminal and run it."
 msgstr "অনুলিপি হয়েছে। টার্মিনালে পেস্ট করে চালান।"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:43
 msgid ""
 "No VA-API encoder for your graphics card. Install your distribution’s VA-API "
 "driver."
@@ -202,194 +215,210 @@ msgstr ""
 "আপনার গ্রাফিক্স কার্ডের জন্য কোনো VA-API এনকোডার নেই। আপনার ডিস্ট্রিবিউশনের VA-API "
 "ড্রাইভার ইনস্টল করুন।"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:47
 msgid "Install the NVIDIA driver and the GStreamer nvcodec plugin."
 msgstr "NVIDIA ড্রাইভার এবং GStreamer nvcodec প্লাগইন ইনস্টল করুন।"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:50
 #, javascript-format
 msgid "The GStreamer VA-API plugin is missing. Install the %s package."
 msgstr "GStreamer VA-API প্লাগইন নেই। %s প্যাকেজ ইনস্টল করুন।"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:54
 msgid ""
 "The GStreamer VA-API plugin is missing. Install it from your distribution."
 msgstr "GStreamer VA-API প্লাগইন নেই। এটি আপনার ডিস্ট্রিবিউশন থেকে ইনস্টল করুন।"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:62
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:70
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:73
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:81
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:149
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:156
 msgid "Automatic"
 msgstr "স্বয়ংক্রিয়"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:63
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
 msgid "Native"
 msgstr "মূল"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:64
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
 msgid "4K (2160p)"
 msgstr "4K (2160p)"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:65
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
 msgid "1440p"
 msgstr "1440p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:66
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:77
 msgid "1080p"
 msgstr "1080p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:67
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:78
 msgid "720p"
 msgstr "720p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
-msgid "Hardware only"
-msgstr "শুধু হার্ডওয়্যার"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
-msgid "Software only"
-msgstr "শুধু সফটওয়্যার"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:77
-msgid "VA-API (Intel, AMD)"
-msgstr "VA-API (Intel, AMD)"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:78
-msgid "NVENC (NVIDIA)"
-msgstr "NVENC (NVIDIA)"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:79
-msgid "V4L2 (Arm boards)"
-msgstr "V4L2 (Arm বোর্ড)"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:84
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:83
 msgid "Advanced"
 msgstr "উন্নত"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:89
 msgid "Stream quality"
 msgstr "স্ট্রিমের মান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:91
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
 msgid "Applied the next time a cast is started"
 msgstr "পরবর্তী কাস্ট শুরুর সময় প্রয়োগ হবে"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:95
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
 msgid "Maximum resolution"
 msgstr "সর্বোচ্চ রেজল্যুশন"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr "1080p-এর উপরে হার্ডওয়্যার এনকোডার এবং উপযুক্ত বিটরেট প্রয়োজন"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:106
 msgid "Framerate"
 msgstr "ফ্রেম রেট"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
 msgid "Frames per second"
 msgstr "প্রতি সেকেন্ডে ফ্রেম"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:117
 msgid "Video bitrate"
 msgstr "ভিডিও বিটরেট"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:119
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr "kbit/s: 720p-এর জন্য প্রায় 4000, 1080p-এর জন্য 8000, 4K-এর জন্য 30000"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:128
 msgid "Audio bitrate"
 msgstr "অডিও বিটরেট"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:142
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+msgid "Hardware only"
+msgstr "শুধু হার্ডওয়্যার"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:151
+msgid "Software only"
+msgstr "শুধু সফটওয়্যার"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:152
+msgid "VA-API (Intel, AMD)"
+msgstr "VA-API (Intel, AMD)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:153
+msgid "NVENC (NVIDIA)"
+msgstr "NVENC (NVIDIA)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:154
+msgid "V4L2 (Arm boards)"
+msgstr "V4L2 (Arm বোর্ড)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:159
 msgid "Encoding"
 msgstr "এনকোডিং"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:143
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
 msgid "Casting fails with a message when a forced choice cannot be used"
 msgstr "নির্ধারিত পছন্দ ব্যবহার করা না গেলে কাস্ট বার্তাসহ ব্যর্থ হয়"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:148
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:165
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:46
 msgid "Video encoder"
 msgstr "ভিডিও এনকোডার"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:167
 msgid ""
 "Automatic prefers your graphics card; choose software if the picture breaks "
 "up"
 msgstr "স্বয়ংক্রিয় আপনার গ্রাফিক্স কার্ড পছন্দ করে; ছবি ভেঙে গেলে সফটওয়্যার বেছে নিন"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:178
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:56
 msgid "Pixel format"
 msgstr "পিক্সেল বিন্যাস"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:162
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:179
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr "স্বয়ংক্রিয় সব এনকোডারের জন্য উপযুক্ত; শুধু ড্রাইভারের সমস্যা এড়াতে বদলান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:191
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
 msgid "Hardware encoding is unavailable"
 msgstr "হার্ডওয়্যার এনকোডিং উপলব্ধ নয়"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:224
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:214
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:249
 msgid "Menu"
 msgstr "মেনু"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:208
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:61
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:218
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:70
 msgid "Show cast details"
 msgstr "কাস্টের বিবরণ দেখান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:209
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:62
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:219
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:71
 msgid "Show the transport and codecs under the active device while casting"
 msgstr "কাস্ট করার সময় সক্রিয় ডিভাইসের নিচে ট্রান্সপোর্ট ও কোডেক দেখান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:226
 msgid "Top bar"
 msgstr "শীর্ষ বার"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:226
 msgid "Quick settings"
 msgstr "দ্রুত সেটিংস"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:219
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:227
+msgid "New virtual monitor"
+msgstr "নতুন ভার্চুয়াল মনিটর"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:230
 msgid "General"
 msgstr "সাধারণ"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:228
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:70
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:235
+msgid "Casting"
+msgstr "কাস্টিং"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:239
+msgid "Cast source"
+msgstr "কাস্টের উৎস"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:240
+msgid "A new virtual monitor needs a Wayland session"
+msgstr "নতুন ভার্চুয়াল মনিটরের জন্য একটি Wayland সেশন প্রয়োজন"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:253
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:79
 msgid "Indicator location"
 msgstr "আইকনের অবস্থান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:229
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:254
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr "কাস্ট আইকন শীর্ষ বারে, নাকি দ্রুত সেটিংস মেনুতে দেখান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:243
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:273
 msgid "About"
 msgstr "পরিচিতি"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:254
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:284
 #, javascript-format
 msgid "Version %s"
 msgstr "সংস্করণ %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:269
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:292
 msgid "Help"
 msgstr "সহায়তা"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:270
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:293
 msgid "Common problems and their fixes"
 msgstr "সাধারণ সমস্যা ও তার সমাধান"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:273
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:296
 msgid "Troubleshooting guide"
 msgstr "সমস্যা সমাধানের নির্দেশিকা"
 
@@ -459,7 +488,17 @@ msgstr ""
 "কাস্টিং সেই এনকোডারগুলিতে সীমাবদ্ধ হয় যেগুলি এটি গ্রহণ করে, যা বেশিরভাগ সিস্টেমে "
 "এনকোডারের ধরনও বাধ্য করার সমান।"
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:71
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:65
+msgid "What casting the screen sends"
+msgstr "স্ক্রিন কাস্ট করলে কী পাঠানো হয়"
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:66
+msgid ""
+"Either a mirror of a display you already have, or a new monitor created for "
+"the cast and removed when it ends. A new monitor needs a Wayland session."
+msgstr "হয় আপনার বিদ্যমান কোনো ডিসপ্লের মিরর, অথবা কাস্টের জন্য তৈরি হওয়া একটি নতুন মনিটর যা কাস্ট শেষ হলে সরিয়ে ফেলা হয়। নতুন মনিটরের জন্য একটি Wayland সেশন প্রয়োজন।"
+
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:80
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."

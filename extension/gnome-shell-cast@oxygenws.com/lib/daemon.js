@@ -8,6 +8,9 @@ export const SOURCE_WINDOW = 1;
 export const SOURCE_AUDIO = 2;
 // Screen or window, picked in the portal dialog.
 export const SOURCE_CHOOSE = 3;
+// A monitor that does not exist yet: the compositor creates one for the cast
+// and removes it again afterwards.
+export const SOURCE_VIRTUAL = 4;
 
 const BUS_NAME = 'org.gnome.ShellCast';
 const OBJECT_PATH = '/org/gnome/ShellCast';

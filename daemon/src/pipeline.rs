@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::os::fd::RawFd;
+use std::os::fd::{AsRawFd, RawFd};
 use std::path::Path;
 
 use anyhow::{Context, Result};
@@ -8,9 +8,55 @@ use gstreamer::prelude::*;
 use log::{info, warn};
 use zbus::zvariant::OwnedValue;
 
-use crate::streaming::encoder::{self, EncoderPolicy, EncodingPolicy, FormatPolicy};
+use crate::streaming::encoder::{
+    self, Api, EncoderPolicy, EncodingPolicy, FormatPolicy, VideoCodec,
+};
 
 pub const PLAYLIST_NAME: &str = "stream.m3u8";
+
+/// The captured video a pipeline is built around.
+#[derive(Debug, Clone, Copy)]
+pub struct VideoSource {
+    pub fd: RawFd,
+    pub node_id: u32,
+    /// `Some` only for a virtual monitor. `PipeWire` negotiation is what fixes
+    /// such a monitor's resolution, and the negotiation takes it from the
+    /// *consumer*, so the size has to be named in caps on the source pad.
+    pub capture_size: Option<(i32, i32)>,
+}
+
+impl From<&crate::capture::Capture> for VideoSource {
+    fn from(capture: &crate::capture::Capture) -> Self {
+        Self {
+            fd: capture.fd.as_raw_fd(),
+            node_id: capture.node_id,
+            capture_size: capture.source_size,
+        }
+    }
+}
+
+impl VideoSource {
+    /// The launch fragment that pins the source size, empty unless this is a
+    /// virtual monitor.
+    ///
+    /// It must sit ahead of `videoscale`, which reports width and height back
+    /// upstream as open ranges and so hides the encoder-side caps from
+    /// `pipewiresrc` entirely. Width and height only: mutter offers
+    /// `framerate = 0/1` for a virtual stream, so naming a rate here makes every
+    /// format fail to intersect, and a filter that names fewer fields is the
+    /// permissive direction anyway.
+    pub fn source_caps(self) -> String {
+        self.capture_size
+            .map(|(w, h)| {
+                format!("! capsfilter name={SOURCE_FILTER} caps=video/x-raw,width={w},height={h} ")
+            })
+            .unwrap_or_default()
+    }
+}
+
+/// Names the source-pad caps filter so nothing else has to guess which
+/// `video/x-raw` filter is which.
+const SOURCE_FILTER: &str = "srccaps";
 
 #[derive(Debug, Clone, Default)]
 pub struct StreamSettings {
@@ -100,51 +146,54 @@ pub fn set_encoder_bitrate(pipeline: &gst::Pipeline, bits_per_second: u32) {
         ),
         "svtav1enc" | "av1enc" => venc.set_property("target-bitrate", kbps),
         "x264enc" => venc.set_property("bitrate", kbps),
-        // A V4L2 encoder has no bitrate property; the control carries bit/s,
-        // and the existing fields are kept so the GOP size set at launch stays.
-        other if other.starts_with("v4l2") => {
-            let mut controls = venc
-                .property::<Option<gst::Structure>>("extra-controls")
-                .unwrap_or_else(|| gst::Structure::new_empty("controls"));
-            controls.set(
-                "video_bitrate",
-                i32::try_from(bits_per_second).unwrap_or(i32::MAX),
-            );
-            venc.set_property("extra-controls", controls);
-        }
-        other if other.starts_with("va") || other.starts_with("nv") => {
-            venc.set_property("bitrate", kbps);
-        }
-        _ => {}
+        other => match encoder::api_of(other) {
+            // A V4L2 encoder has no bitrate property; the control carries bit/s,
+            // and the existing fields are kept so the GOP size set at launch stays.
+            Some(Api::V4l2) => {
+                let mut controls = venc
+                    .property::<Option<gst::Structure>>("extra-controls")
+                    .unwrap_or_else(|| gst::Structure::new_empty("controls"));
+                controls.set(
+                    "video_bitrate",
+                    i32::try_from(bits_per_second).unwrap_or(i32::MAX),
+                );
+                venc.set_property("extra-controls", controls);
+            }
+            Some(Api::Va | Api::Nvenc) => venc.set_property("bitrate", kbps),
+            None => {}
+        },
     }
 }
 
-/// Retargets the running capture to `size`. The caps between videoscale and
-/// the encoder come from the launch string, so the filter is unnamed; it is
-/// found by factory and its existing fields are preserved.
+/// Retargets the encoder's input size, for the mirroring path's resolution
+/// ladder. The filter is found through `venc`, which the launch strings always
+/// link it straight into, rather than by walking the bin: a virtual-monitor
+/// pipeline has a second `video/x-raw` filter pinned to the source pad, and
+/// retargeting *that* one would resize the monitor the user's windows are on.
 pub fn set_capture_size(pipeline: &gst::Pipeline, (width, height): (i32, i32)) {
-    let mut elements = pipeline.iterate_elements();
-    while let Ok(Some(element)) = elements.next() {
-        let is_capsfilter = element
-            .factory()
-            .is_some_and(|factory| factory.name() == "capsfilter");
-        if !is_capsfilter {
-            continue;
-        }
-        let caps = element.property::<Option<gst::Caps>>("caps");
-        let Some(caps) = caps else { continue };
-        let Some(structure) = caps.structure(0) else {
-            continue;
-        };
-        if structure.name() != "video/x-raw" {
-            continue;
-        }
-        let mut updated = structure.to_owned();
-        updated.set("width", width);
-        updated.set("height", height);
-        element.set_property("caps", gst::Caps::builder_full().structure(updated).build());
+    let Some(filter) = encoder_input_capsfilter(pipeline) else {
         return;
-    }
+    };
+    let Some(caps) = filter.property::<Option<gst::Caps>>("caps") else {
+        return;
+    };
+    let Some(structure) = caps.structure(0) else {
+        return;
+    };
+    let mut updated = structure.to_owned();
+    updated.set("width", width);
+    updated.set("height", height);
+    filter.set_property("caps", gst::Caps::builder_full().structure(updated).build());
+}
+
+/// The caps filter feeding the encoder: the peer of `venc`'s sink pad.
+fn encoder_input_capsfilter(pipeline: &gst::Pipeline) -> Option<gst::Element> {
+    let element = pipeline
+        .by_name("venc")?
+        .static_pad("sink")?
+        .peer()?
+        .parent_element()?;
+    (element.factory()?.name() == "capsfilter").then_some(element)
 }
 
 /// AAC encoders in order of preference; which ones exist depends on the
@@ -159,37 +208,33 @@ pub fn find_aac_encoder() -> Option<&'static str> {
         .find(|name| gst::ElementFactory::find(name).is_some())
 }
 
-/// H.264 encoders for the HLS path, hardware first (VA-API, then NVENC), then
-/// software `x264enc`. Each candidate is parse-checked, so a hardware encoder
-/// that is present but mis-parametrised falls back to the next one. `None` when
-/// the user's encoder or pixel-format choice rules every one of them out.
-const H264_ENCODERS: &[&str] = &[
-    "vah264enc",
-    "vah264lpenc",
-    "nvh264enc",
-    "v4l2h264enc",
-    "x264enc",
-];
-
+/// The H.264 encoder for the HLS path. The candidates and their order are the
+/// mirroring path's (`encoder::factories`); only the launch parameters differ,
+/// because HLS wants one keyframe per segment. `None` when the user's encoder or
+/// pixel-format choice rules every one of them out.
 fn find_h264_encoder(bitrate_kbps: i32, key_int: i32, policy: EncodingPolicy) -> Option<String> {
     let software = format!(
         "x264enc name=venc tune=zerolatency speed-preset=veryfast bitrate={bitrate_kbps} key-int-max={key_int} bframes=0"
     );
-    for &f in H264_ENCODERS {
+    for &f in encoder::factories(VideoCodec::H264) {
         if !encoder::allowed(f, policy) {
             continue;
         }
         let fragment = match f {
             "x264enc" => software.clone(),
-            _ if f.starts_with("nv") => {
+            _ if encoder::api_of(f) == Some(Api::Nvenc) => {
                 format!(
                     "{f} name=venc bitrate={bitrate_kbps} rc-mode=cbr gop-size={key_int} bframes=0"
                 )
             }
-            // V4L2 takes bit/s through controls rather than properties.
-            _ if f.starts_with("v4l2") => format!(
-                "{f} name=venc extra-controls=\"controls,video_bitrate={},video_gop_size={key_int}\"",
-                i64::from(bitrate_kbps).saturating_mul(1000)
+            _ if encoder::api_of(f) == Some(Api::V4l2) => format!(
+                "{f} name=venc {}",
+                encoder::v4l2_controls(
+                    u32::try_from(bitrate_kbps)
+                        .unwrap_or(0)
+                        .saturating_mul(1000),
+                    u32::try_from(key_int).unwrap_or(1),
+                )
             ),
             _ => format!(
                 "{f} name=venc bitrate={bitrate_kbps} rate-control=cbr key-int-max={key_int}"
@@ -205,12 +250,12 @@ fn find_h264_encoder(bitrate_kbps: i32, key_int: i32, policy: EncodingPolicy) ->
 }
 
 /// Builds the gst-launch description writing a live HLS stream into
-/// `hls_dir`: H.264 from the captured `PipeWire` node when `video` carries
-/// the (fd, node id) pair, plus AAC system audio when `audio` names the pulse
-/// monitor device and the AAC encoder element. Audio-only casts pass
-/// `video: None` and produce audio-only TS segments.
+/// `hls_dir`: H.264 from the captured `PipeWire` node named by `video`, plus AAC
+/// system audio when `audio` names the pulse monitor device and the AAC encoder
+/// element. Audio-only casts pass `video: None` and produce audio-only TS
+/// segments.
 pub fn launch_description(
-    video: Option<(RawFd, u32)>,
+    video: Option<VideoSource>,
     settings: &StreamSettings,
     hls_dir: &Path,
     audio: Option<(&str, &str)>,
@@ -227,7 +272,9 @@ pub fn launch_description(
     let target_duration = 1;
 
     let mut desc = String::new();
-    if let Some((fd, node_id)) = video {
+    if let Some(source) = video {
+        let (fd, node_id) = (source.fd, source.node_id);
+        let source_caps = source.source_caps();
         let size_caps = settings
             .size
             .map(|(w, h)| format!(",width={w},height={h},pixel-aspect-ratio=1/1"))
@@ -243,6 +290,7 @@ pub fn launch_description(
         let _ = write!(
             desc,
             "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 resend-last=true \
+             {source_caps}\
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
              ! videoconvert ! videoscale ! videorate \
              ! video/x-raw,format={format},framerate={fps}/1{size_caps} \
@@ -306,7 +354,7 @@ pub fn build_audio_stream(monitor: &str) -> Result<(gst::Pipeline, &'static str)
 }
 
 pub fn build(
-    video: Option<(RawFd, u32)>,
+    video: Option<VideoSource>,
     settings: &StreamSettings,
     hls_dir: &Path,
     audio_monitor: Option<&str>,
@@ -468,7 +516,11 @@ mod tests {
             ..Default::default()
         };
         let desc = launch_description(
-            Some((3, 42)),
+            Some(VideoSource {
+                fd: 3,
+                node_id: 42,
+                capture_size: None,
+            }),
             &settings,
             &PathBuf::from("/run/x"),
             None,
@@ -492,7 +544,11 @@ mod tests {
             ..Default::default()
         };
         let desc = launch_description(
-            Some((3, 42)),
+            Some(VideoSource {
+                fd: 3,
+                node_id: 42,
+                capture_size: None,
+            }),
             &settings,
             &PathBuf::from("/run/x"),
             None,
@@ -505,7 +561,11 @@ mod tests {
     #[test]
     fn description_includes_audio_branch() {
         let desc = launch_description(
-            Some((3, 42)),
+            Some(VideoSource {
+                fd: 3,
+                node_id: 42,
+                capture_size: None,
+            }),
             &StreamSettings::default(),
             &PathBuf::from("/run/x"),
             Some(("alsa_output.pci.monitor", "fdkaacenc")),
@@ -532,5 +592,89 @@ mod tests {
         assert!(desc.contains("/run/x/stream.m3u8"));
         assert!(desc.contains("pulsesrc device=alsa_output.pci.monitor"));
         assert!(desc.contains("hls.audio"));
+    }
+
+    #[test]
+    /// The pinned size has to reach `pipewiresrc`, which means ahead of
+    /// videoscale, and must name nothing but width and height.
+    fn a_virtual_capture_pins_the_source_size() {
+        let desc = launch_description(
+            Some(VideoSource {
+                fd: 3,
+                node_id: 42,
+                capture_size: Some((1920, 1080)),
+            }),
+            &StreamSettings::default(),
+            &PathBuf::from("/run/x"),
+            None,
+            "x264enc bitrate=4000",
+        );
+        assert!(
+            desc.contains("capsfilter name=srccaps caps=video/x-raw,width=1920,height=1080"),
+            "{desc}"
+        );
+        let pin = desc.find("srccaps").unwrap_or(usize::MAX);
+        assert!(pin < desc.find("videoscale").unwrap_or(0), "{desc}");
+        // A framerate here would never intersect what mutter offers for a
+        // virtual stream, and a pixel-aspect-ratio is not ours to demand.
+        let fragment = desc
+            .get(pin..desc.find("! queue").unwrap_or(pin))
+            .unwrap_or_default();
+        assert!(!fragment.contains("framerate"), "{fragment}");
+        assert!(!fragment.contains("pixel-aspect-ratio"), "{fragment}");
+    }
+
+    #[test]
+    /// A real monitor or window sizes itself, so nothing is pinned and the
+    /// description stays exactly what it was before virtual monitors existed.
+    fn a_monitor_capture_has_no_source_capsfilter() {
+        let desc = launch_description(
+            Some(VideoSource {
+                fd: 3,
+                node_id: 42,
+                capture_size: None,
+            }),
+            &StreamSettings::default(),
+            &PathBuf::from("/run/x"),
+            None,
+            "x264enc bitrate=4000",
+        );
+        assert!(!desc.contains("srccaps"), "{desc}");
+        assert!(desc.contains("resend-last=true ! queue"), "{desc}");
+    }
+
+    #[test]
+    /// The resolution ladder must retarget the encoder's filter, never the one
+    /// pinning a virtual monitor's size.
+    fn set_capture_size_leaves_the_source_filter_alone() {
+        gst::init().unwrap_or_default();
+        let Ok(element) = gst::parse::launch(
+            "videotestsrc ! capsfilter name=srccaps caps=video/x-raw,width=1920,height=1080 \
+             ! videoscale ! capsfilter caps=video/x-raw,width=1920,height=1080 \
+             ! identity name=venc ! fakesink",
+        ) else {
+            return; // videotestsrc/videoscale absent; nothing to assert against
+        };
+        let Ok(pipeline) = element.downcast::<gst::Pipeline>() else {
+            return;
+        };
+        set_capture_size(&pipeline, (1280, 720));
+
+        let size_of = |name: &str| -> Option<(i32, i32)> {
+            let caps = pipeline
+                .by_name(name)?
+                .property::<Option<gst::Caps>>("caps")?;
+            let s = caps.structure(0)?;
+            Some((s.get("width").ok()?, s.get("height").ok()?))
+        };
+        assert_eq!(size_of("srccaps"), Some((1920, 1080)));
+        assert_eq!(
+            encoder_input_capsfilter(&pipeline)
+                .and_then(|f| f.property::<Option<gst::Caps>>("caps"))
+                .and_then(|c| c
+                    .structure(0)
+                    .map(|s| (s.get("width").ok(), s.get("height").ok()))),
+            Some((Some(1280), Some(720)))
+        );
     }
 }

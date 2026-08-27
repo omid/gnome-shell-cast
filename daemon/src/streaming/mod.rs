@@ -269,7 +269,7 @@ fn start_media(
         configs,
         chunks_rx,
         keyframe_forcer(&pipeline),
-        rate_control(&pipeline, settings, resolved),
+        rate_control(&pipeline, capture, settings, resolved),
     );
     Ok((pipeline, sender))
 }
@@ -278,6 +278,7 @@ fn start_media(
 /// bitrate is left alone; only automatic follows the link.
 fn rate_control(
     pipeline: &gst::Pipeline,
+    capture: Option<&Capture>,
     settings: &StreamSettings,
     resolved: &quality::Resolved,
 ) -> RateControl {
@@ -285,8 +286,12 @@ fn rate_control(
         .unwrap_or(0)
         .saturating_mul(1000);
     let adaptive = settings.bitrate_kbps.is_none();
-    // A pinned resolution is honoured; only automatic climbs the ladder.
-    let adaptive_size = settings.size.is_none();
+    // A pinned resolution is honoured; only automatic climbs the ladder. A
+    // virtual monitor never climbs it either: retargeting the encoder caps
+    // pushes a reconfigure event upstream, which makes `pipewiresrc` drop and
+    // remake the `PipeWire` stream, and that is a visible glitch on a monitor
+    // the user has windows on. Bitrate adaptation is unaffected.
+    let adaptive_size = settings.size.is_none() && !capture.is_some_and(Capture::is_virtual);
     let weak = pipeline.downgrade();
     let weak_size = pipeline.downgrade();
     RateControl {
@@ -497,6 +502,9 @@ async fn run_until_stopped(
                 return Ok(());
             }
             () = &mut capture_closed => {
+                if virtual_monitor_never_came_up(capture, pipeline) {
+                    bail!("The system could not create a new monitor for this cast.");
+                }
                 info!("screen sharing was stopped from the system menu");
                 return Ok(());
             }
@@ -523,6 +531,19 @@ async fn run_until_stopped(
             }
         }
     }
+}
+
+/// A virtual-monitor cast whose portal session closed before a single frame
+/// arrived did not lose it to the user's stop button: the compositor failed to
+/// create the monitor (an X11 or headless backend cannot, and a size can be
+/// refused). Mutter installs its paint watch only once the monitor exists, so
+/// "no frame ever reached the encoder" is exactly that failure's signature.
+fn virtual_monitor_never_came_up(capture: Option<&Capture>, pipeline: &gst::Pipeline) -> bool {
+    capture.is_some_and(Capture::is_virtual)
+        && pipeline.by_name("vsink").is_some_and(|sink| {
+            sink.property::<Option<gst::Sample>>("last-sample")
+                .is_none()
+        })
 }
 
 /// Pends forever for an audio-only cast, which has no portal session to lose.
@@ -566,9 +587,19 @@ fn build_pipeline(
         let format = settings.encoding.format.caps_format();
         let fd = capture.fd.as_raw_fd();
         let node = capture.node_id;
+        // A virtual monitor is created at the size negotiated here, so give it
+        // the size the receiver actually displays: the desktop then maps one
+        // pixel to one pixel and videoscale becomes a passthrough. Empty for a
+        // real monitor or window, whose size is not ours to choose.
+        let mut source = pipeline::VideoSource::from(capture);
+        if source.capture_size.is_some() {
+            source.capture_size = Some(quality::virtual_monitor_size(resolved.size));
+        }
+        let source_caps = source.source_caps();
         let _ = write!(
             desc,
             "pipewiresrc fd={fd} path={node} do-timestamp=true keepalive-time=1000 resend-last=true \
+             {source_caps}\
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
              ! videoconvert ! videoscale ! videorate \
              ! video/x-raw,format={format},framerate={fps}/1,width={width},height={height},pixel-aspect-ratio=1/1 \

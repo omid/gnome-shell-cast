@@ -56,6 +56,15 @@
       <summary>Pixel format</summary>
       <description>The raw video format handed to the encoder. "auto" offers both and lets negotiation pick whichever the chosen encoder accepts. Forcing a format restricts casting to encoders that accept it, which on most systems means forcing the encoder type too.</description>
     </key>
+    <key name="cast-mode" type="s">
+      <choices>
+        <choice value="mirror"/>
+        <choice value="virtual-monitor"/>
+      </choices>
+      <default>'mirror'</default>
+      <summary>What casting the screen sends</summary>
+      <description>Either a mirror of a display you already have, or a new monitor created for the cast and removed when it ends. A new monitor needs a Wayland session.</description>
+    </key>
     <key name="show-details" type="b">
       <default>false</default>
       <summary>Show cast details</summary>

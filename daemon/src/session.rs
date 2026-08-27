@@ -1,4 +1,3 @@
-use std::os::fd::AsRawFd;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -102,8 +101,14 @@ async fn cast_session(
             }
             None
         }
+        // The size matters only here: mutter creates the monitor at whatever
+        // the pipeline negotiates, and this is the value the HLS fallback uses.
+        // The mirroring path narrows it to what the receiver accepted.
+        SourceKind::Virtual => {
+            Some(capture::open(source, Some(settings.resolve_local().size)).await?)
+        }
         SourceKind::Screen | SourceKind::Window | SourceKind::Choose => {
-            Some(capture::open(source).await?)
+            Some(capture::open(source, None).await?)
         }
     };
 
@@ -152,7 +157,7 @@ async fn cast_with_capture(
         warn!("no audio monitor found, casting video only");
     }
     let pipeline = pipeline::build(
-        capture.map(|c| (c.fd.as_raw_fd(), c.node_id)),
+        capture.map(pipeline::VideoSource::from),
         &settings,
         &hls_dir,
         audio_monitor.as_deref(),
@@ -163,7 +168,7 @@ async fn cast_with_capture(
     let _pipeline_stop = PipelineStop(pipeline.clone());
 
     let server = http::serve(&hls_dir)?;
-    wait_for_playlist(&hls_dir).await?;
+    wait_for_playlist(&hls_dir, capture).await?;
 
     let local_ip = http::local_ip_towards(device.addr)?;
     let url = format!(
@@ -394,7 +399,10 @@ fn runtime_dir() -> PathBuf {
     base.join(format!("gnome-shell-cast-{}", std::process::id()))
 }
 
-async fn wait_for_playlist(dir: &std::path::Path) -> Result<()> {
+async fn wait_for_playlist(
+    dir: &std::path::Path,
+    capture: Option<&capture::Capture>,
+) -> Result<()> {
     let playlist = dir.join(PLAYLIST_NAME);
     for _ in 0..60 {
         if let Ok(content) = tokio::fs::read_to_string(&playlist).await {
@@ -404,6 +412,13 @@ async fn wait_for_playlist(dir: &std::path::Path) -> Result<()> {
             }
         }
         tokio::time::sleep(Duration::from_millis(250)).await;
+    }
+    // No frames at all from a virtual capture means the compositor never
+    // created the monitor, which is a cause the user can act on.
+    if capture.is_some_and(capture::Capture::is_virtual) {
+        return Err(anyhow!(
+            "The system could not create a new monitor for this cast."
+        ));
     }
     Err(anyhow!(
         "encoder produced no playable HLS playlist within 15s"

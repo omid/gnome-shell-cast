@@ -10,7 +10,13 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import { Slider } from 'resource:///org/gnome/shell/ui/slider.js';
 import { gettext as _ } from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import { CastDaemon, SOURCE_AUDIO, SOURCE_CHOOSE, SOURCE_SCREEN } from './daemon.js';
+import {
+    CastDaemon,
+    SOURCE_AUDIO,
+    SOURCE_CHOOSE,
+    SOURCE_SCREEN,
+    SOURCE_VIRTUAL,
+} from './daemon.js';
 import { CastVolumeControl } from './volumeControl.js';
 import { DaemonSetup } from './daemonSetup.js';
 import { ErrorDialog } from './errorDialog.js';
@@ -21,6 +27,9 @@ const RESOLUTIONS = {
     1080: [1920, 1080],
     720: [1280, 720],
 };
+
+const MODE_MIRROR = 'mirror';
+const MODE_VIRTUAL = 'virtual-monitor';
 
 const CODEC_LABELS = {
     h264: 'H.264',
@@ -57,6 +66,21 @@ function createRowButton(iconName, label, onClick) {
     button.accessible_name = label;
     button.connect('clicked', onClick);
     return button;
+}
+
+// Mutter creates a virtual monitor only on Wayland. This reads the same signal
+// the daemon gates on, so the toggle is hidden exactly when the daemon would
+// refuse. Guarded and defaulting to "offer it": an exception here would abort
+// enable() and cost the user the whole extension, and a wrongly offered mode
+// only ever costs one readable error message.
+//
+// Not Meta.is_wayland_compositor() - that was removed in GNOME Shell 50.
+function isWaylandSession() {
+    try {
+        return GLib.getenv('XDG_SESSION_TYPE') !== 'x11';
+    } catch {
+        return true;
+    }
 }
 
 function toggleStyleClass(element, className, enabled = true) {
@@ -137,6 +161,8 @@ export class CastMenu {
         this._settings.connectObject(
             'changed::show-details',
             () => this._onShowDetailsChanged(),
+            'changed::cast-mode',
+            () => this._onCastModeChanged(),
             this,
         );
 
@@ -214,6 +240,9 @@ export class CastMenu {
         this._daemonWarningItem.connect('activate', () => this._daemonSetup.openDialog());
         this._menu.addMenuItem(this._daemonWarningItem);
 
+        this._modeItem = this._buildModeItem();
+        this._menu.addMenuItem(this._modeItem);
+
         this._devicesSection = new PopupMenu.PopupMenuSection();
         this._menu.addMenuItem(this._devicesSection);
 
@@ -234,7 +263,59 @@ export class CastMenu {
         prefsItem.connect('activate', () => this._extension.openPreferences());
         this._menu.addMenuItem(prefsItem);
 
+        this._reflectCastMode();
         this._rebuildDeviceItems();
+    }
+
+    // Two mutually exclusive buttons in one non-activatable row: a switch item
+    // would close the menu on a pointer click, and this is a choice the user
+    // makes *before* picking a device.
+    _buildModeItem() {
+        const item = new PopupMenu.PopupBaseMenuItem({ activate: false });
+        this._modeButtons = new Map();
+        const modes = [
+            [MODE_MIRROR, _('Mirror screen')],
+            [MODE_VIRTUAL, _('New monitor')],
+        ];
+        for (const [mode, label] of modes) {
+            const button = new St.Button({
+                label,
+                style_class: 'button gsc-mode-button',
+                toggle_mode: true,
+                can_focus: true,
+                x_expand: true,
+            });
+            button.connect('clicked', () => {
+                this._settings.set_string('cast-mode', mode);
+                // Re-clicking the active button writes an unchanged value, so
+                // `changed::cast-mode` never fires, while toggle_mode has
+                // already unchecked the button. Put the state back.
+                this._reflectCastMode();
+            });
+            item.add_child(button);
+            this._modeButtons.set(mode, button);
+        }
+        item.visible = isWaylandSession();
+        return item;
+    }
+
+    // The single reader of the setting, so the Wayland rule is applied in one
+    // place: a stored 'virtual-monitor' must not reach the daemon on Xorg.
+    _castMode() {
+        if (!isWaylandSession()) return MODE_MIRROR;
+        return this._settings.get_string('cast-mode');
+    }
+
+    // The device rows carry the mode too (icon, label and what they start), so
+    // they are rebuilt with it.
+    _onCastModeChanged() {
+        this._reflectCastMode();
+        this._rebuildDeviceItems();
+    }
+
+    _reflectCastMode() {
+        const active = this._castMode();
+        for (const [mode, button] of this._modeButtons) button.checked = mode === active;
     }
 
     _buildVolumeItem() {
@@ -343,9 +424,12 @@ export class CastMenu {
         item.label_actor = item.label;
         this._markCastingDevice(item, active, device.name);
 
+        const virtual = this._castMode() === MODE_VIRTUAL;
         item.add_child(
-            createRowButton('video-display-symbolic', _('Cast screen'), () =>
-                this._startCast(device, SOURCE_SCREEN),
+            createRowButton(
+                virtual ? 'list-add-symbolic' : 'video-display-symbolic',
+                virtual ? _('Cast a new monitor') : _('Cast screen'),
+                () => this._startCast(device, virtual ? SOURCE_VIRTUAL : SOURCE_SCREEN),
             ),
         );
         item.add_child(
@@ -515,6 +599,8 @@ export class CastMenu {
             this._volumeControl.destroy();
             this._volumeControl = null;
         }
+        this._modeButtons?.clear();
+        this._modeButtons = null;
         this._daemon.destroy();
         this._daemon = null;
     }

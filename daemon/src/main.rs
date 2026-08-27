@@ -209,10 +209,10 @@ impl ShellCast {
         self.state.last_event()
     }
 
-    /// Why hardware encoding is unavailable here, as a token (`driver`,
-    /// `plugin`, or empty when there is nothing to say) and the package that
-    /// would fix it. The extension turns the token into a translated sentence in
-    /// preferences; keeping the diagnosis here keeps it testable.
+    /// Why hardware encoding is unavailable here, and the package that would fix
+    /// it - see `encoder::hardware_encoding_gap` for the tokens. The extension
+    /// turns the token into a translated sentence in preferences; keeping the
+    /// diagnosis here keeps it testable.
     fn get_encoding_support(&self) -> (String, String) {
         self.state.touch();
         let (gap, package) = encoder::hardware_encoding_gap();
@@ -241,6 +241,7 @@ impl ShellCast {
             1 => capture::SourceKind::Window,
             2 => capture::SourceKind::Audio,
             3 => capture::SourceKind::Choose,
+            4 => capture::SourceKind::Virtual,
             other => {
                 return Err(zbus::fdo::Error::InvalidArgs(format!(
                     "unknown source type: {other}"

@@ -245,6 +245,38 @@ The receiver app exited or never started rendering. Check the log for
 [The cast falls back to HLS](#the-cast-falls-back-to-hls-or-the-receiver-never-answers)
 below.
 
+### "New monitor" is missing from the menu
+
+That mode is only offered on a **Wayland** session, because GNOME on Xorg cannot
+create a monitor. Check which one you are on:
+
+```sh
+echo $XDG_SESSION_TYPE
+```
+
+If it says `x11`, log out and pick *GNOME* rather than *GNOME on Xorg* at the
+login screen. Casting the screen normally works either way.
+
+### The new monitor shows only the wallpaper
+
+Nothing has been moved onto it yet - a new monitor starts empty, the same as
+plugging in a second screen. Move the window you want with
+`Super`+`Shift`+`Right`, or drag it past the edge of your own screen. *Settings →
+Displays* shows where GNOME placed the new monitor relative to the others.
+
+### `The system could not create a new monitor for this cast.`
+
+GNOME accepted the request and then failed to make the monitor. Almost always an
+Xorg session (see above); otherwise the compositor refused the size. The real
+reason is in the shell's own log, not the daemon's:
+
+```sh
+journalctl --user -b -u org.gnome.shell.service | grep -i 'virtual monitor'
+```
+
+`Backend doesn't support creating virtual monitors` confirms Xorg. Cast the
+screen normally in the meantime.
+
 ---
 
 ## Connection
