@@ -307,6 +307,21 @@ pub fn resolve(
     }
 }
 
+/// The size to create a virtual monitor at: the negotiated stream size, so the
+/// desktop maps one pixel to one pixel onto the receiver's picture and
+/// `videoscale` has nothing to do, but never below 720p. A receiver that only
+/// accepts a small frame must not get to shrink the user's desktop to match;
+/// anything larger than the stream is scaled down as usual.
+pub fn virtual_monitor_size(size: (i32, i32)) -> (i32, i32) {
+    const FLOOR: (i32, i32) = (1280, 720);
+    let area = |(w, h): (i32, i32)| i64::from(w).saturating_mul(i64::from(h));
+    if area(size) < area(FLOOR) {
+        FLOOR
+    } else {
+        size
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -422,5 +437,15 @@ mod tests {
         assert_eq!(as_i32(&json!("30000/1001")), Some(30000));
         assert_eq!(as_i32(&json!(24)), Some(24));
         assert_eq!(as_i32(&json!("nonsense")), None);
+    }
+
+    #[test]
+    /// A small receiver frame is streamed, but it must not become the size of
+    /// the user's new desktop.
+    fn a_virtual_monitor_never_goes_below_720p() {
+        assert_eq!(virtual_monitor_size((1920, 1080)), (1920, 1080));
+        assert_eq!(virtual_monitor_size((2560, 1440)), (2560, 1440));
+        assert_eq!(virtual_monitor_size((640, 360)), (1280, 720));
+        assert_eq!(virtual_monitor_size((1280, 720)), (1280, 720));
     }
 }

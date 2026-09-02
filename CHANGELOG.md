@@ -8,6 +8,14 @@ daemon ship together under one version.
 
 ### Added
 
+- Cast a **new monitor** instead of mirroring one you already have. A toggle
+  above the device list switches between *Mirror screen* and *New monitor*; in
+  the second mode the desktop gains an extra display, sized to what the receiver
+  accepts, that exists only for as long as the cast. The television becomes a
+  real second screen you can drag windows onto rather than a copy of your laptop
+  panel, and it is no longer letterboxed to fit it. Needs a Wayland session -
+  GNOME on Xorg cannot create a monitor, so the toggle is hidden there.
+  *Choose what to cast* also lists GNOME's own Virtual Monitor option now.
 - Eleven more interface languages: Arabic, Bengali, Bulgarian, Chinese
   (Simplified), French, Hindi, Indonesian, Portuguese (Brazil), Russian,
   Spanish and Urdu.

@@ -1,6 +1,6 @@
 # GNOME Shell Cast
 
-Cast your **whole screen or a single window** to a **Chromecast** device, or send your **system audio** to a Chromecast speaker, smart display, or cast group, right from the GNOME Shell top panel.
+Cast your **whole screen or a single window** to a **Chromecast** device, add a **new monitor** and cast that instead, or send your **system audio** to a Chromecast speaker, smart display, or cast group, right from the GNOME Shell top panel.
 
 The project has two parts, shipped together in this repository:
 
@@ -29,7 +29,7 @@ The two talk over the D-Bus session bus (`org.gnome.ShellCast1`). The daemon is 
 
 Chromecast's Default Media Receiver plays media it pulls over HTTP. When you start a cast:
 
-1. The daemon opens an XDG ScreenCast portal session - GNOME shows its native picker for a monitor or a window.
+1. The daemon opens an XDG ScreenCast portal session - GNOME shows its native picker for a monitor or a window. In *New monitor* mode it asks the portal for a **virtual monitor** instead: GNOME creates an extra display for the cast and removes it again when the cast ends, so nothing on your own screens changes. Move windows onto it with `Super`+`Shift`+arrow; until you do, the television shows an empty desktop. This mode needs a Wayland session.
 2. A GStreamer pipeline captures the PipeWire stream, encodes H.264 video and AAC system audio, and writes a live HLS stream into `$XDG_RUNTIME_DIR/gnome-shell-cast/`.
 3. A tiny built-in HTTP server serves that stream on your LAN.
 4. The daemon tells the Chromecast (CASTv2 protocol) to play the stream URL.
