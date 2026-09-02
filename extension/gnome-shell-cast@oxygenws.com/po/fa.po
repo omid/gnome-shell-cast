@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 1\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-18 22:43+0200\n"
+"POT-Creation-Date: 2026-08-21 21:03+0200\n"
 "PO-Revision-Date: 2026-08-04 00:22\n"
 "Last-Translator: \n"
 "Language-Team: Persian <https://github.com/omid/gnome-shell-cast>\n"
@@ -139,7 +139,7 @@ msgid "Close"
 msgstr "بستن"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:197
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:266
 msgid "Report an issue"
 msgstr "گزارش مشکل"
 
@@ -181,7 +181,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "فرمان را رونوشت کنید، سپس آن را در یک پایانه بچسبانید و اجرا کنید."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:196
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:265
 msgid "Homepage"
 msgstr "صفحهٔ خانگی"
 
@@ -193,166 +193,204 @@ msgstr "رونوشت فرمان"
 msgid "Copied! Paste it into a terminal and run it."
 msgstr "رونوشت شد! آن را در یک پایانه بچسبانید و اجرا کنید."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:35
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
+msgid ""
+"No VA-API encoder for your graphics card. Install your distribution’s VA-API "
+"driver."
+msgstr ""
+"رمزگذار VA-API برای کارت نگاشتاری شما موجود نیست. راه‌انداز VA-API توزیعتان "
+"را نصب کنید."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+msgid "Install the NVIDIA driver and the GStreamer nvcodec plugin."
+msgstr "راه‌انداز NVIDIA و افزایهٔ nvcodec برای GStreamer را نصب کنید."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#, javascript-format
+msgid "The GStreamer VA-API plugin is missing. Install the %s package."
+msgstr "افزایهٔ VA-API برای GStreamer موجود نیست. بستهٔ %s را نصب کنید."
+
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:45
+msgid ""
+"The GStreamer VA-API plugin is missing. Install it from your distribution."
+msgstr "افزایهٔ VA-API برای GStreamer موجود نیست. آن را از توزیع خود نصب کنید."
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:62
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:70
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:81
 msgid "Automatic"
 msgstr "خودکار"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:63
 msgid "Native"
 msgstr "بومی"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:64
 msgid "4K (2160p)"
 msgstr "4K (2160p)"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:38
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:65
 msgid "1440p"
 msgstr "1440p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:66
 msgid "1080p"
 msgstr "1080p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:40
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:67
 msgid "720p"
 msgstr "720p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
 msgid "Hardware only"
 msgstr "فقط سخت‌افزاری"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
 msgid "Software only"
 msgstr "فقط نرم‌افزاری"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:48
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:77
+msgid "VA-API (Intel, AMD)"
+msgstr "VA-API (Intel، AMD)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:78
+msgid "NVENC (NVIDIA)"
+msgstr "NVENC (NVIDIA)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:79
+msgid "V4L2 (Arm boards)"
+msgstr "V4L2 (بردهای Arm)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:84
 msgid "Advanced"
 msgstr "پیش‌رفته"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:54
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
 msgid "Stream quality"
 msgstr "کیفیت جریان"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:55
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:91
 msgid "Applied the next time a cast is started"
 msgstr "در پخش بعدی اعمال می‌شود"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:60
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
 msgid "Maximum resolution"
 msgstr "بیشینهٔ تفکیک‌پذیری"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:61
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr "بالاتر از 1080p به رمزگذار سخت‌افزاری و نرخ بیت متناسب نیاز دارد"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
 msgid "Framerate"
 msgstr "نرخ فریم"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:72
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
 msgid "Frames per second"
 msgstr "فریم بر ثانیه"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:82
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
 msgid "Video bitrate"
 msgstr "نرخ بیت ویدیو"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:83
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:119
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr "kbit/s: حدود 4000 برای 720p، 8000 برای 1080p، 30000 برای 4K"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:93
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
 msgid "Audio bitrate"
 msgstr "نرخ بیت صدا"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:106
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:142
 msgid "Encoding"
 msgstr "رمزگذاری"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:143
 msgid "Casting fails with a message when a forced choice cannot be used"
 msgstr "اگر گزینهٔ اجباری قابل استفاده نباشد، پخش با یک پیام شکست می‌خورد"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:112
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:148
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:46
 msgid "Video encoder"
 msgstr "رمزگذار ویدیو"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:114
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
 msgid ""
 "Automatic prefers your graphics card; choose software if the picture breaks "
 "up"
 msgstr ""
 "خودکار کارت گرافیک شما را ترجیح می‌دهد؛ اگر تصویر خرد شد نرم‌افزاری را برگزینید"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:125
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:53
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:56
 msgid "Pixel format"
 msgstr "قالب پیکسل"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:126
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:162
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr ""
 "خودکار برای هر رمزگذاری مناسب است؛ تنها برای دور زدن یک راه‌انداز تغییرش دهید"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:135
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:155
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:191
+msgid "Hardware encoding is unavailable"
+msgstr "رمزگذاری سخت‌افزاری موجود نیست"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:224
 msgid "Menu"
 msgstr "منو"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:139
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:208
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:61
 msgid "Show cast details"
 msgstr "نمایش جزئیات پخش"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:209
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:62
 msgid "Show the transport and codecs under the active device while casting"
 msgstr "نمایش انتقال و کدک‌ها زیر دستگاه فعال هنگام پخش"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
 msgid "Top bar"
 msgstr "نوار بالا"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
 msgid "Quick settings"
 msgstr "تنظیمات سریع"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:219
 msgid "General"
 msgstr "عمومی"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:159
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:67
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:228
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:70
 msgid "Indicator location"
 msgstr "موقعیت نشانگر"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:160
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:229
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr "نمایش نماد پخش در نوار بالا یا در منوی تنظیمات سریع"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:174
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:243
 msgid "About"
 msgstr "درباره"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:185
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:254
 #, javascript-format
 msgid "Version %s"
 msgstr "نسخهٔ %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:200
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:269
 msgid "Help"
 msgstr "راهنما"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:201
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:270
 msgid "Common problems and their fixes"
 msgstr "مشکلات رایج و راه‌حل آن‌ها"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:273
 msgid "Troubleshooting guide"
 msgstr "راهنمای عیب‌یابی"
 
@@ -397,19 +435,21 @@ msgid ""
 "Opus bitrate for the cast audio, or 0 to let the receiver's limits decide."
 msgstr "نرخ بیت Opus برای صدای پخش‌شده، یا 0 تا محدودیت‌های گیرنده تصمیم بگیرند."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:44
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:47
 msgid ""
-"Which encoder to use. \"auto\" prefers hardware (VA-API, NVENC) and falls "
-"back to software. Choose software when a graphics driver produces a broken "
-"or stuttering picture; casting fails with a message if the choice cannot be "
-"met."
+"Which encoder to use. \"auto\" prefers hardware (VA-API, NVENC, V4L2) and "
+"falls back to software. Choose software when a graphics driver produces a "
+"broken or stuttering picture. \"vaapi\" (Intel, AMD), \"nvenc\" (NVIDIA) and "
+"\"v4l2\" (Arm boards) pin one hardware API. Casting fails with a message if "
+"the choice cannot be met."
 msgstr ""
-"این که کدام رمزگذار استفاده شود. «auto» سخت‌افزار (VA-API و NVENC) را ترجیح "
-"می‌دهد و به نرم‌افزاری بازمی‌گردد. اگر راه‌انداز گرافیکی تصویری خراب یا "
-"بریده‌بریده می‌سازد، نرم‌افزاری را برگزینید؛ اگر گزینه برآورده نشود، پخش با یک "
-"پیام شکست می‌خورد."
+"این که کدام رمزگذار استفاده شود. «auto» سخت‌افزار (VA-API و NVENC و V4L2) را "
+"ترجیح می‌دهد و به نرم‌افزاری بازمی‌گردد. اگر راه‌انداز گرافیکی تصویری خراب یا "
+"بریده‌بریده می‌سازد، نرم‌افزاری را برگزینید. «vaapi» (Intel، AMD) و «nvenc» "
+"(NVIDIA) و «v4l2» (بردهای Arm) یک واسط سخت‌افزاری را تثبیت می‌کنند؛ اگر گزینه "
+"برآورده نشود، پخش با یک پیام شکست می‌خورد."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:54
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:57
 msgid ""
 "The raw video format handed to the encoder. \"auto\" offers both and lets "
 "negotiation pick whichever the chosen encoder accepts. Forcing a format "
@@ -421,7 +461,7 @@ msgstr ""
 "یک قالب، پخش را به رمزگذارهایی محدود می‌کند که آن را می‌پذیرند و در بیشتر "
 "سامانه‌ها یعنی تحمیل نوع رمزگذار هم."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:68
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:71
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."

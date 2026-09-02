@@ -25,6 +25,7 @@ use zbus::zvariant::OwnedValue;
 
 use crate::discovery::Device;
 use crate::pipeline::StreamSettings;
+use crate::streaming::encoder;
 
 const BUS_NAME: &str = "org.gnome.ShellCast";
 const OBJECT_PATH: &str = "/org/gnome/ShellCast";
@@ -206,6 +207,16 @@ impl ShellCast {
     fn get_last_event(&self) -> (String, String) {
         self.state.touch();
         self.state.last_event()
+    }
+
+    /// Why hardware encoding is unavailable here, as a token (`driver`,
+    /// `plugin`, or empty when there is nothing to say) and the package that
+    /// would fix it. The extension turns the token into a translated sentence in
+    /// preferences; keeping the diagnosis here keeps it testable.
+    fn get_encoding_support(&self) -> (String, String) {
+        self.state.touch();
+        let (gap, package) = encoder::hardware_encoding_gap();
+        (gap.to_owned(), package.to_owned())
     }
 
     /// The daemon's own version, so the extension can detect a daemon that is
