@@ -210,9 +210,10 @@ impl ShellCast {
     }
 
     /// Why hardware encoding is unavailable here, as a token (`driver`,
-    /// `plugin`, or empty when there is nothing to say) and the package that
-    /// would fix it. The extension turns the token into a translated sentence in
-    /// preferences; keeping the diagnosis here keeps it testable.
+    /// `plugin`, `nvidia`, or empty when there is nothing to say) and the
+    /// package that would fix it. The extension turns the token into a
+    /// translated sentence in preferences; keeping the diagnosis here keeps it
+    /// testable.
     fn get_encoding_support(&self) -> (String, String) {
         self.state.touch();
         let (gap, package) = encoder::hardware_encoding_gap();

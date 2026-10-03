@@ -46,6 +46,15 @@ function hardwareHintText(support) {
     }
 }
 
+// An Adw.ActionRow that opens `uri` when activated. Shared so every place the
+// preferences link out gets the same affordance.
+function linkRow(props, uri) {
+    const row = new Adw.ActionRow({ ...props, activatable: true });
+    row.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
+    row.connect('activated', () => Gio.AppInfo.launch_default_for_uri(uri, null));
+    return row;
+}
+
 export default class GnomeShellCastPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
@@ -191,15 +200,15 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
         getEncodingSupport((support) => {
             const subtitle = support && hardwareHintText(support);
             if (!subtitle) return;
-            const row = new Adw.ActionRow({
-                title: _('Hardware encoding is unavailable'),
-                subtitle,
-                subtitle_lines: 0,
-                activatable: true,
-            });
+            const row = linkRow(
+                {
+                    title: _('Hardware encoding is unavailable'),
+                    subtitle,
+                    subtitle_lines: 0,
+                },
+                uri,
+            );
             row.add_prefix(new Gtk.Image({ icon_name: 'dialog-warning-symbolic' }));
-            row.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
-            row.connect('activated', () => Gio.AppInfo.launch_default_for_uri(uri, null));
             group.add(row);
         }, cancellable);
     }
@@ -259,21 +268,16 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             }),
         );
 
-        const linkRow = (title, uri) => {
-            const row = new Adw.ActionRow({ title, subtitle: uri, activatable: true });
-            row.add_suffix(new Gtk.Image({ icon_name: 'adw-external-link-symbolic' }));
-            row.connect('activated', () => Gio.AppInfo.launch_default_for_uri(uri, null));
-            return row;
-        };
+        const link = (title, uri) => linkRow({ title, subtitle: uri }, uri);
 
-        group.add(linkRow(_('Homepage'), url));
-        group.add(linkRow(_('Report an issue'), `${url}/issues`));
+        group.add(link(_('Homepage'), url));
+        group.add(link(_('Report an issue'), `${url}/issues`));
 
         const help = new Adw.PreferencesGroup({
             title: _('Help'),
             description: _('Common problems and their fixes'),
         });
         page.add(help);
-        help.add(linkRow(_('Troubleshooting guide'), `${url}/blob/main/TROUBLESHOOTING.md`));
+        help.add(link(_('Troubleshooting guide'), `${url}/blob/main/TROUBLESHOOTING.md`));
     }
 }

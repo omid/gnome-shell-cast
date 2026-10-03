@@ -4,10 +4,11 @@
 //! frames - so the only codec-specific parts of mirroring are the `codecName`
 //! advertised in the OFFER and the `GStreamer` encoder element. This module
 //! owns both: which codecs we can encode locally, and the encoder for each,
-//! **preferring hardware** (VA-API/NVENC) over software.
+//! **preferring hardware** (VA-API/NVENC/V4L2) over software.
 //!
-//! Every candidate fragment is parse-checked before use, so a hardware encoder
-//! that is present but mis-parametrised falls back to the next candidate (and
+//! Every candidate is checked before use - software fragments are parsed,
+//! hardware ones are opened - so an encoder that is present but mis-parametrised
+//! or unable to reach its device falls back to the next candidate (and
 //! ultimately software) rather than failing the cast.
 
 use gstreamer as gst;
@@ -131,7 +132,7 @@ fn efficiency_rank(codec: VideoCodec) -> u8 {
 }
 
 /// `GStreamer` encoder factories to try for `codec`, best first: hardware
-/// (VA-API, then NVENC) ahead of software.
+/// (VA-API, then NVENC, then V4L2) ahead of software.
 fn factories(codec: VideoCodec) -> &'static [&'static str] {
     match codec {
         // The v4l2* elements exist only when a kernel device advertises that
@@ -267,8 +268,10 @@ fn launch_for(factory: &str, bitrate_bps: u32, fps: u32) -> String {
         // V4L2 stateful encoders take no bitrate property: everything goes
         // through V4L2 controls, in bit/s. The structure name is arbitrary, and
         // controls a device does not implement are ignored rather than fatal.
+        // `repeat_sequence_header` is what the others do by default: without it
+        // SPS/PPS ship once, and a receiver that misses that frame never decodes.
         f if f.starts_with("v4l2") => format!(
-            "{factory} name=venc extra-controls=\"controls,video_bitrate={bitrate_bps},video_gop_size={key_int}\""
+            "{factory} name=venc extra-controls=\"controls,video_bitrate={bitrate_bps},video_gop_size={key_int},repeat_sequence_header=1\""
         ),
         other => format!("{other} name=venc"),
     }
@@ -312,7 +315,7 @@ pub fn fragment_usable(factory: &str, fragment: &str) -> bool {
 
 /// The encoder fragment for `codec` and whether it is hardware, or `None` when
 /// no encoder for it is installed **and** permitted by `policy`. Returns the
-/// first candidate that actually parses.
+/// first candidate that is actually usable here.
 pub fn video_encoder(
     codec: VideoCodec,
     bitrate_bps: u32,
@@ -328,15 +331,19 @@ pub fn video_encoder(
         })
 }
 
-/// Whether any VA-API or NVENC encoder element is installed. A registry lookup
-/// rather than the parse-check `video_encoder` uses: instantiating a VA element
-/// initialises the libva driver, which costs hundreds of milliseconds, and this
-/// only answers a hint in preferences.
+/// Whether any hardware encoder is usable here - the same question
+/// `video_encoder` answers, asked the same way. A registry lookup would be
+/// cheaper but would lie in exactly the cases the hint exists for: a registered
+/// element that cannot open its device leaves every cast in software while
+/// preferences says nothing is missing.
 fn hardware_encoder_available() -> bool {
+    let hardware_only = EncodingPolicy {
+        encoder: EncoderPolicy::Hardware,
+        format: FormatPolicy::Auto,
+    };
     EFFICIENCY_ORDER
         .into_iter()
-        .flat_map(|codec| factories(codec).iter().copied())
-        .any(|factory| is_hardware(factory) && gst::ElementFactory::find(factory).is_some())
+        .any(|codec| video_encoder(codec, 4_000_000, 30, hardware_only).is_some())
 }
 
 /// Whether the `GStreamer` va plugin is loaded at all, regardless of which
@@ -361,13 +368,13 @@ enum Gpu {
 ///
 /// `Neither` is the honest answer for a lot of real hardware, and it produces no
 /// advice at all: a system on chip (`v3d`/`vc4` on a Raspberry Pi,
-/// `panfrost`/`panthor` on
-/// Mali, `msm`, `rockchip`, `sun4i`, `mediatek`, `meson`) encodes through V4L2,
-/// which this daemon does not drive yet; a VM (`virtio_gpu`, `vmwgfx`, `qxl`,
-/// `vkms`, `simpledrm`) has no encoder to reach; a server display chip (`ast`,
-/// `mgag200`) never had one; and Apple Silicon under `asahi` has no open encoder
-/// driver. Telling any of those users to install a VA-API driver would send them
-/// after something that does not exist for their machine.
+/// `panfrost`/`panthor` on Mali, `msm`, `rockchip`, `sun4i`, `mediatek`,
+/// `meson`) encodes through V4L2, which comes from the kernel and has no package
+/// to install; a VM (`virtio_gpu`, `vmwgfx`, `qxl`, `vkms`, `simpledrm`) has no
+/// encoder to reach; a server display chip (`ast`, `mgag200`) never had one; and
+/// Apple Silicon under `asahi` has no open encoder driver. Telling any of those
+/// users to install a VA-API driver would send them after something that does
+/// not exist for their machine.
 fn gpu_class(driver: &str) -> Gpu {
     match driver {
         // Intel: i915 through Alder Lake and friends, xe from Lunar Lake on.
@@ -659,22 +666,26 @@ mod tests {
 
     /// Whichever VA-API VP9 element a driver offers - full power or low power -
     /// the hardware policy has to find it, or a VP9 cast silently runs in
-    /// software on hardware that can encode it. Skipped where neither exists.
+    /// software on hardware that can encode it. Usable, not merely registered:
+    /// an element that cannot open its device is skipped on purpose, and V4L2
+    /// is a hardware VP9 path too, so neither may be asserted away.
     #[test]
-    fn a_va_api_vp9_encoder_is_picked_when_one_is_installed() {
+    fn a_va_api_vp9_encoder_is_picked_when_one_is_usable() {
         gst::init().unwrap();
         let hardware = EncodingPolicy {
             encoder: EncoderPolicy::Hardware,
             format: FormatPolicy::Auto,
         };
-        let installed = ["vavp9enc", "vavp9lpenc"]
+        let usable = ["vavp9enc", "vavp9lpenc"]
             .into_iter()
-            .any(|f| gst::ElementFactory::find(f).is_some());
+            .any(|f| fragment_usable(f, &launch_for(f, 4_000_000, 30)));
         let picked = video_encoder(VideoCodec::Vp9, 4_000_000, 30, hardware);
-        assert_eq!(installed, picked.is_some());
-        if let Some((fragment, is_hw)) = picked {
-            assert!(is_hw);
-            assert!(fragment.starts_with("vavp9"), "{fragment}");
+        match picked {
+            Some((fragment, is_hw)) => {
+                assert!(is_hw);
+                assert_eq!(usable, fragment.starts_with("vavp9"), "{fragment}");
+            }
+            None => assert!(!usable, "a usable VA-API VP9 encoder was not picked"),
         }
     }
 
@@ -717,6 +728,8 @@ mod tests {
         assert!(f.starts_with("v4l2h264enc name=venc"));
         assert!(f.contains("video_bitrate=4000000"));
         assert!(f.contains("video_gop_size=60"));
+        // Without this the parameter sets ship once and a late joiner sees black.
+        assert!(f.contains("repeat_sequence_header=1"));
         assert!(!f.contains("bitrate=4000 "));
     }
 
@@ -732,9 +745,20 @@ mod tests {
             fragment_usable("x264enc", &launch_for("x264enc", 4_000_000, 30)),
             gst::ElementFactory::find("x264enc").is_some()
         );
-        // Where a VA-API encoder is installed, opening it is what proves it.
+        // Where a VA-API encoder is installed, opening it is what decides
+        // whether it is picked - registration alone must not be enough. It is
+        // first in the H.264 list, so "it opened" and "it was picked" agree.
         if gst::ElementFactory::find("vah264enc").is_some() {
-            assert!(element_opens(&launch_for("vah264enc", 4_000_000, 30)));
+            let fragment = launch_for("vah264enc", 4_000_000, 30);
+            let hardware = EncodingPolicy {
+                encoder: EncoderPolicy::Hardware,
+                format: FormatPolicy::Auto,
+            };
+            let picked = video_encoder(VideoCodec::H264, 4_000_000, 30, hardware);
+            assert_eq!(
+                element_opens(&fragment),
+                picked.is_some_and(|(picked, _)| picked == fragment)
+            );
         }
     }
 
