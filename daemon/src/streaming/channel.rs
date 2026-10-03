@@ -12,13 +12,13 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
 use log::{debug, info, warn};
-use rust_cast::NoCertificateVerification;
 use rust_cast::message_manager::{CastMessage, CastMessagePayload, MessageManager};
 use rustls::{ClientConnection, StreamOwned};
 use serde_json::{Value, json};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::openscreen::messages::{self, Answer};
+use crate::tls;
 
 const SENDER_ID: &str = "sender-0";
 const RECEIVER_ID: &str = "receiver-0";
@@ -300,10 +300,7 @@ fn connect_tls(addr: IpAddr, port: u16) -> Result<Manager> {
     tcp.set_read_timeout(Some(READ_TIMEOUT))?;
     tcp.set_nodelay(true)?;
 
-    let config = rustls::ClientConfig::builder()
-        .dangerous()
-        .with_custom_certificate_verifier(Arc::new(NoCertificateVerification))
-        .with_no_client_auth();
+    let config = tls::client_config();
     let server_name = rustls::pki_types::ServerName::try_from(addr.to_string())
         .context("building TLS server name")?;
     let connection =

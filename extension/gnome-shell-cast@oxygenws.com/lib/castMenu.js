@@ -408,6 +408,7 @@ export class CastMenu {
                 this._settings.get_int('audio-bitrate-kbps'),
             ),
             'video-encoder': new GLib.Variant('s', this._settings.get_string('video-encoder')),
+            'video-codec': new GLib.Variant('s', this._settings.get_string('video-codec')),
             'video-format': new GLib.Variant('s', this._settings.get_string('video-format')),
         };
 

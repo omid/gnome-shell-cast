@@ -23,6 +23,17 @@ pub enum VideoCodec {
 }
 
 impl VideoCodec {
+    /// Anything unrecognised means automatic codec negotiation.
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "vp8" => Some(Self::Vp8),
+            "vp9" => Some(Self::Vp9),
+            "av1" => Some(Self::Av1),
+            "h264" => Some(Self::H264),
+            _ => None,
+        }
+    }
+
     /// The `codecName` string used in the Cast OFFER.
     pub fn codec_name(self) -> &'static str {
         match self {
@@ -546,9 +557,13 @@ pub fn policy_failure_message(policy: EncodingPolicy) -> String {
 /// The codecs we can encode on this host, **hardware-encodable ones first**,
 /// then by efficiency. Used to build the OFFER - we advertise only codecs we
 /// can produce, in the order we prefer to use them.
-pub fn available_video_codecs(policy: EncodingPolicy) -> Vec<VideoCodec> {
+pub fn available_video_codecs(
+    policy: EncodingPolicy,
+    preferred: Option<VideoCodec>,
+) -> Vec<VideoCodec> {
     let mut avail: Vec<(VideoCodec, bool)> = EFFICIENCY_ORDER
         .into_iter()
+        .filter(|codec| preferred.is_none_or(|preferred| *codec == preferred))
         .filter_map(|codec| video_encoder(codec, 4_000_000, 30, policy).map(|(_, hw)| (codec, hw)))
         .collect();
     avail.sort_by_key(|&(codec, hw)| (!hw, efficiency_rank(codec)));
@@ -565,6 +580,16 @@ mod tests {
         assert_eq!(VideoCodec::Vp9.codec_name(), "vp9");
         assert_eq!(VideoCodec::Av1.codec_name(), "av1");
         assert_eq!(VideoCodec::H264.codec_name(), "h264");
+    }
+
+    #[test]
+    fn codec_preference_values_parse() {
+        assert_eq!(VideoCodec::parse("vp8"), Some(VideoCodec::Vp8));
+        assert_eq!(VideoCodec::parse("vp9"), Some(VideoCodec::Vp9));
+        assert_eq!(VideoCodec::parse("h264"), Some(VideoCodec::H264));
+        assert_eq!(VideoCodec::parse("av1"), Some(VideoCodec::Av1));
+        assert_eq!(VideoCodec::parse("auto"), None);
+        assert_eq!(VideoCodec::parse("future-codec"), None);
     }
 
     #[test]

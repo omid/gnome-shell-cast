@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-21 21:03+0200\n"
+"POT-Creation-Date: 2026-09-03 08:40+0200\n"
 "PO-Revision-Date: 2026-08-17 12:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Bulgarian <https://github.com/omid/gnome-shell-cast>\n"
@@ -72,20 +72,20 @@ msgstr "Кодер: %s (софтуерен)"
 msgid "Receiver supports: %s"
 msgstr "Приемникът поддържа: %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:446
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:447
 msgid "The cast failed."
 msgstr "Предаването е неуспешно."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:453
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:454
 #, javascript-format
 msgid "The device ended the session (%s)."
 msgstr "Устройството прекрати сесията (%s)."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:454
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:455
 msgid "The device ended the session."
 msgstr "Устройството прекрати сесията."
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:502
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:503
 #: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:62
 msgid "GNOME Shell Cast"
@@ -143,7 +143,7 @@ msgid "Close"
 msgstr "Затваряне"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:266
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:283
 msgid "Report an issue"
 msgstr "Докладване на грешка"
 
@@ -185,7 +185,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "Копирайте командата, поставете я в терминал и я изпълнете."
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:265
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:282
 msgid "Homepage"
 msgstr "Начална страница"
 
@@ -197,7 +197,7 @@ msgstr "Копиране на командата"
 msgid "Copied! Paste it into a terminal and run it."
 msgstr "Копирано! Поставете го в терминал и го изпълнете."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:33
 msgid ""
 "No VA-API encoder for your graphics card. Install your distribution’s VA-API "
 "driver."
@@ -205,126 +205,127 @@ msgstr ""
 "Няма кодер VA-API за вашата видеокарта. Инсталирайте драйвера VA-API на "
 "дистрибуцията си."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
 msgid "Install the NVIDIA driver and the GStreamer nvcodec plugin."
 msgstr "Инсталирайте драйвера на NVIDIA и приставката nvcodec на GStreamer."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:40
 #, javascript-format
 msgid "The GStreamer VA-API plugin is missing. Install the %s package."
 msgstr "Липсва приставката VA-API на GStreamer. Инсталирайте пакета %s."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
 msgid ""
 "The GStreamer VA-API plugin is missing. Install it from your distribution."
 msgstr ""
 "Липсва приставката VA-API на GStreamer. Инсталирайте я чрез дистрибуцията си."
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:62
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:70
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:81
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:63
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:139
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:146
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
 msgid "Automatic"
 msgstr "Автоматично"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:63
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:64
 msgid "Native"
 msgstr "Присъща"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:64
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:65
 msgid "4K (2160p)"
 msgstr "4K (2160p)"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:65
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:66
 msgid "1440p"
 msgstr "1440p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:66
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:67
 msgid "1080p"
 msgstr "1080p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:67
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:68
 msgid "720p"
 msgstr "720p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
-msgid "Hardware only"
-msgstr "Само хардуерен"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
-msgid "Software only"
-msgstr "Само софтуерен"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:77
-msgid "VA-API (Intel, AMD)"
-msgstr "VA-API (Intel, AMD)"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:78
-msgid "NVENC (NVIDIA)"
-msgstr "NVENC (NVIDIA)"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:79
-msgid "V4L2 (Arm boards)"
-msgstr "V4L2 (платки Arm)"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:84
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:73
 msgid "Advanced"
 msgstr "Разширени"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:79
 msgid "Stream quality"
 msgstr "Качество на предаването"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:91
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:80
 msgid "Applied the next time a cast is started"
 msgstr "Прилага се при следващото стартиране на предаване"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:85
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
 msgid "Maximum resolution"
 msgstr "Максимална разделителна способност"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:86
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr ""
 "Над 1080p са необходими хардуерен кодер и съответната скорост на битовете"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
 msgid "Framerate"
 msgstr "Честота на кадрите"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
 msgid "Frames per second"
 msgstr "Кадри в секунда"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
 msgid "Video bitrate"
 msgstr "Скорост на битовете за видеото"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:119
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr "kbit/s: около 4000 за 720p, 8000 за 1080p, 30000 за 4K"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
 msgid "Audio bitrate"
 msgstr "Скорост на битовете за аудиото"
 
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
+msgid "Hardware only"
+msgstr "Само хардуерен"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:141
+msgid "Software only"
+msgstr "Само софтуерен"
+
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:142
+msgid "VA-API (Intel, AMD)"
+msgstr "VA-API (Intel, AMD)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:143
+msgid "NVENC (NVIDIA)"
+msgstr "NVENC (NVIDIA)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:144
+msgid "V4L2 (Arm boards)"
+msgstr "V4L2 (платки Arm)"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
 msgid "Encoding"
 msgstr "Кодиране"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:143
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:151
 msgid "Casting fails with a message when a forced choice cannot be used"
 msgstr ""
 "Предаването се проваля със съобщение, когато зададеният избор не може да се "
 "използва"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:148
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:156
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:46
 msgid "Video encoder"
 msgstr "Видео кодер"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:158
 msgid ""
 "Automatic prefers your graphics card; choose software if the picture breaks "
 "up"
@@ -332,79 +333,89 @@ msgstr ""
 "Автоматично предпочита видеокартата; изберете софтуерен, ако картината се "
 "накъсва"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:56
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:169
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
+msgid "Video codec"
+msgstr "Видео кодек"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:170
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
+msgid "Automatic lets the receiver choose from the available codecs"
+msgstr "Автоматичният режим позволява на приемника да избере от наличните кодеци"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:180
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:68
 msgid "Pixel format"
 msgstr "Формат на пикселите"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:162
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:181
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr ""
 "Автоматично е подходящо за всеки кодер; променяйте само за да заобиколите "
 "драйвер"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:191
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:208
 msgid "Hardware encoding is unavailable"
 msgstr "Хардуерното кодиране не е налично"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:224
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:221
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:241
 msgid "Menu"
 msgstr "Меню"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:208
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:61
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:225
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:73
 msgid "Show cast details"
 msgstr "Показване на подробности за предаването"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:209
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:62
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:226
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:74
 msgid "Show the transport and codecs under the active device while casting"
 msgstr ""
 "Показване на транспорта и кодеците под активното устройство по време на "
 "предаване"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:233
 msgid "Top bar"
 msgstr "Горна лента"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:233
 msgid "Quick settings"
 msgstr "Бързи настройки"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:219
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:236
 msgid "General"
 msgstr "Общи"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:228
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:70
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:245
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:82
 msgid "Indicator location"
 msgstr "Местоположение на индикатора"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:229
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:246
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr ""
 "Показване на иконата за предаване в горната лента или в менюто за бързи "
 "настройки"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:243
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:260
 msgid "About"
 msgstr "Относно"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:254
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:271
 #, javascript-format
 msgid "Version %s"
 msgstr "Версия %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:269
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:286
 msgid "Help"
 msgstr "Помощ"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:270
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:287
 msgid "Common problems and their fixes"
 msgstr "Често срещани проблеми и решенията им"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:273
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:290
 msgid "Troubleshooting guide"
 msgstr "Ръководство за справяне с проблеми"
 
@@ -465,7 +476,7 @@ msgstr ""
 "„v4l2“ (платки Arm) задават един хардуерен интерфейс; предаването се проваля "
 "със съобщение, ако изборът не може да бъде изпълнен."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:57
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:69
 msgid ""
 "The raw video format handed to the encoder. \"auto\" offers both and lets "
 "negotiation pick whichever the chosen encoder accepts. Forcing a format "
@@ -477,7 +488,7 @@ msgstr ""
 "на формат ограничава предаването до кодерите, които го приемат, което на "
 "повечето системи означава да се наложи и видът на кодера."
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:71
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:83
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."

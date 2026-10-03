@@ -46,6 +46,18 @@
       <summary>Video encoder</summary>
       <description>Which encoder to use. "auto" prefers hardware (VA-API, NVENC, V4L2) and falls back to software. Choose software when a graphics driver produces a broken or stuttering picture. "vaapi" (Intel, AMD), "nvenc" (NVIDIA) and "v4l2" (Arm boards) pin one hardware API. Casting fails with a message if the choice cannot be met.</description>
     </key>
+    <key name="video-codec" type="s">
+      <choices>
+        <choice value="auto"/>
+        <choice value="vp8"/>
+        <choice value="vp9"/>
+        <choice value="h264"/>
+        <choice value="av1"/>
+      </choices>
+      <default>'auto'</default>
+      <summary>Video codec</summary>
+      <description>Automatic lets the receiver choose from the available codecs</description>
+    </key>
     <key name="video-format" type="s">
       <choices>
         <choice value="auto"/>

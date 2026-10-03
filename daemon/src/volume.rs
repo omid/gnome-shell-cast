@@ -5,9 +5,9 @@ use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
+use crate::tls;
 use anyhow::{Context, Result, anyhow};
 use log::{debug, warn};
-use rust_cast::NoCertificateVerification;
 use rust_cast::message_manager::{CastMessage, CastMessagePayload, MessageManager};
 use rustls::{ClientConnection, StreamOwned};
 use serde_json::{Value, json};
@@ -190,10 +190,7 @@ fn connect(addr: IpAddr, port: u16) -> Result<Manager> {
     tcp.set_read_timeout(Some(READ_TIMEOUT))?;
     tcp.set_nodelay(true)?;
 
-    let config = rustls::ClientConfig::builder()
-        .dangerous()
-        .with_custom_certificate_verifier(Arc::new(NoCertificateVerification))
-        .with_no_client_auth();
+    let config = tls::client_config();
     let server_name = rustls::pki_types::ServerName::try_from(addr.to_string())
         .context("building TLS server name")?;
     let connection =

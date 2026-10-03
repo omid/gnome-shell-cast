@@ -8,7 +8,7 @@ use gstreamer::prelude::*;
 use log::{info, warn};
 use zbus::zvariant::OwnedValue;
 
-use crate::streaming::encoder::{self, EncoderPolicy, EncodingPolicy, FormatPolicy};
+use crate::streaming::encoder::{self, EncoderPolicy, EncodingPolicy, FormatPolicy, VideoCodec};
 
 pub const PLAYLIST_NAME: &str = "stream.m3u8";
 
@@ -20,6 +20,8 @@ pub struct StreamSettings {
     pub fps: Option<i32>,
     pub bitrate_kbps: Option<i32>,
     pub audio_bitrate_kbps: Option<i32>,
+    /// A forced Cast Streaming codec; `None` offers every usable codec.
+    pub video_codec: Option<VideoCodec>,
     /// Which encoder and raw format the user will accept; `Auto` by default.
     pub encoding: EncodingPolicy,
 }
@@ -75,6 +77,9 @@ impl StreamSettings {
         }
         if let Some(format) = get_string("video-format") {
             settings.encoding.format = FormatPolicy::parse(&format);
+        }
+        if let Some(codec) = get_string("video-codec") {
+            settings.video_codec = VideoCodec::parse(&codec);
         }
         settings
     }
@@ -440,6 +445,26 @@ mod tests {
         let settings = StreamSettings::from_options(options);
         assert_eq!(settings.fps, Some(60));
         assert_eq!(settings.bitrate_kbps, Some(100));
+    }
+
+    #[test]
+    fn video_codec_option_is_parsed_and_unknown_values_are_automatic() {
+        let mut options = HashMap::new();
+        options.insert(
+            "video-codec".to_owned(),
+            OwnedValue::from(zbus::zvariant::Str::from("vp8")),
+        );
+        assert_eq!(
+            StreamSettings::from_options(options).video_codec,
+            Some(VideoCodec::Vp8)
+        );
+
+        let mut options = HashMap::new();
+        options.insert(
+            "video-codec".to_owned(),
+            OwnedValue::from(zbus::zvariant::Str::from("future-codec")),
+        );
+        assert_eq!(StreamSettings::from_options(options).video_codec, None);
     }
 
     #[test]

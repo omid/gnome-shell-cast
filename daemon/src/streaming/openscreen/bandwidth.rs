@@ -28,11 +28,10 @@ const INCREASE_DENOMINATOR: u64 = 10;
 /// How often the loop may change the encoder bitrate.
 pub const CONTROL_INTERVAL: Duration = Duration::from_millis(500);
 
-/// openscreen's `SenderPacketRouter` sends at most this many packets per
-/// burst, one burst per `BURST_INTERVAL`; together they bound how much of the
-/// window could have been spent transmitting.
-const MAX_PACKETS_PER_BURST: u64 = 64;
-const BURST_INTERVAL: Duration = Duration::from_millis(10);
+/// Open Screen's default 24 Mbit/s burst ceiling, divided into 10 ms bursts
+/// of our 1472-byte maximum UDP payloads.
+pub const MAX_PACKETS_PER_BURST: u64 = 21;
+pub const BURST_INTERVAL: Duration = Duration::from_millis(10);
 
 /// A ring buffer of byte counts over `NUM_TIMESLICES` equal slices.
 struct FlowTracker {
@@ -271,7 +270,7 @@ mod tests {
     fn confirmed_bytes_become_bits_per_second() {
         let now = Instant::now();
         let mut e = BandwidthEstimator::new(now);
-        // 12800 packets is a full window's worth of bursts.
+        // Far more packets than a full window can carry saturates the model.
         for step in 0..20 {
             e.on_burst_sent(12_500, 640, at(now, step * 100));
             e.on_bytes_confirmed(12_500, at(now, step * 100));
@@ -290,7 +289,7 @@ mod tests {
         let now = Instant::now();
         let mut e = BandwidthEstimator::new(now);
         for step in 0..20 {
-            e.on_burst_sent(12_500, 64, at(now, step * 100));
+            e.on_burst_sent(12_500, MAX_PACKETS_PER_BURST, at(now, step * 100));
             e.on_bytes_confirmed(12_500, at(now, step * 100));
         }
         let estimate = e.estimate_bps(at(now, 2000)).unwrap();

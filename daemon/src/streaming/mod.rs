@@ -197,20 +197,29 @@ fn offer_codecs(
     if capture.is_none() {
         return Ok(Vec::new());
     }
-    let codecs = encoder::available_video_codecs(settings.encoding);
+    let codecs = encoder::available_video_codecs(settings.encoding, settings.video_codec);
     if !codecs.is_empty() {
         return Ok(codecs);
     }
-    let error = anyhow!(encoder::policy_failure_message(settings.encoding));
+    let error = match settings.video_codec {
+        Some(codec) => anyhow!(
+            "no {} encoder matches the selected encoder and pixel format",
+            codec.codec_name()
+        ),
+        None => anyhow!(encoder::policy_failure_message(settings.encoding)),
+    };
     // A forced setting that rules everything out is reported, not worked
     // around: falling back to HLS would quietly defeat the user's choice.
     // With no forced setting this is just "nothing installed" - still worth
     // trying HLS, which needs only H.264.
-    Err(if settings.encoding == encoder::EncodingPolicy::default() {
-        Outcome::Unavailable(error)
-    } else {
-        Outcome::Finished(Err(error))
-    })
+    Err(
+        if settings.encoding == encoder::EncodingPolicy::default() && settings.video_codec.is_none()
+        {
+            Outcome::Unavailable(error)
+        } else {
+            Outcome::Finished(Err(error))
+        },
+    )
 }
 
 /// Codecs the receiver accepted from our OFFER, for "show details".

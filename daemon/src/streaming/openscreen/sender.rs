@@ -140,6 +140,50 @@ struct SentFrame {
     packets: PacketizedFrame,
 }
 
+/// Spaces RTP into the same bounded 10 ms bursts as Open Screen's
+/// `SenderPacketRouter`. A successful local UDP send does not mean that a
+/// receiver's much smaller input buffer can absorb an entire large keyframe.
+struct PacketPacer {
+    burst_started: Instant,
+    packets_in_burst: u64,
+}
+
+impl PacketPacer {
+    fn new(now: Instant) -> Self {
+        Self {
+            burst_started: now,
+            packets_in_burst: 0,
+        }
+    }
+
+    fn delay_for_next_packet(&mut self, now: Instant) -> Duration {
+        let next_burst = self
+            .burst_started
+            .checked_add(bandwidth::BURST_INTERVAL)
+            .unwrap_or(now);
+        if now >= next_burst {
+            self.burst_started = now;
+            self.packets_in_burst = 1;
+            return Duration::ZERO;
+        }
+        if self.packets_in_burst < bandwidth::MAX_PACKETS_PER_BURST {
+            self.packets_in_burst = self.packets_in_burst.saturating_add(1);
+            return Duration::ZERO;
+        }
+
+        self.burst_started = next_burst;
+        self.packets_in_burst = 1;
+        next_burst.saturating_duration_since(now)
+    }
+
+    fn wait_for_next_packet(&mut self) {
+        let delay = self.delay_for_next_packet(Instant::now());
+        if !delay.is_zero() {
+            thread::sleep(delay);
+        }
+    }
+}
+
 struct Stream {
     kind: StreamKind,
     ssrc: u32,
@@ -258,6 +302,7 @@ fn service_rtcp(
     events: &mut rtcp::ReceiverEvents,
     receive_buffer: &mut [u8; 1500],
     estimator: &mut BandwidthEstimator,
+    pacer: &mut PacketPacer,
     acked: &mut bool,
     request_keyframe: &dyn Fn(),
 ) {
@@ -291,7 +336,7 @@ fn service_rtcp(
                 }
             }
             for nack in &events.nacks {
-                retransmit(socket, peer, stream, nack);
+                retransmit(socket, peer, stream, nack, pacer);
             }
             if events.picture_loss && stream.kind == StreamKind::Video {
                 debug!("receiver reported picture loss, forcing a key frame");
@@ -398,6 +443,7 @@ fn run(
     let mut acked = false;
     let mut reported_silence = false;
     let mut reported_drops = false;
+    let mut pacer = PacketPacer::new(Instant::now());
     let mut rate_state = RateState {
         estimator: BandwidthEstimator::new(Instant::now()),
         current_bps: rate_control.start_bps,
@@ -425,7 +471,7 @@ fn run(
                         video_started_at = Some(Instant::now());
                     }
                     let before = (stream.octet_count, stream.packet_count);
-                    let dropped = send_frame(socket, peer, stream, &chunk);
+                    let dropped = send_frame(socket, peer, stream, &chunk, &mut pacer);
                     rate_state.estimator.on_burst_sent(
                         u64::from(stream.octet_count.wrapping_sub(before.0)),
                         u64::from(stream.packet_count.wrapping_sub(before.1)),
@@ -462,6 +508,7 @@ fn run(
             &mut events,
             &mut receive_buffer,
             &mut rate_state.estimator,
+            &mut pacer,
             &mut acked,
             request_keyframe,
         );
@@ -483,7 +530,7 @@ fn run(
                     stream.packet_count,
                     stream.octet_count,
                 );
-                let _ = socket.send(&report);
+                let _ = send_sender_report(socket, peer, &report);
                 stream.last_report = Some(Instant::now());
             }
         }
@@ -491,11 +538,28 @@ fn run(
     info!("mirror sender stopped");
 }
 
+/// Sender reports share the unconnected RTP socket so receiver feedback comes
+/// back to the same port. Unlike RTP's `send_to`, the old `send` call failed
+/// with `ENOTCONN` after the socket was deliberately made unconnected.
+fn send_sender_report(
+    socket: &UdpSocket,
+    peer: SocketAddr,
+    report: &[u8],
+) -> std::io::Result<usize> {
+    socket.send_to(report, peer)
+}
+
 /// Sends one packet, waiting out a full send buffer rather than dropping it:
 /// the socket is non-blocking (so RTCP can be polled), so a frame's packet
 /// burst hits `WouldBlock`, and a dropped packet costs the receiver the whole
 /// frame. Waiting paces us to what the link accepts. False if it never went.
-fn send_packet(socket: &UdpSocket, peer: SocketAddr, packet: &[u8]) -> bool {
+fn send_packet(
+    socket: &UdpSocket,
+    peer: SocketAddr,
+    packet: &[u8],
+    pacer: &mut PacketPacer,
+) -> bool {
+    pacer.wait_for_next_packet();
     let deadline = Instant::now().checked_add(SEND_TIMEOUT);
     loop {
         match socket.send_to(packet, peer) {
@@ -521,6 +585,7 @@ fn send_frame(
     peer: SocketAddr,
     stream: &mut Stream,
     chunk: &EncodedChunk,
+    pacer: &mut PacketPacer,
 ) -> u32 {
     let frame_id = stream.next_frame_id;
     stream.next_frame_id = stream.next_frame_id.wrapping_add(1);
@@ -547,13 +612,21 @@ fn send_frame(
         .packetizer
         .packetize(&frame, buffer, |payload| cipher.apply_keystream(payload));
 
+    if chunk.kind == StreamKind::Video && chunk.is_key_frame {
+        debug!(
+            "video key frame {frame_id}: {} bytes in {} packets",
+            chunk.data.len(),
+            packets.iter().count()
+        );
+    }
+
     let mut dropped: u32 = 0;
     for packet in packets.iter() {
         stream.packet_count = stream.packet_count.wrapping_add(1);
         stream.octet_count = stream
             .octet_count
             .wrapping_add(u32::try_from(packet.len()).unwrap_or(u32::MAX));
-        if !send_packet(socket, peer, packet) {
+        if !send_packet(socket, peer, packet, pacer) {
             dropped = dropped.saturating_add(1);
         }
     }
@@ -566,7 +639,13 @@ fn send_frame(
     dropped
 }
 
-fn retransmit(socket: &UdpSocket, peer: SocketAddr, stream: &Stream, nack: &rtcp::Nack) {
+fn retransmit(
+    socket: &UdpSocket,
+    peer: SocketAddr,
+    stream: &Stream,
+    nack: &rtcp::Nack,
+    pacer: &mut PacketPacer,
+) {
     let Some(frame) = stream
         .history
         .iter()
@@ -576,10 +655,10 @@ fn retransmit(socket: &UdpSocket, peer: SocketAddr, stream: &Stream, nack: &rtcp
     };
     if nack.packet_id == rtcp::ALL_PACKETS_LOST {
         for packet in frame.packets.iter() {
-            send_packet(socket, peer, packet);
+            send_packet(socket, peer, packet, pacer);
         }
     } else if let Some(packet) = frame.packets.packet(nack.packet_id) {
-        send_packet(socket, peer, packet);
+        send_packet(socket, peer, packet, pacer);
     } else {
         // The receiver NACKed a packet id we never produced; nothing to resend.
     }
@@ -588,6 +667,42 @@ fn retransmit(socket: &UdpSocket, peer: SocketAddr, stream: &Stream, nack: &rtcp
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn packet_pacer_splits_packets_into_ten_millisecond_bursts() {
+        let mut now = Instant::now();
+        let mut pacer = PacketPacer::new(now);
+        for _ in 0..bandwidth::MAX_PACKETS_PER_BURST {
+            assert_eq!(pacer.delay_for_next_packet(now), Duration::ZERO);
+        }
+
+        let delay = pacer.delay_for_next_packet(now);
+        assert_eq!(delay, bandwidth::BURST_INTERVAL);
+        now += delay;
+        for _ in 1..bandwidth::MAX_PACKETS_PER_BURST {
+            assert_eq!(pacer.delay_for_next_packet(now), Duration::ZERO);
+        }
+        assert_eq!(pacer.delay_for_next_packet(now), bandwidth::BURST_INTERVAL);
+    }
+
+    #[test]
+    fn sender_report_works_on_the_unconnected_rtp_socket() {
+        let receiver = UdpSocket::bind("127.0.0.1:0").unwrap();
+        receiver
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let sender = UdpSocket::bind("127.0.0.1:0").unwrap();
+        assert!(sender.peer_addr().is_err());
+
+        let report = [0x80, 200, 0, 0];
+        send_sender_report(&sender, receiver.local_addr().unwrap(), &report).unwrap();
+
+        let mut received = [0; 4];
+        let (size, from) = receiver.recv_from(&mut received).unwrap();
+        assert_eq!(size, report.len());
+        assert_eq!(received, report);
+        assert_eq!(from, sender.local_addr().unwrap());
+    }
 
     fn chunk() -> EncodedChunk {
         gstreamer::init().unwrap();

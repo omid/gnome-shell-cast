@@ -139,7 +139,10 @@ changing your configuration, and the firewall and portal settings to check.
    Audio-only devices (speakers, cast groups) show a single **Cast audio** action instead.
 4. To end, click the icon and choose **Stop casting**.
 
-Preferences (resolution cap, framerate, bitrate) are under the ⚙ menu entry or `gnome-extensions prefs gnome-shell-cast@oxygenws.com`.
+Preferences (resolution cap, framerate, bitrate, codec and encoder) are under
+the ⚙ menu entry or
+`gnome-extensions prefs gnome-shell-cast@oxygenws.com`. Leave the codec on
+*Automatic* normally.
 
 ## Troubleshooting
 

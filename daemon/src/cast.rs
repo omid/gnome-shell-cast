@@ -1,19 +1,57 @@
-use std::net::IpAddr;
+use std::net::{IpAddr, SocketAddr, TcpStream};
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 use log::{debug, info, warn};
-use rust_cast::channels::heartbeat::HeartbeatResponse;
+use rust_cast::ChannelMessage;
+use rust_cast::channels::connection::ConnectionChannel;
+use rust_cast::channels::heartbeat::{HeartbeatChannel, HeartbeatResponse};
+use rust_cast::channels::media::MediaChannel;
 use rust_cast::channels::media::{Media, Metadata, MusicTrackMediaMetadata, StreamType};
-use rust_cast::channels::receiver::CastDeviceApp;
-use rust_cast::{CastDevice, ChannelMessage};
+use rust_cast::channels::receiver::{CastDeviceApp, ReceiverChannel};
+use rust_cast::errors::Error as CastError;
+use rust_cast::message_manager::MessageManager;
+use rustls::{ClientConnection, StreamOwned};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 
+use crate::tls;
+
 const DESTINATION_ID: &str = "receiver-0";
+
+type CastStream = StreamOwned<ClientConnection, TcpStream>;
+type CastManager = MessageManager<CastStream>;
+
+struct CastDeviceCompat {
+    manager: Rc<CastManager>,
+    connection: ConnectionChannel<'static, CastStream>,
+    heartbeat: HeartbeatChannel<'static, CastStream>,
+    media: MediaChannel<'static, CastStream>,
+    receiver: ReceiverChannel<'static, CastStream>,
+}
+
+impl CastDeviceCompat {
+    fn receive(&self) -> Result<ChannelMessage, CastError> {
+        let message = self.manager.receive()?;
+        if self.connection.can_handle(&message) {
+            return Ok(ChannelMessage::Connection(self.connection.parse(&message)?));
+        }
+        if self.heartbeat.can_handle(&message) {
+            return Ok(ChannelMessage::Heartbeat(self.heartbeat.parse(&message)?));
+        }
+        if self.media.can_handle(&message) {
+            return Ok(ChannelMessage::Media(self.media.parse(&message)?));
+        }
+        if self.receiver.can_handle(&message) {
+            return Ok(ChannelMessage::Receiver(self.receiver.parse(&message)?));
+        }
+        Ok(ChannelMessage::Raw(message))
+    }
+}
 
 /// The media to load once the stream is ready: URL and HTTP content type (HLS
 /// playlist for screen casts, a progressive audio type for audio-only casts).
@@ -83,8 +121,7 @@ fn run(
     events: &UnboundedSender<CastEvent>,
 ) -> Result<()> {
     info!("connecting to chromecast at {addr}:{port}");
-    let device = CastDevice::connect_without_host_verification(addr.to_string(), port)
-        .map_err(|e| anyhow!("connecting: {e}"))?;
+    let device = connect(addr, port)?;
 
     device
         .connection
@@ -170,6 +207,25 @@ fn run(
             }
         }
     }
+}
+
+fn connect(addr: IpAddr, port: u16) -> Result<CastDeviceCompat> {
+    let socket_addr = SocketAddr::new(addr, port);
+    let tcp = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(4))
+        .with_context(|| format!("connecting to {socket_addr}"))?;
+    let config = tls::client_config();
+    let server_name = rustls::pki_types::ServerName::try_from(addr.to_string())
+        .context("building TLS server name")?;
+    let connection =
+        ClientConnection::new(Arc::new(config), server_name).context("creating TLS connection")?;
+    let manager = Rc::new(MessageManager::new(StreamOwned::new(connection, tcp)));
+    Ok(CastDeviceCompat {
+        connection: ConnectionChannel::new("sender-0", Rc::clone(&manager)),
+        heartbeat: HeartbeatChannel::new("sender-0", DESTINATION_ID, Rc::clone(&manager)),
+        media: MediaChannel::new("sender-0", Rc::clone(&manager)),
+        receiver: ReceiverChannel::new("sender-0", DESTINATION_ID, Rc::clone(&manager)),
+        manager,
+    })
 }
 
 impl Drop for CastControl {

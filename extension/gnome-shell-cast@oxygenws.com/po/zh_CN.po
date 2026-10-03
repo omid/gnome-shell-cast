@@ -5,7 +5,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: GNOME Shell Cast 3\n"
 "Report-Msgid-Bugs-To: https://github.com/omid/gnome-shell-cast/issues\n"
-"POT-Creation-Date: 2026-08-21 21:03+0200\n"
+"POT-Creation-Date: 2026-09-03 08:40+0200\n"
 "PO-Revision-Date: 2026-08-14 10:00+0200\n"
 "Last-Translator: \n"
 "Language-Team: Simplified Chinese <https://github.com/omid/gnome-shell-"
@@ -73,20 +73,20 @@ msgstr "编码器：%s（软件）"
 msgid "Receiver supports: %s"
 msgstr "接收端支持：%s"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:446
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:447
 msgid "The cast failed."
 msgstr "投屏失败。"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:453
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:454
 #, javascript-format
 msgid "The device ended the session (%s)."
 msgstr "设备已结束会话（%s）。"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:454
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:455
 msgid "The device ended the session."
 msgstr "设备已结束会话。"
 
-#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:502
+#: extension/gnome-shell-cast@oxygenws.com/lib/castMenu.js:503
 #: extension/gnome-shell-cast@oxygenws.com/lib/indicator.js:22
 #: extension/gnome-shell-cast@oxygenws.com/lib/quickIndicator.js:62
 msgid "GNOME Shell Cast"
@@ -138,7 +138,7 @@ msgid "Close"
 msgstr "关闭"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/errorDialog.js:40
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:266
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:283
 msgid "Report an issue"
 msgstr "报告问题"
 
@@ -178,7 +178,7 @@ msgid "Copy the command, then paste it into a terminal and run it."
 msgstr "复制命令，然后粘贴到终端中运行。"
 
 #: extension/gnome-shell-cast@oxygenws.com/lib/setupDialog.js:43
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:265
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:282
 msgid "Homepage"
 msgstr "主页"
 
@@ -190,201 +190,212 @@ msgstr "复制命令"
 msgid "Copied! Paste it into a terminal and run it."
 msgstr "已复制。请粘贴到终端中运行。"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:32
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:33
 msgid ""
 "No VA-API encoder for your graphics card. Install your distribution’s VA-API "
 "driver."
 msgstr ""
 "您的显卡没有可用的 VA-API 编码器。请安装您的发行版提供的 VA-API 驱动程序。"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:36
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:37
 msgid "Install the NVIDIA driver and the GStreamer nvcodec plugin."
 msgstr "请安装 NVIDIA 驱动程序和 GStreamer nvcodec 插件。"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:39
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:40
 #, javascript-format
 msgid "The GStreamer VA-API plugin is missing. Install the %s package."
 msgstr "缺少 GStreamer VA-API 插件。请安装 %s 软件包。"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:43
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:44
 msgid ""
 "The GStreamer VA-API plugin is missing. Install it from your distribution."
 msgstr "缺少 GStreamer VA-API 插件。请通过您的发行版安装它。"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:62
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:70
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:74
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:81
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:63
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:71
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:139
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:146
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:147
 msgid "Automatic"
 msgstr "自动"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:63
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:64
 msgid "Native"
 msgstr "原生"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:64
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:65
 msgid "4K (2160p)"
 msgstr "4K (2160p)"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:65
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:66
 msgid "1440p"
 msgstr "1440p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:66
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:67
 msgid "1080p"
 msgstr "1080p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:67
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:68
 msgid "720p"
 msgstr "720p"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:75
-msgid "Hardware only"
-msgstr "仅硬件"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:76
-msgid "Software only"
-msgstr "仅软件"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:77
-msgid "VA-API (Intel, AMD)"
-msgstr "VA-API（Intel、AMD）"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:78
-msgid "NVENC (NVIDIA)"
-msgstr "NVENC（NVIDIA）"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:79
-msgid "V4L2 (Arm boards)"
-msgstr "V4L2（Arm 开发板）"
-
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:84
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:73
 msgid "Advanced"
 msgstr "高级"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:90
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:79
 msgid "Stream quality"
 msgstr "视频流质量"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:91
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:80
 msgid "Applied the next time a cast is started"
 msgstr "将在下次开始投屏时生效"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:85
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:15
 msgid "Maximum resolution"
 msgstr "最大分辨率"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:86
 msgid "Above 1080p needs a hardware encoder and a matching bitrate"
 msgstr "高于 1080p 需要硬件编码器和相应的比特率"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:96
 msgid "Framerate"
 msgstr "帧率"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:97
 msgid "Frames per second"
 msgstr "每秒帧数"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:107
 msgid "Video bitrate"
 msgstr "视频比特率"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:119
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:108
 msgid "kbit/s: about 4000 for 720p, 8000 for 1080p, 30000 for 4K"
 msgstr "kbit/s：720p 约 4000，1080p 约 8000，4K 约 30000"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:129
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:118
 msgid "Audio bitrate"
 msgstr "音频比特率"
 
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:140
+msgid "Hardware only"
+msgstr "仅硬件"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:141
+msgid "Software only"
+msgstr "仅软件"
+
 #: extension/gnome-shell-cast@oxygenws.com/prefs.js:142
+msgid "VA-API (Intel, AMD)"
+msgstr "VA-API（Intel、AMD）"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:143
+msgid "NVENC (NVIDIA)"
+msgstr "NVENC（NVIDIA）"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:144
+msgid "V4L2 (Arm boards)"
+msgstr "V4L2（Arm 开发板）"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
 msgid "Encoding"
 msgstr "编码"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:143
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:151
 msgid "Casting fails with a message when a forced choice cannot be used"
 msgstr "当强制选择无法使用时，投屏会失败并给出提示"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:148
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:156
 #: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:46
 msgid "Video encoder"
 msgstr "视频编码器"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:150
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:158
 msgid ""
 "Automatic prefers your graphics card; choose software if the picture breaks "
 "up"
 msgstr "自动会优先使用显卡；若画面破碎请选择软件"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:161
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:56
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:169
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:58
+msgid "Video codec"
+msgstr "视频编解码器"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:170
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:59
+msgid "Automatic lets the receiver choose from the available codecs"
+msgstr "自动模式允许接收器从可用的编解码器中选择"
+
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:180
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:68
 msgid "Pixel format"
 msgstr "像素格式"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:162
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:181
 msgid "Automatic suits every encoder; only change this to work around a driver"
 msgstr "自动适用于所有编码器；仅在需要绕开驱动问题时才更改"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:191
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:208
 msgid "Hardware encoding is unavailable"
 msgstr "硬件编码不可用"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:204
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:224
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:221
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:241
 msgid "Menu"
 msgstr "菜单"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:208
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:61
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:225
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:73
 msgid "Show cast details"
 msgstr "显示投屏详细信息"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:209
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:62
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:226
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:74
 msgid "Show the transport and codecs under the active device while casting"
 msgstr "投屏时在活动设备下方显示传输方式和编解码器"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:233
 msgid "Top bar"
 msgstr "顶栏"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:216
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:233
 msgid "Quick settings"
 msgstr "快速设置"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:219
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:236
 msgid "General"
 msgstr "常规"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:228
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:70
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:245
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:82
 msgid "Indicator location"
 msgstr "图标位置"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:229
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:246
 msgid "Show the cast icon in the top bar, or in the quick settings menu"
 msgstr "在顶栏或快速设置菜单中显示投屏图标"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:243
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:260
 msgid "About"
 msgstr "关于"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:254
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:271
 #, javascript-format
 msgid "Version %s"
 msgstr "版本 %s"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:269
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:286
 msgid "Help"
 msgstr "帮助"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:270
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:287
 msgid "Common problems and their fixes"
 msgstr "常见问题及其解决方法"
 
-#: extension/gnome-shell-cast@oxygenws.com/prefs.js:273
+#: extension/gnome-shell-cast@oxygenws.com/prefs.js:290
 msgid "Troubleshooting guide"
 msgstr "故障排除指南"
 
@@ -440,7 +451,7 @@ msgstr ""
 "AMD）、“nvenc”（NVIDIA）和“v4l2”（Arm 开发板）会固定使用某一种硬件接口；若无"
 "法满足该选择，投屏将失败并给出提示。"
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:57
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:69
 msgid ""
 "The raw video format handed to the encoder. \"auto\" offers both and lets "
 "negotiation pick whichever the chosen encoder accepts. Forcing a format "
@@ -451,7 +462,7 @@ msgstr ""
 "一种。强制某种格式会将投放限制在接受该格式的编码器上，在大多数系统上这也等于"
 "强制了编码器类型。"
 
-#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:71
+#: extension/gnome-shell-cast@oxygenws.com/schemas/org.gnome.shell.extensions.gnome-shell-cast.gschema.xml:83
 msgid ""
 "Where to show the cast indicator: the top-bar tray, or the quick settings "
 "menu."

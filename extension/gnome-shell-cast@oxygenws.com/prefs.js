@@ -19,6 +19,7 @@ const BITRATE_VALUES = [0, 2000, 4000, 8000, 16000, 30000];
 const AUDIO_BITRATE_VALUES = [0, 64, 96, 128, 192, 256];
 const LOCATION_VALUES = ['tray', 'quick-settings'];
 const ENCODER_VALUES = ['auto', 'hardware', 'software', 'vaapi', 'nvenc', 'v4l2'];
+const CODEC_VALUES = ['auto', 'vp8', 'vp9', 'h264', 'av1'];
 const FORMAT_VALUES = ['auto', 'nv12', 'i420'];
 
 // The daemon decides which piece is missing; this only phrases it, because the
@@ -151,6 +152,7 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             _('NVENC (NVIDIA)'),
             _('V4L2 (Arm boards)'),
         ];
+        const codecLabels = [_('Automatic'), 'VP8', 'VP9', 'H.264', 'AV1'];
         const formatLabels = [_('Automatic'), 'NV12', 'I420'];
 
         const encodingGroup = new Adw.PreferencesGroup({
@@ -171,6 +173,17 @@ export default class GnomeShellCastPreferences extends ExtensionPreferences {
             settings.set_string('video-encoder', ENCODER_VALUES[row.selected]);
         });
         encodingGroup.add(encoderRow);
+
+        const codecRow = new Adw.ComboRow({
+            title: _('Video codec'),
+            subtitle: _('Automatic lets the receiver choose from the available codecs'),
+            model: new Gtk.StringList({ strings: codecLabels }),
+            selected: Math.max(0, CODEC_VALUES.indexOf(settings.get_string('video-codec'))),
+        });
+        codecRow.connect('notify::selected', (row) => {
+            settings.set_string('video-codec', CODEC_VALUES[row.selected]);
+        });
+        encodingGroup.add(codecRow);
 
         const formatRow = new Adw.ComboRow({
             title: _('Pixel format'),
