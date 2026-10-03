@@ -49,5 +49,15 @@ Two things to check if casting does not work:
   `xdg-desktop-portal-gnome` must be present - both are on by default with
   `services.desktopManager.gnome.enable = true`.
 
+Hardware encoding needs one thing the wrapper cannot provide: the VA-API driver
+for the graphics card, which is what decides whether the bundled **va** plugin
+registers any encoder at all. Without it the daemon encodes in software, which
+still casts - preferences says so, and the cast details line names the encoder.
+
+```nix
+# Intel; AMD is covered by Mesa, which is already there
+hardware.graphics.extraPackages = with pkgs; [ intel-media-driver ];
+```
+
 `nix develop` gives a shell with the Rust toolchain, GStreamer headers, and the
 tooling the `Makefile` targets expect.

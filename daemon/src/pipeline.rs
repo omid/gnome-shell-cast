@@ -100,6 +100,18 @@ pub fn set_encoder_bitrate(pipeline: &gst::Pipeline, bits_per_second: u32) {
         ),
         "svtav1enc" | "av1enc" => venc.set_property("target-bitrate", kbps),
         "x264enc" => venc.set_property("bitrate", kbps),
+        // A V4L2 encoder has no bitrate property; the control carries bit/s,
+        // and the existing fields are kept so the GOP size set at launch stays.
+        other if other.starts_with("v4l2") => {
+            let mut controls = venc
+                .property::<Option<gst::Structure>>("extra-controls")
+                .unwrap_or_else(|| gst::Structure::new_empty("controls"));
+            controls.set(
+                "video_bitrate",
+                i32::try_from(bits_per_second).unwrap_or(i32::MAX),
+            );
+            venc.set_property("extra-controls", controls);
+        }
         other if other.starts_with("va") || other.starts_with("nv") => {
             venc.set_property("bitrate", kbps);
         }
@@ -147,11 +159,18 @@ pub fn find_aac_encoder() -> Option<&'static str> {
         .find(|name| gst::ElementFactory::find(name).is_some())
 }
 
-/// H.264 encoders for the HLS path, hardware first (VA-API, then NVENC), then
-/// software `x264enc`. Each candidate is parse-checked, so a hardware encoder
-/// that is present but mis-parametrised falls back to the next one. `None` when
-/// the user's encoder or pixel-format choice rules every one of them out.
-const H264_ENCODERS: &[&str] = &["vah264enc", "vah264lpenc", "nvh264enc", "x264enc"];
+/// H.264 encoders for the HLS path, hardware first (VA-API, NVENC, then V4L2),
+/// then software `x264enc`. Each candidate is checked - parsed for software,
+/// opened for hardware - so one that is present but mis-parametrised or unable
+/// to reach its device falls back to the next. `None` when the user's encoder or
+/// pixel-format choice rules every one of them out.
+const H264_ENCODERS: &[&str] = &[
+    "vah264enc",
+    "vah264lpenc",
+    "nvh264enc",
+    "v4l2h264enc",
+    "x264enc",
+];
 
 fn find_h264_encoder(bitrate_kbps: i32, key_int: i32, policy: EncodingPolicy) -> Option<String> {
     let software = format!(
@@ -168,11 +187,20 @@ fn find_h264_encoder(bitrate_kbps: i32, key_int: i32, policy: EncodingPolicy) ->
                     "{f} name=venc bitrate={bitrate_kbps} rc-mode=cbr gop-size={key_int} bframes=0"
                 )
             }
+            // V4L2 takes bit/s through controls rather than properties, and
+            // needs telling to repeat SPS/PPS - HLS segments are fetched from
+            // the live edge, so a segment without them decodes to nothing.
+            _ if f.starts_with("v4l2") => format!(
+                "{f} name=venc extra-controls=\"controls,video_bitrate={},video_gop_size={key_int},repeat_sequence_header=1\"",
+                i64::from(bitrate_kbps).saturating_mul(1000)
+            ),
             _ => format!(
                 "{f} name=venc bitrate={bitrate_kbps} rate-control=cbr key-int-max={key_int}"
             ),
         };
-        if gst::parse::launch(&fragment).is_ok() {
+        // Hardware candidates have to open their device, not just parse: the
+        // HLS path would otherwise fail a whole cast on a phantom encoder.
+        if encoder::fragment_usable(f, &fragment) {
             return Some(fragment);
         }
     }
