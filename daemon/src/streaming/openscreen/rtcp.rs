@@ -342,7 +342,7 @@ mod tests {
         let packet = feedback_packet(43, 7, &[]);
         let events = parse_new(&packet, 42, 0);
         assert_eq!(events.checkpoint_frame_id, None);
-        assert!(events.nacks.is_empty());
+        assert_eq!(events.nacks, Vec::<Nack>::new());
     }
 
     #[test]

@@ -47,7 +47,23 @@ export default [
             'max-lines': ['error', { max: 500, skipBlankLines: true, skipComments: true }],
 
             // Correctness
-            'no-shadow': 'error',
+            'no-shadow': [
+                'error',
+                {
+                    // `const X = GObject.registerClass(class X ...)` needs the
+                    // inner name (GObject derives the GType name from it), and
+                    // ESLint 10 reports it as shadowing the outer binding.
+                    allow: [
+                        'BaseDialog',
+                        'CastPanelIndicator',
+                        'CastQuickIndicator',
+                        'CastToggle',
+                        'CastVolumeSlider',
+                        'ErrorDialog',
+                        'SetupDialog',
+                    ],
+                },
+            ],
             'consistent-return': 'error',
             'array-callback-return': 'error',
             curly: ['error', 'multi-line'],

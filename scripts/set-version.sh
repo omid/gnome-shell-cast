@@ -29,8 +29,13 @@ cargo_lock="daemon/Cargo.lock"
 tmp=$(mktemp)
 jq --argjson v "$N" '.version = $v' "$meta" >"$tmp" && mv "$tmp" "$meta"
 
-# Cargo.toml - the package version is the only line starting with `version = `.
-sed -i "s/^version = \"[^\"]*\"/version = \"$SEMVER\"/" "$cargo_toml"
+# Cargo.toml - the `version` key of the [package] table only, so expanded
+# dependency tables (`[dependencies.foo]` + `version = ...`) are left alone.
+awk -v ver="$SEMVER" '
+    /^\[/ { in_package = ($0 == "[package]") }
+    in_package && /^version = / { sub(/"[^"]*"/, "\"" ver "\"") }
+    { print }
+' "$cargo_toml" >"$cargo_toml.tmp" && mv "$cargo_toml.tmp" "$cargo_toml"
 
 # Cargo.lock - the `version` line right after the daemon package's name line.
 awk -v ver="$SEMVER" '
