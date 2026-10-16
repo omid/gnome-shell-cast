@@ -6,6 +6,18 @@ daemon ship together under one version.
 
 ## [Unreleased]
 
+## [6] - 2026-10-16
+
+### Added
+
+- GNOME Shell 51 support.
+
+## [5] - 2026-10-16
+
+Maintenance release with updated dependencies; nothing changes for users.
+
+## [4] - 2026-09-02
+
 ### Added
 
 - Eleven more interface languages: Arabic, Bengali, Bulgarian, Chinese
@@ -68,7 +80,10 @@ Initial release.
 
 Initial release.
 
-[unreleased]: https://github.com/omid/gnome-shell-cast/compare/v3...HEAD
+[unreleased]: https://github.com/omid/gnome-shell-cast/compare/v6...HEAD
+[6]: https://github.com/omid/gnome-shell-cast/compare/v5...v6
+[5]: https://github.com/omid/gnome-shell-cast/compare/v4...v5
+[4]: https://github.com/omid/gnome-shell-cast/compare/v3...v4
 [3]: https://github.com/omid/gnome-shell-cast/compare/v2...v3
 [2]: https://github.com/omid/gnome-shell-cast/compare/v1...v2
 [1]: https://github.com/omid/gnome-shell-cast/releases/tag/v1

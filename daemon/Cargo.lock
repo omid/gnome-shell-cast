@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "gnome-shell-cast-daemon"
-version = "5.0.0"
+version = "6.0.0"
 dependencies = [
  "aes",
  "anyhow",

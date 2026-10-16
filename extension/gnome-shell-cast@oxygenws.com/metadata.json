@@ -5,10 +5,11 @@
   "shell-version": [
     "48",
     "49",
-    "50"
+    "50",
+    "51"
   ],
   "settings-schema": "org.gnome.shell.extensions.gnome-shell-cast",
   "gettext-domain": "gnome-shell-cast@oxygenws.com",
   "url": "https://github.com/omid/gnome-shell-cast",
-  "version": 5
+  "version": 6
 }
