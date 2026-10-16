@@ -57,8 +57,9 @@ default level.
   - `opusenc` (Opus audio, from *good*)
 - **PipeWire** and its GStreamer plugin (`pipewiresrc`), plus `xdg-desktop-portal-gnome`
 - `pactl` (for locating the system-audio monitor)
-- Optional, for hardware encoding: the GStreamer **VA-API** plugin (`vah264enc`, …)
-  or NVIDIA **nvcodec** plugin (`nvh264enc`, …)
+- Optional, for hardware encoding: a GStreamer plugin *and* a driver, and which
+  pair you need depends on the graphics card - see
+  [Hardware encoding by graphics card](#hardware-encoding-by-graphics-card).
 
 **Build only (if compiling the daemon yourself):** the Rust toolchain and the
 GStreamer development headers.
@@ -72,7 +73,8 @@ sudo apt install \
     gstreamer1.0-plugins-base gstreamer1.0-plugins-good \
     gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gstreamer1.0-libav \
     gstreamer1.0-pipewire pipewire pulseaudio-utils
-# hardware encoding (Intel/AMD): gstreamer1.0-vaapi
+# hardware encoding: the va plugin is in plugins-bad above; add the driver:
+#   va-driver-all
 # building from source: cargo libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
 ```
 
@@ -83,6 +85,8 @@ sudo dnf install \
     gstreamer1-plugins-base gstreamer1-plugins-good \
     gstreamer1-plugins-bad-free gstreamer1-plugins-ugly gstreamer1-libav \
     pipewire-gstreamer pipewire-utils pulseaudio-utils
+# hardware encoding: the va plugin is in plugins-bad-free above; add the driver:
+#   intel-media-driver (Intel) or mesa-va-drivers (AMD)
 # building from source: cargo gstreamer1-devel gstreamer1-plugins-base-devel
 ```
 
@@ -95,8 +99,22 @@ typically enable [RPM Fusion](https://rpmfusion.org/).)
 sudo pacman -S \
     gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly \
     gst-libav gst-plugin-pipewire pipewire-pulse libpulse
-# AV1: aom or svt-av1 ;  hardware encoding: gstreamer-vaapi
+# AV1: aom or svt-av1
+# hardware encoding: gst-plugin-va (a separate package here), plus the driver:
+#   intel-media-driver (Intel) or libva-mesa-driver (AMD)
 # building from source: rust
+```
+
+#### NixOS
+
+The flake builds both halves and bakes the GStreamer plugins into the daemon, so
+nothing has to be installed alongside it - see [nix/README.md](nix/README.md).
+The **va** plugin is among those bundled plugins, so only the VA-API driver is
+yours to add:
+
+```nix
+# Intel; AMD is covered by Mesa, which is already there
+hardware.graphics.extraPackages = with pkgs; [ intel-media-driver ];
 ```
 
 #### openSUSE
@@ -106,8 +124,55 @@ sudo zypper install \
     gstreamer-plugins-base gstreamer-plugins-good \
     gstreamer-plugins-bad gstreamer-plugins-ugly gstreamer-plugins-libav \
     gstreamer-plugin-pipewire pipewire-tools pulseaudio-utils
+# hardware encoding: the va plugin is in gstreamer-plugins-bad above; add the
+#   driver: intel-media-driver (Intel) or Mesa's VA-API driver (AMD)
 # building from source: cargo gstreamer-devel gstreamer-plugins-base-devel
 ```
+
+### Hardware encoding by graphics card
+
+Software encoding always works, so none of this is required - it lowers CPU use
+and is what makes 1440p and 4K realistic. Preferences (Advanced -> Encoding)
+says which of these your machine is missing, and the cast details line in the
+menu names the encoder actually in use.
+
+| Card | Path | GStreamer plugin | Driver |
+|---|---|---|---|
+| Intel, Gen8 and later (`i915`, `xe`) | VA-API | **va** (`vah264enc`, `vah264lpenc`, `vavp9lpenc`) | `intel-media-driver` |
+| Intel, older Gen (`i915`) | VA-API, H.264 only | **va** | the legacy `libva-intel-driver` (i965) |
+| AMD GCN and later (`amdgpu`) | VA-API | **va** | Mesa's VA-API driver |
+| AMD pre-GCN (`radeon`) | usually none | - | Mesa's, but these cards rarely encode |
+| NVIDIA, proprietary or open kernel module | NVENC | **nvcodec** (`nvh264enc`, `nvav1enc`) | the NVIDIA driver, including its NVENC library |
+| NVIDIA on nouveau | none | - | nouveau exposes no encoder; the proprietary driver does |
+| Arm SoCs - Raspberry Pi 4 (`v3d`/`vc4`), Rockchip, Mali (`panfrost`/`panthor`), Qualcomm (`msm`) | V4L2 | **good** (`v4l2h264enc`, from the kernel's own encoder device) | in the kernel; nothing to install |
+| Virtual GPUs - `virtio_gpu`, `vmwgfx`, `qxl` - and server display chips (`ast`, `mgag200`) | none | - | no encoder exists to reach |
+
+V4L2 encoders come from the kernel, so the elements exist only where a device
+advertises that codec - `v4l2h264enc` on a Raspberry Pi 4, nothing at all on a
+Raspberry Pi 5, whose hardware H.264 encoder was removed. There is no package to
+install for them: either the kernel exposes the device or it does not.
+
+The **va** plugin covers Intel and AMD together; it is a separate package only
+on some distributions (see [above](#install-by-distribution)), and elsewhere it
+sits in the *bad* set this daemon already needs. **nvcodec** ships in that same
+*bad* set everywhere, so for NVIDIA the missing piece is nearly always the
+driver, not the plugin.
+
+Two things worth knowing before chasing a driver:
+
+- **The driver decides which encoders exist**, not the plugin. Intel encodes VP9
+  only in low power mode, so the element is `vavp9lpenc`; several Intel
+  generations have no VP8 or AV1 encoder at all. If the receiver picks a codec
+  your card cannot encode, that cast runs in software even though hardware
+  encoding "works".
+- **A discrete GPU that sleeps can come and go.** With runtime power management
+  the NVENC elements may be absent while the card is powered down, so the same
+  machine can report hardware encoding as available or not between two daemon
+  starts. Every hardware candidate is opened before it is used, so one that is
+  registered but cannot start is skipped rather than failing the cast.
+- **On a machine with two hardware paths, automatic prefers VA-API.** Set *Video
+  encoder* in preferences to `VA-API`, `NVENC` or `V4L2` to pin the other one -
+  useful on a hybrid laptop whose integrated encoder is the weaker of the two.
 
 ### Which package fixes which symptom
 
@@ -120,7 +185,7 @@ sudo zypper install \
 | Video works but there's no audio | `pactl` missing, or no monitor source | `pulseaudio-utils` / `pipewire-pulse` |
 | Casting to a speaker or cast group plays nothing | audio-only receivers need an MP3 or AAC encoder | plugins **good** (`lamemp3enc`) or **bad** (`fdkaacenc`) |
 | Log: *"parsing the mirroring pipeline"* fails | GStreamer base/good plugins incomplete | plugins **base** + **good** |
-| Details line never shows hardware | no VA-API/NVENC GStreamer plugin (software encoding is used, which still works) | `gstreamer-vaapi` (Intel/AMD) |
+| Details line never shows hardware, and preferences says hardware encoding is unavailable | the plugin or the driver for your graphics card is missing, so software encoding is used (which still works) | see [Hardware encoding by graphics card](#hardware-encoding-by-graphics-card) |
 | Screen picker never opens | portal missing | `xdg-desktop-portal-gnome` + PipeWire |
 
 Check which encoders GStreamer can see:
