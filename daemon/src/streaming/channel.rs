@@ -4,7 +4,7 @@
 //! the connection (heartbeat, receiver-side close) until stopped.
 
 use std::io::ErrorKind;
-use std::net::{IpAddr, SocketAddr, TcpStream};
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -12,13 +12,12 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
 use log::{debug, info, warn};
-use rust_cast::NoCertificateVerification;
 use rust_cast::message_manager::{CastMessage, CastMessagePayload, MessageManager};
-use rustls::{ClientConnection, StreamOwned};
 use serde_json::{Value, json};
 use tokio::sync::mpsc::UnboundedSender;
 
 use super::openscreen::messages::{self, Answer};
+use crate::tls;
 
 const SENDER_ID: &str = "sender-0";
 const RECEIVER_ID: &str = "receiver-0";
@@ -35,7 +34,7 @@ const PING_INTERVAL: Duration = Duration::from_secs(5);
 /// How long we wait for the receiver to confirm the mirroring app has stopped.
 const STOP_CONFIRM_TIMEOUT: Duration = Duration::from_secs(3);
 
-type Manager = MessageManager<StreamOwned<ClientConnection, TcpStream>>;
+type Manager = MessageManager<tls::Stream>;
 
 pub enum ChannelEvent {
     /// The receiver ended the session (app closed, connection lost, ...).
@@ -57,7 +56,7 @@ impl MirrorChannel {
         let Some(deadline) = Instant::now().checked_add(NEGOTIATION_TIMEOUT) else {
             bail!("the monotonic clock is at its maximum");
         };
-        let manager = connect_tls(addr, port)?;
+        let manager = MessageManager::new(tls::connect(addr, port, Some(READ_TIMEOUT))?);
         let mut channel = Self {
             manager,
             session_id: String::new(),
@@ -291,24 +290,6 @@ impl MirrorChannel {
         self.request_id = self.request_id.wrapping_add(1);
         self.request_id
     }
-}
-
-fn connect_tls(addr: IpAddr, port: u16) -> Result<Manager> {
-    let socket_addr = SocketAddr::new(addr, port);
-    let tcp = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(4))
-        .with_context(|| format!("connecting to {socket_addr}"))?;
-    tcp.set_read_timeout(Some(READ_TIMEOUT))?;
-    tcp.set_nodelay(true)?;
-
-    let config = rustls::ClientConfig::builder()
-        .dangerous()
-        .with_custom_certificate_verifier(Arc::new(NoCertificateVerification))
-        .with_no_client_auth();
-    let server_name = rustls::pki_types::ServerName::try_from(addr.to_string())
-        .context("building TLS server name")?;
-    let connection =
-        ClientConnection::new(Arc::new(config), server_name).context("creating TLS connection")?;
-    Ok(MessageManager::new(StreamOwned::new(connection, tcp)))
 }
 
 fn json_payload(message: &CastMessage) -> Option<Value> {

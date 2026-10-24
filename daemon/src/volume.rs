@@ -1,16 +1,16 @@
-use std::net::{IpAddr, SocketAddr, TcpStream};
+use std::net::IpAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Result, anyhow};
 use log::{debug, warn};
-use rust_cast::NoCertificateVerification;
 use rust_cast::message_manager::{CastMessage, CastMessagePayload, MessageManager};
-use rustls::{ClientConnection, StreamOwned};
 use serde_json::{Value, json};
+
+use crate::tls;
 
 // Our own sender id, distinct from rust_cast's "sender-0": two connections
 // sharing an id look like one virtual connection to the device, so a separate
@@ -26,7 +26,7 @@ const NS_RECEIVER: &str = "urn:x-cast:com.google.cast.receiver";
 const READ_TIMEOUT: Duration = Duration::from_millis(200);
 const PING_INTERVAL: Duration = Duration::from_secs(5);
 
-type Manager = MessageManager<StreamOwned<ClientConnection, TcpStream>>;
+type Manager = MessageManager<tls::Stream>;
 
 /// Controls the Chromecast's receiver volume over its own connection (the
 /// extension's slider drives it via `SetVolume`). Reconnects on demand and
@@ -184,21 +184,7 @@ fn handle(manager: &Manager, message: &CastMessage, on_level: &(dyn Fn(f64) + Se
 }
 
 fn connect(addr: IpAddr, port: u16) -> Result<Manager> {
-    let socket_addr = SocketAddr::new(addr, port);
-    let tcp = TcpStream::connect_timeout(&socket_addr, Duration::from_secs(4))
-        .with_context(|| format!("connecting to {socket_addr}"))?;
-    tcp.set_read_timeout(Some(READ_TIMEOUT))?;
-    tcp.set_nodelay(true)?;
-
-    let config = rustls::ClientConfig::builder()
-        .dangerous()
-        .with_custom_certificate_verifier(Arc::new(NoCertificateVerification))
-        .with_no_client_auth();
-    let server_name = rustls::pki_types::ServerName::try_from(addr.to_string())
-        .context("building TLS server name")?;
-    let connection =
-        ClientConnection::new(Arc::new(config), server_name).context("creating TLS connection")?;
-    let manager = MessageManager::new(StreamOwned::new(connection, tcp));
+    let manager = MessageManager::new(tls::connect(addr, port, Some(READ_TIMEOUT))?);
 
     send(
         &manager,

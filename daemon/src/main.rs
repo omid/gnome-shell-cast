@@ -6,6 +6,7 @@ mod net;
 mod pipeline;
 mod session;
 mod streaming;
+mod tls;
 mod volume;
 
 use std::collections::HashMap;

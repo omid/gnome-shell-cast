@@ -1,4 +1,5 @@
 use std::net::IpAddr;
+use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
@@ -6,13 +7,19 @@ use std::time::Duration;
 
 use anyhow::{Result, anyhow};
 use log::{debug, info, warn};
-use rust_cast::channels::heartbeat::HeartbeatResponse;
-use rust_cast::channels::media::{Media, Metadata, MusicTrackMediaMetadata, StreamType};
-use rust_cast::channels::receiver::CastDeviceApp;
-use rust_cast::{CastDevice, ChannelMessage};
+use rust_cast::channels::connection::ConnectionChannel;
+use rust_cast::channels::heartbeat::{HeartbeatChannel, HeartbeatResponse};
+use rust_cast::channels::media::{
+    Media, MediaChannel, Metadata, MusicTrackMediaMetadata, StreamType,
+};
+use rust_cast::channels::receiver::{CastDeviceApp, ReceiverChannel};
+use rust_cast::message_manager::MessageManager;
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 
+use crate::tls;
+
+const SENDER_ID: &str = "sender-0";
 const DESTINATION_ID: &str = "receiver-0";
 
 /// The media to load once the stream is ready: URL and HTTP content type (HLS
@@ -75,6 +82,29 @@ pub fn start(
     }
 }
 
+/// `rust_cast::CastDevice`, on a stream from `tls::connect`: its own
+/// connect cannot take a receiver presenting an X.509 v1 certificate.
+struct Device {
+    manager: Rc<MessageManager<tls::Stream>>,
+    connection: ConnectionChannel<'static, tls::Stream>,
+    heartbeat: HeartbeatChannel<'static, tls::Stream>,
+    media: MediaChannel<'static, tls::Stream>,
+    receiver: ReceiverChannel<'static, tls::Stream>,
+}
+
+impl Device {
+    fn connect(addr: IpAddr, port: u16) -> Result<Self> {
+        let manager = Rc::new(MessageManager::new(tls::connect(addr, port, None)?));
+        Ok(Self {
+            connection: ConnectionChannel::new(SENDER_ID, Rc::clone(&manager)),
+            heartbeat: HeartbeatChannel::new(SENDER_ID, DESTINATION_ID, Rc::clone(&manager)),
+            media: MediaChannel::new(SENDER_ID, Rc::clone(&manager)),
+            receiver: ReceiverChannel::new(SENDER_ID, DESTINATION_ID, Rc::clone(&manager)),
+            manager,
+        })
+    }
+}
+
 fn run(
     addr: IpAddr,
     port: u16,
@@ -83,8 +113,7 @@ fn run(
     events: &UnboundedSender<CastEvent>,
 ) -> Result<()> {
     info!("connecting to chromecast at {addr}:{port}");
-    let device = CastDevice::connect_without_host_verification(addr.to_string(), port)
-        .map_err(|e| anyhow!("connecting: {e}"))?;
+    let device = Device::connect(addr, port).map_err(|e| anyhow!("connecting: {e:#}"))?;
 
     device
         .connection
@@ -155,9 +184,12 @@ fn run(
             return Ok(());
         }
 
-        match device.receive() {
-            Ok(ChannelMessage::Heartbeat(response)) => {
-                if matches!(response, HeartbeatResponse::Ping) {
+        match device.manager.receive() {
+            Ok(message) if device.heartbeat.can_handle(&message) => {
+                if matches!(
+                    device.heartbeat.parse(&message),
+                    Ok(HeartbeatResponse::Ping)
+                ) {
                     device.heartbeat.pong().map_err(|e| anyhow!("pong: {e}"))?;
                 }
             }
