@@ -214,12 +214,15 @@ pub fn launch_description(
         // `video_encoder` is the chosen H.264 element (hardware if available).
         // NV12 for the VA-API encoders, I420 for x264enc; unconstrained,
         // videoconvert picks Y444 and x264enc emits 4:4:4 no receiver decodes.
+        // Screen captures use square pixels. PipeWire can negotiate a bogus
+        // PAR (1/2147483647); normalize metadata before aspect-aware scaling.
         let format = settings.encoding.format.caps_format();
         let _ = write!(
             desc,
             "pipewiresrc fd={fd} path={node_id} do-timestamp=true keepalive-time=1000 resend-last=true \
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
-             ! videoconvert ! videoscale ! videorate \
+             ! video/x-raw ! capssetter caps=video/x-raw,pixel-aspect-ratio=1/1 \
+             ! videoconvert ! videoscale add-borders=true ! videorate \
              ! video/x-raw,format={format},framerate={fps}/1{size_caps} \
              ! {video_encoder} ! h264parse ! queue \
              ! hls.video "

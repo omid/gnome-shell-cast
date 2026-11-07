@@ -563,6 +563,8 @@ fn build_pipeline(
     if let (Some(capture), Some(venc)) = (capture, video_encoder) {
         let (width, height) = resolved.size;
         let fps = resolved.fps;
+        // Normalize PipeWire pixel aspect metadata before preserving the
+        // desktop proportions with letterboxing (as in the HLS pipeline).
         let format = settings.encoding.format.caps_format();
         let fd = capture.fd.as_raw_fd();
         let node = capture.node_id;
@@ -570,7 +572,8 @@ fn build_pipeline(
             desc,
             "pipewiresrc fd={fd} path={node} do-timestamp=true keepalive-time=1000 resend-last=true \
              ! queue leaky=downstream max-size-buffers=3 max-size-bytes=0 max-size-time=0 \
-             ! videoconvert ! videoscale ! videorate \
+             ! video/x-raw ! capssetter caps=video/x-raw,pixel-aspect-ratio=1/1 \
+             ! videoconvert ! videoscale add-borders=true ! videorate \
              ! video/x-raw,format={format},framerate={fps}/1,width={width},height={height},pixel-aspect-ratio=1/1 \
              ! {venc} ! appsink name=vsink sync=false max-buffers=32 "
         );
